@@ -1,0 +1,47 @@
+# Local development / staging stack — mirrors production architecture (Postgres + S3-compatible storage)
+# without depending on Supabase or a cloud MinIO account. Swapping to those later is just an env change.
+#
+# Usage:
+#   docker compose up -d
+#   Postgres → localhost:5432 (user/pass: agencyflow / agencyflow, db: agencyflow)
+#   MinIO API → localhost:9000, Console → localhost:9001 (user/pass: agencyflow / agencyflow123)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: agencyflow
+      POSTGRES_PASSWORD: agencyflow
+      POSTGRES_DB: agencyflow
+    ports:
+      - '5432:5432'
+    volumes:
+      - agencyflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U agencyflow']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: agencyflow
+      MINIO_ROOT_PASSWORD: agencyflow123
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - agencyflow_minio_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  agencyflow_postgres_data:
+  agencyflow_minio_data:

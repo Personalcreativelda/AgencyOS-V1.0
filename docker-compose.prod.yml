@@ -1,0 +1,75 @@
+# Production stack — API and Web as separate containers, talking to your already-configured
+# external services (Supabase Postgres + Storage, OpenAI, etc.). This does NOT include
+# Postgres/MinIO (that's docker-compose.yml, for local dev only) since production uses Supabase.
+#
+# Env vars are read via ${VAR} interpolation, NOT from apps/api/.env — that file is gitignored
+# and won't exist wherever this repo gets cloned/built (Coolify, Railway, a bare VPS checkout...).
+# Two ways to supply them:
+#   - Coolify / Railway / Render / etc.: paste them into that platform's "Environment Variables"
+#     UI for this app — it injects them automatically when it runs `docker compose build/up`.
+#     Point the platform's "Docker Compose Location" at this exact file (docker-compose.prod.yml),
+#     not the default docker-compose.yml — that one is the local-dev Postgres/MinIO stack and has
+#     no Dockerfile in it at all, which is why a platform defaulting to it finds nothing to build.
+#   - Manual VPS: create a `.env` file at the REPO ROOT (same folder as this file, NOT
+#     apps/api/.env) with the same keys as apps/api/.env.example — Docker Compose loads a root
+#     .env automatically for this kind of substitution.
+#
+# Usage (from the repo root):
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Only the `web` container needs to be reachable from outside — point your reverse proxy /
+# Coolify's domain settings at WEB_PORT below. The `api` container is only ever called
+# internally by web's nginx, so its port doesn't need to be public.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Always 4820 in production — see apps/api/Dockerfile / DEPLOY.md for why.
+      PORT: 4820
+      APP_URL: ${APP_URL}
+      API_URL: ${API_URL}
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      STORAGE_TYPE: ${STORAGE_TYPE:-s3}
+      STORAGE_LOCAL_PATH: ${STORAGE_LOCAL_PATH:-./uploads}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_REGION: ${S3_REGION}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL}
+      META_REDIRECT_URI: ${META_REDIRECT_URI}
+      META_GRAPH_VERSION: ${META_GRAPH_VERSION:-v19.0}
+      EVOLUTION_API_URL: ${EVOLUTION_API_URL}
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    ports:
+      - '${API_PORT:-4820}:4820'
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4820/api/v1/health', r => process.exit(r.statusCode===200?0:1)).on('error', () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - '${WEB_PORT:-8080}:80'
