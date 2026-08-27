@@ -89,10 +89,14 @@ deployment, pointed at the right compose file, explicitly:
    values as your `apps/api/.env` — Coolify injects these directly into the
    compose build/up, it does **not** read `apps/api/.env` from the repo
    (that file is gitignored and never gets cloned).
-5. Set the domain for the **`web`** service only (Coolify's per-service
-   domain/proxy settings) — that's the one container that needs to be
-   publicly reachable; `api` is only ever called internally over the
-   compose network via `web`'s nginx.
+5. Domain: nothing to do manually — `docker-compose.prod.yml` declares
+   Coolify's magic `SERVICE_FQDN_WEB` env var on the `web` service, so
+   Coolify auto-generates a domain and wires up its Traefik proxy to it on
+   deploy, the same as its other one-click apps. If you want a custom
+   domain instead of the auto-generated one, set it in the resource's
+   Access/Domains tab after the first successful deploy. `api` has no
+   domain and isn't reachable publicly — it's only ever called internally
+   over the compose network via `web`'s nginx.
 6. Deploy. Coolify will build both Dockerfiles and start both containers;
    the `web` service waits on `api`'s healthcheck before starting. Neither
    service publishes a host port (both use `expose`), so Coolify's Traefik

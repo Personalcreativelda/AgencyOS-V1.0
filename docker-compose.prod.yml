@@ -20,11 +20,14 @@
 # Neither service publishes a host port directly — both use `expose` (container-internal
 # only, reachable over the compose network by service name). This avoids "port already
 # allocated" conflicts on a shared host running multiple apps. Only `web` needs to be
-# reachable from outside: point your reverse proxy / Coolify's domain settings at it — Coolify's
-# built-in proxy (Traefik) attaches to `web`'s exposed port 80 automatically once you set a
-# domain for that service in its UI. `api` is only ever called internally by web's nginx, so it
-# has no public entry point at all — if you need to hit it directly for debugging, use
-# `docker compose -f docker-compose.prod.yml exec api sh` or add a temporary `ports:` mapping.
+# reachable from outside, and it declares Coolify's magic `SERVICE_FQDN_WEB` env var (see the
+# `web` service below) — on Coolify this auto-generates a domain and wires up its Traefik proxy
+# to port 80 with zero manual "set a domain" step, exactly like Coolify's other one-click apps.
+# On plain `docker compose` (no Coolify) that var is simply ignored/unused — point your own
+# reverse proxy at the `web` container over the compose network instead. `api` is only ever
+# called internally by web's nginx, so it has no public entry point at all — if you need to hit
+# it directly for debugging, use `docker compose -f docker-compose.prod.yml exec api sh` or add
+# a temporary `ports:` mapping.
 
 services:
   api:
@@ -76,5 +79,7 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    environment:
+      SERVICE_FQDN_WEB: '80'
     expose:
       - '80'
