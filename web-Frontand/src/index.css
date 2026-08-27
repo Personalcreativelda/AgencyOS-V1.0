@@ -1,0 +1,166 @@
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Minimals Light Mode */
+    --grey-0: 255 255 255;
+    --grey-100: 249 250 251;
+    --grey-200: 244 246 248;
+    --grey-300: 223 227 232;
+    --grey-400: 196 205 213;
+    --grey-500: 145 158 171;
+    --grey-600: 99 115 129;
+    --grey-700: 69 79 91;
+    --grey-800: 33 43 54;
+    --grey-900: 22 28 36;
+    
+    --background: 0 0% 100%;
+    --foreground: 210 24% 16%; /* #212B36 */
+    --card: 0 0% 100%;
+    --card-foreground: 210 24% 16%;
+    --muted: 210 20% 96%; /* #F4F6F8 */
+    --muted-foreground: 208 14% 62%; /* #919EAB */
+    --border: 214 15% 87%; /* #DFE3E8 */
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 210 13% 45%; /* #637381 */
+    --sidebar-border: 214 15% 87%;
+    --sidebar-active: 160 100% 33%; /* #00A76F */
+
+    /* Shadow tokens (light mode) */
+    --shadow-z1: 0 1px 2px 0 rgba(145, 158, 171, 0.16);
+    --shadow-z4: 0 4px 8px 0 rgba(145, 158, 171, 0.16);
+    --shadow-z8: 0 8px 16px 0 rgba(145, 158, 171, 0.16);
+    --shadow-z12: 0 12px 24px -4px rgba(145, 158, 171, 0.16);
+    --shadow-z16: 0 16px 32px -4px rgba(145, 158, 171, 0.16);
+    --shadow-z20: 0 20px 40px -4px rgba(145, 158, 171, 0.16);
+    --shadow-z24: 0 24px 48px 0 rgba(145, 158, 171, 0.16);
+    --shadow-card: 0 0 2px 0 rgba(145, 158, 171, 0.2), 0 12px 24px -4px rgba(145, 158, 171, 0.12);
+    --shadow-card-hover: 0 0 2px 0 rgba(145, 158, 171, 0.24), 0 20px 30px -4px rgba(145, 158, 171, 0.16);
+    --shadow-dropdown: 0 0 2px 0 rgba(145, 158, 171, 0.24), -20px 20px 40px -4px rgba(145, 158, 171, 0.24);
+    --shadow-dialog: -40px 40px 80px -8px rgba(0, 0, 0, 0.24);
+    --shadow-primary: 0 8px 16px 0 rgba(0, 167, 111, 0.24);
+    --shadow-secondary: 0 8px 16px 0 rgba(142, 51, 255, 0.24);
+    --shadow-info: 0 8px 16px 0 rgba(0, 184, 217, 0.24);
+    --shadow-success: 0 8px 16px 0 rgba(34, 197, 94, 0.24);
+    --shadow-warning: 0 8px 16px 0 rgba(255, 171, 0, 0.24);
+    --shadow-error: 0 8px 16px 0 rgba(255, 86, 48, 0.24);
+  }
+
+  .dark {
+    /* Premium neutral dark (Windows 11 / iOS style) — near-black, no blue tint */
+    --grey-0: 15 15 17;
+    --grey-100: 24 24 27;
+    --grey-200: 34 34 38;
+    --grey-300: 48 48 53;
+    --grey-400: 74 74 80;
+    --grey-500: 142 142 148;
+    --grey-600: 180 180 185;
+    --grey-700: 210 210 213;
+    --grey-800: 235 235 236;
+    --grey-900: 250 250 250;
+
+    --background: 0 0% 7%; /* #121212 */
+    --foreground: 0 0% 98%;
+    --card: 0 0% 11%; /* #1C1C1C */
+    --card-foreground: 0 0% 98%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 64%;
+    --border: 0 0% 19%;
+    --sidebar: 0 0% 8%; /* #141414 — a touch darker than the canvas for subtle depth */
+    --sidebar-foreground: 0 0% 65%;
+    --sidebar-border: 0 0% 19%;
+    --sidebar-active: 160 100% 33%;
+
+    /* Shadow tokens (dark mode) — flat, no glow/bloom against dark surfaces */
+    --shadow-z1: none;
+    --shadow-z4: none;
+    --shadow-z8: none;
+    --shadow-z12: none;
+    --shadow-z16: none;
+    --shadow-z20: none;
+    --shadow-z24: none;
+    --shadow-card: none;
+    --shadow-card-hover: none;
+    --shadow-dropdown: none;
+    --shadow-dialog: none;
+    --shadow-primary: none;
+    --shadow-secondary: none;
+    --shadow-info: none;
+    --shadow-success: none;
+    --shadow-warning: none;
+    --shadow-error: none;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(145, 158, 171, 0.24);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(145, 158, 171, 0.48);
+  }
+}
+
+@layer components {
+  /* Minimals Soft Badges */
+  .label-soft-primary {
+    @apply bg-primary/10 text-primary-dark font-bold text-xs px-2 py-0.5 rounded-md dark:bg-primary/20 dark:text-primary-light;
+  }
+  .label-soft-secondary {
+    @apply bg-secondary/10 text-secondary font-bold text-xs px-2 py-0.5 rounded-md dark:bg-secondary/20 dark:text-secondary-lighter;
+  }
+  .label-soft-info {
+    @apply bg-info/10 text-info-dark font-bold text-xs px-2 py-0.5 rounded-md dark:bg-info/20 dark:text-info-light;
+  }
+  .label-soft-success {
+    @apply bg-success/10 text-success-dark font-bold text-xs px-2 py-0.5 rounded-md dark:bg-success/20 dark:text-success-light;
+  }
+  .label-soft-warning {
+    @apply bg-warning/10 text-warning-dark font-bold text-xs px-2 py-0.5 rounded-md dark:bg-warning/20 dark:text-warning-light;
+  }
+  .label-soft-error {
+    @apply bg-error/10 text-error-dark font-bold text-xs px-2 py-0.5 rounded-md dark:bg-error/20 dark:text-error-light;
+  }
+  .label-soft-default {
+    @apply bg-grey-200 text-grey-700 font-bold text-xs px-2 py-0.5 rounded-md dark:bg-grey-800 dark:text-grey-300;
+  }
+
+  /* Minimals Nav Item */
+  .nav-item-minimals {
+    @apply flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer text-grey-600 hover:bg-grey-200/60 hover:text-grey-800 dark:text-grey-400 dark:hover:bg-grey-800 dark:hover:text-grey-100;
+  }
+  .nav-item-minimals.active {
+    @apply bg-primary/10 text-primary font-bold hover:bg-primary/15 hover:text-primary dark:bg-primary/20;
+  }
+
+  /* Minimals Card */
+  .card-minimals {
+    @apply bg-card rounded-2xl shadow-card transition-all duration-200 border border-border;
+  }
+  .card-minimals-hover {
+    @apply bg-card rounded-2xl shadow-card hover:shadow-card-hover transition-all duration-300 border border-border;
+  }
+}

@@ -1,0 +1,755 @@
+// This is your Prisma schema file
+// PostgreSQL — works with Supabase, Neon, RDS, self-hosted Postgres, etc.
+// Swapping providers later is a one-line DATABASE_URL change in .env, no code changes needed.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── USERS ────────────────────────────────────────────────────────────────────
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  avatarUrl     String?   @map("avatar_url")
+  status        String    @default("ACTIVE")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  agencyMembers     AgencyMember[]
+  managedClients    Client[]             @relation("AccountManager")
+  createdContents   Content[]            @relation("ContentCreator")
+  assignedContents  Content[]            @relation("ContentAssignee")
+  contentVersions   ContentVersion[]     @relation("ContentVersionCreator")
+  comments          ContentComment[]
+  approvalRequests  ApprovalRequest[]
+  aiGenerations     AiGeneration[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  assets            Asset[]
+  refreshTokens     RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ─── AGENCIES ─────────────────────────────────────────────────────────────────
+model Agency {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?  @map("logo_url")
+  country   String?
+  timezone  String   @default("America/Sao_Paulo")
+  locale    String   @default("pt-BR")
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  members           AgencyMember[]
+  clients           Client[]
+  assets            Asset[]
+  strategies        Strategy[]
+  contents          Content[]
+  contentCalendars  ContentCalendar[]
+  approvalRequests  ApprovalRequest[]
+  aiGenerations     AiGeneration[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  reports           Report[]
+  aiSettings        AgencyAiSettings?
+  socialSettings    AgencySocialSettings?
+  smtpSettings      AgencySmtpSettings?
+
+  @@map("agencies")
+}
+
+// ─── AGENCY SOCIAL SETTINGS (bring-your-own Meta App) ──────────────────────────
+// Each agency registers its own Meta App (developers.facebook.com) so Facebook/Instagram
+// connections aren't tied to one shared app for the whole SaaS. WhatsApp (Evolution API) stays
+// server-configured via env — it's self-hosted infra, not a per-tenant API credential.
+model AgencySocialSettings {
+  id                      String   @id @default(uuid())
+  agencyId                String   @unique @map("agency_id")
+  metaAppId               String?  @map("meta_app_id")
+  metaAppSecretEncrypted  String?  @map("meta_app_secret_encrypted")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@map("agency_social_settings")
+}
+
+// ─── AGENCY SMTP SETTINGS (bring-your-own email, for approval-request notifications) ───
+model AgencySmtpSettings {
+  id               String   @id @default(uuid())
+  agencyId         String   @unique @map("agency_id")
+  host             String
+  port             Int      @default(587)
+  secure           Boolean  @default(false)
+  username         String
+  passwordEncrypted String  @map("password_encrypted")
+  fromName         String?  @map("from_name")
+  fromEmail        String   @map("from_email")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@map("agency_smtp_settings")
+}
+
+// ─── AGENCY AI SETTINGS (bring-your-own API key) ───────────────────────────────
+model AgencyAiSettings {
+  id              String   @id @default(uuid())
+  agencyId        String   @unique @map("agency_id")
+  provider        String   @default("openai")
+  apiKeyEncrypted String   @map("api_key_encrypted")
+  textModel       String   @default("gpt-4o-mini") @map("text_model")
+  imageModel      String   @default("gpt-image-1") @map("image_model")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@map("agency_ai_settings")
+}
+
+model AgencyMember {
+  id         String    @id @default(uuid())
+  agencyId   String    @map("agency_id")
+  userId     String    @map("user_id")
+  role       String    @default("MANAGER")
+  status     String    @default("ACTIVE")
+  invitedAt  DateTime? @map("invited_at")
+  joinedAt   DateTime? @map("joined_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([agencyId, userId])
+  @@map("agency_members")
+}
+
+// ─── CLIENTS ──────────────────────────────────────────────────────────────────
+model Client {
+  id               String    @id @default(uuid())
+  agencyId         String    @map("agency_id")
+  name             String
+  legalName        String?   @map("legal_name")
+  slug             String
+  logoUrl          String?   @map("logo_url")
+  industry         String?
+  website          String?
+  description      String?
+  email            String?
+  phone            String?
+  country          String?
+  city             String?
+  address          String?
+  status           String    @default("ACTIVE")
+  accountManagerId String?   @map("account_manager_id")
+  startDate        DateTime? @map("start_date")
+  endDate          DateTime? @map("end_date")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  agency         Agency          @relation(fields: [agencyId], references: [id])
+  accountManager User?           @relation("AccountManager", fields: [accountManagerId], references: [id])
+  contacts       ClientContact[]
+  socialAccounts ClientSocialAccount[]
+  brandProfile   BrandProfile?
+  brandColors    BrandColor[]
+  brandFonts     BrandFont[]
+  brandProducts  BrandProduct[]
+  brandServices  BrandService[]
+  brandPersonas  BrandPersona[]
+  brandPillars   BrandContentPillar[]
+  brandRules     BrandRule[]
+  feedbackMemory BrandFeedbackMemory[]
+  assets         Asset[]
+  strategies     Strategy[]
+  calendars      ContentCalendar[]
+  contents       Content[]
+  approvalRequests ApprovalRequest[]
+  reports        Report[]
+  socialConnections SocialConnection[]
+
+  @@unique([agencyId, slug])
+  @@map("clients")
+}
+
+model ClientContact {
+  id        String   @id @default(uuid())
+  agencyId  String   @map("agency_id")
+  clientId  String   @map("client_id")
+  name      String
+  position  String?
+  email     String?
+  phone     String?
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  client   Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  comments ContentComment[]
+
+  @@map("client_contacts")
+}
+
+model ClientSocialAccount {
+  id                String   @id @default(uuid())
+  agencyId          String   @map("agency_id")
+  clientId          String   @map("client_id")
+  platform          String
+  username          String?
+  profileUrl        String?  @map("profile_url")
+  externalAccountId String?  @map("external_account_id")
+  status            String   @default("ACTIVE")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_social_accounts")
+}
+
+// ─── BRAND BRAIN ──────────────────────────────────────────────────────────────
+model BrandProfile {
+  id                String   @id @default(uuid())
+  agencyId          String   @map("agency_id")
+  clientId          String   @unique @map("client_id")
+  brandSummary      String?  @map("brand_summary")
+  mission           String?
+  vision            String?
+  positioning       String?
+  targetAudience    String?  @map("target_audience")
+  toneOfVoice       String?  @map("tone_of_voice")
+  brandPersonality  String?  @map("brand_personality")
+  primaryLanguage   String   @default("pt") @map("primary_language")
+  secondaryLanguage String?  @map("secondary_language")
+  defaultCta        String?  @map("default_cta")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("brand_profiles")
+}
+
+model BrandColor {
+  id         String  @id @default(uuid())
+  agencyId   String  @map("agency_id")
+  clientId   String  @map("client_id")
+  name       String
+  hex        String
+  rgb        String?
+  usageNotes String? @map("usage_notes")
+  priority   Int     @default(0)
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("brand_colors")
+}
+
+model BrandFont {
+  id         String  @id @default(uuid())
+  agencyId   String  @map("agency_id")
+  clientId   String  @map("client_id")
+  name       String
+  role       String  @default("PRIMARY")
+  usageNotes String? @map("usage_notes")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("brand_fonts")
+}
+
+model BrandProduct {
+  id          String   @id @default(uuid())
+  agencyId    String   @map("agency_id")
+  clientId    String   @map("client_id")
+  name        String
+  description String?
+  category    String?
+  benefits    String?  // JSON string
+  features    String?  // JSON string
+  priceText   String?  @map("price_text")
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("brand_products")
+}
+
+model BrandService {
+  id             String  @id @default(uuid())
+  agencyId       String  @map("agency_id")
+  clientId       String  @map("client_id")
+  name           String
+  description    String?
+  benefits       String? // JSON string
+  targetAudience String? @map("target_audience")
+  status         String  @default("ACTIVE")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("brand_services")
+}
+
+model BrandPersona {
+  id                String  @id @default(uuid())
+  agencyId          String  @map("agency_id")
+  clientId          String  @map("client_id")
+  name              String
+  ageRange          String? @map("age_range")
+  location          String?
+  profession        String?
+  description       String
+  painPoints        String? @map("pain_points")      // JSON string
+  goals             String? // JSON string
+  objections        String? // JSON string
+  preferredChannels String? @map("preferred_channels") // JSON string
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("brand_personas")
+}
+
+model BrandContentPillar {
+  id               String  @id @default(uuid())
+  agencyId         String  @map("agency_id")
+  clientId         String  @map("client_id")
+  name             String
+  description      String
+  percentageTarget Float?  @map("percentage_target")
+  examples         String? // JSON string
+  status           String  @default("ACTIVE")
+
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  contents Content[]
+
+  @@map("brand_content_pillars")
+}
+
+model BrandRule {
+  id         String   @id @default(uuid())
+  agencyId   String   @map("agency_id")
+  clientId   String   @map("client_id")
+  ruleType   String   @map("rule_type")
+  ruleText   String   @map("rule_text")
+  source     String   @default("MANUAL")
+  importance Int      @default(5)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("brand_rules")
+}
+
+model BrandFeedbackMemory {
+  id                    String   @id @default(uuid())
+  agencyId              String   @map("agency_id")
+  clientId              String   @map("client_id")
+  contentId             String?  @map("content_id")
+  feedbackText          String   @map("feedback_text")
+  normalizedInstruction String?  @map("normalized_instruction")
+  category              String?
+  sentiment             String?
+  isGlobalRule          Boolean  @default(false) @map("is_global_rule")
+  createdById           String?  @map("created_by")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("brand_feedback_memory")
+}
+
+// ─── ASSETS ───────────────────────────────────────────────────────────────────
+model Asset {
+  id          String    @id @default(uuid())
+  agencyId    String    @map("agency_id")
+  clientId    String?   @map("client_id")
+  uploadedBy  String    @map("uploaded_by")
+  type        String
+  name        String
+  mimeType    String    @map("mime_type")
+  fileSize    Int       @map("file_size")
+  storageKey  String    @map("storage_key")
+  publicUrl   String?   @map("public_url")
+  metadata    String?   // JSON string
+  createdAt   DateTime  @default(now()) @map("created_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  agency         Agency         @relation(fields: [agencyId], references: [id])
+  client         Client?        @relation(fields: [clientId], references: [id])
+  uploader       User           @relation(fields: [uploadedBy], references: [id])
+  contentAssets  ContentAsset[]
+
+  @@map("assets")
+}
+
+// ─── STRATEGIES ───────────────────────────────────────────────────────────────
+model Strategy {
+  id              String   @id @default(uuid())
+  agencyId        String   @map("agency_id")
+  clientId        String   @map("client_id")
+  title           String
+  periodStart     DateTime @map("period_start")
+  periodEnd       DateTime @map("period_end")
+  objective       String?
+  strategySummary String?  @map("strategy_summary")
+  generatedBy     String   @default("AI") @map("generated_by")
+  status          String   @default("DRAFT")
+  createdById     String   @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  agency          Agency                   @relation(fields: [agencyId], references: [id])
+  client          Client                   @relation(fields: [clientId], references: [id])
+  recommendations StrategyRecommendation[]
+  calendars       ContentCalendar[]
+
+  @@map("strategies")
+}
+
+model StrategyRecommendation {
+  id          String  @id @default(uuid())
+  agencyId    String  @map("agency_id")
+  strategyId  String  @map("strategy_id")
+  category    String?
+  title       String
+  description String
+  priority    Int     @default(5)
+  accepted    Boolean?
+
+  strategy Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+
+  @@map("strategy_recommendations")
+}
+
+// ─── CONTENT CALENDAR ─────────────────────────────────────────────────────────
+model ContentCalendar {
+  id         String   @id @default(uuid())
+  agencyId   String   @map("agency_id")
+  clientId   String   @map("client_id")
+  name       String
+  month      Int
+  year       Int
+  strategyId String?  @map("strategy_id")
+  status     String   @default("ACTIVE")
+  createdById String  @map("created_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  agency   Agency    @relation(fields: [agencyId], references: [id])
+  client   Client    @relation(fields: [clientId], references: [id])
+  strategy Strategy? @relation(fields: [strategyId], references: [id])
+  contents Content[]
+
+  @@unique([clientId, month, year])
+  @@map("content_calendars")
+}
+
+// ─── CONTENT ──────────────────────────────────────────────────────────────────
+model Content {
+  id              String    @id @default(uuid())
+  agencyId        String    @map("agency_id")
+  clientId        String    @map("client_id")
+  calendarId      String?   @map("calendar_id")
+  contentPillarId String?   @map("content_pillar_id")
+  title           String
+  internalTitle   String?   @map("internal_title")
+  contentType     String    @map("content_type")
+  objective       String?
+  brief           String?
+  hook            String?
+  caption         String?
+  cta             String?
+  hashtags        String?   // JSON string
+  status          String    @default("DRAFT")
+  priority        String    @default("MEDIUM")
+  scheduledAt     DateTime? @map("scheduled_at")
+  publishedAt     DateTime? @map("published_at")
+  dueAt           DateTime? @map("due_at")
+  createdById     String    @map("created_by")
+  assignedToId    String?   @map("assigned_to")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  agency        Agency              @relation(fields: [agencyId], references: [id])
+  client        Client              @relation(fields: [clientId], references: [id])
+  calendar      ContentCalendar?    @relation(fields: [calendarId], references: [id])
+  pillar        BrandContentPillar? @relation(fields: [contentPillarId], references: [id])
+  creator       User                @relation("ContentCreator", fields: [createdById], references: [id])
+  assignee      User?               @relation("ContentAssignee", fields: [assignedToId], references: [id])
+  platforms     ContentPlatform[]
+  assets        ContentAsset[]
+  versions      ContentVersion[]
+  comments      ContentComment[]
+  approvalRequests ApprovalRequest[]
+
+  @@map("contents")
+}
+
+model ContentPlatform {
+  id               String    @id @default(uuid())
+  agencyId         String    @map("agency_id")
+  contentId        String    @map("content_id")
+  platform         String
+  enabled          Boolean   @default(true)
+  platformCaption  String?   @map("platform_caption")
+  platformHashtags String?   @map("platform_hashtags") // JSON string
+  scheduledAt      DateTime? @map("scheduled_at")
+  status           String    @default("PENDING")
+  externalPostId   String?   @map("external_post_id")
+  externalPostUrl  String?   @map("external_post_url")
+  publishedAt      DateTime? @map("published_at")
+  publishError     String?   @map("publish_error")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@map("content_platforms")
+}
+
+model ContentAsset {
+  id        String   @id @default(uuid())
+  agencyId  String   @map("agency_id")
+  contentId String   @map("content_id")
+  assetId   String   @map("asset_id")
+  role      String   @default("PRIMARY")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  asset   Asset   @relation(fields: [assetId], references: [id])
+
+  @@map("content_assets")
+}
+
+model ContentVersion {
+  id            String   @id @default(uuid())
+  agencyId      String   @map("agency_id")
+  contentId     String   @map("content_id")
+  versionNumber Int      @map("version_number")
+  caption       String?
+  hook          String?
+  cta           String?
+  brief         String?
+  snapshot      String?  // JSON string
+  createdById   String   @map("created_by")
+  changeReason  String?  @map("change_reason")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  creator User    @relation("ContentVersionCreator", fields: [createdById], references: [id])
+
+  @@unique([contentId, versionNumber])
+  @@map("content_versions")
+}
+
+model ContentComment {
+  id              String    @id @default(uuid())
+  agencyId        String    @map("agency_id")
+  contentId       String    @map("content_id")
+  userId          String?   @map("user_id")
+  clientContactId String?   @map("client_contact_id")
+  parentId        String?   @map("parent_id")
+  comment         String
+  xPosition       Float?    @map("x_position")
+  yPosition       Float?    @map("y_position")
+  resolved        Boolean   @default(false)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  content       Content        @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  user          User?          @relation(fields: [userId], references: [id])
+  clientContact ClientContact? @relation(fields: [clientContactId], references: [id])
+  parent        ContentComment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies       ContentComment[] @relation("CommentReplies")
+
+  @@map("content_comments")
+}
+
+// ─── APPROVAL ─────────────────────────────────────────────────────────────────
+model ApprovalRequest {
+  id          String    @id @default(uuid())
+  agencyId    String    @map("agency_id")
+  clientId    String    @map("client_id")
+  contentId   String    @map("content_id")
+  token       String    @unique
+  status      String    @default("PENDING")
+  requestedBy String    @map("requested_by")
+  expiresAt   DateTime? @map("expires_at")
+  sentAt      DateTime? @map("sent_at")
+  viewedAt    DateTime? @map("viewed_at")
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  agency  Agency          @relation(fields: [agencyId], references: [id])
+  client  Client          @relation(fields: [clientId], references: [id])
+  content Content         @relation(fields: [contentId], references: [id])
+  requester User          @relation(fields: [requestedBy], references: [id])
+  actions ApprovalAction[]
+
+  @@map("approval_requests")
+}
+
+model ApprovalAction {
+  id                String   @id @default(uuid())
+  agencyId          String   @map("agency_id")
+  approvalRequestId String   @map("approval_request_id")
+  action            String
+  comment           String?
+  actorName         String?  @map("actor_name")
+  actorEmail        String?  @map("actor_email")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  approvalRequest ApprovalRequest @relation(fields: [approvalRequestId], references: [id], onDelete: Cascade)
+
+  @@map("approval_actions")
+}
+
+// ─── AI GENERATIONS ───────────────────────────────────────────────────────────
+model AiGeneration {
+  id            String   @id @default(uuid())
+  agencyId      String   @map("agency_id")
+  clientId      String?  @map("client_id")
+  contentId     String?  @map("content_id")
+  userId        String   @map("user_id")
+  taskType      String   @map("task_type")
+  provider      String
+  model         String
+  promptVersion String?  @map("prompt_version")
+  input         String?  // JSON string
+  output        String?  // JSON string
+  inputTokens   Int?     @map("input_tokens")
+  outputTokens  Int?     @map("output_tokens")
+  cost          Float?
+  status        String   @default("COMPLETED")
+  error         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("ai_generations")
+}
+
+// ─── SOCIAL CONNECTIONS ───────────────────────────────────────────────────────
+model SocialConnection {
+  id                     String    @id @default(uuid())
+  agencyId               String    @map("agency_id")
+  clientId               String    @map("client_id")
+  platform               String
+  externalUserId         String?   @map("external_user_id")
+  externalPageId         String?   @map("external_page_id")
+  accountName            String?   @map("account_name")
+  accessTokenEncrypted   String?   @map("access_token_encrypted")
+  refreshTokenEncrypted  String?   @map("refresh_token_encrypted")
+  tokenExpiresAt         DateTime? @map("token_expires_at")
+  scopes                 String?   // JSON string
+  metadata               String?   // JSON string
+  status                 String    @default("ACTIVE")
+  connectedBy            String    @map("connected_by")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@map("social_connections")
+}
+
+// ─── REPORTS ──────────────────────────────────────────────────────────────────
+model Report {
+  id              String   @id @default(uuid())
+  agencyId        String   @map("agency_id")
+  clientId        String   @map("client_id")
+  periodStart     DateTime @map("period_start")
+  periodEnd       DateTime @map("period_end")
+  title           String
+  summary         String?
+  aiAnalysis      String?  @map("ai_analysis")
+  recommendations String?  // JSON string
+  snapshot        String?  // JSON string
+  status          String   @default("DRAFT")
+  publicToken     String?  @unique @map("public_token")
+  createdById     String   @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id])
+  client Client @relation(fields: [clientId], references: [id])
+
+  @@map("reports")
+}
+
+// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+model Notification {
+  id        String    @id @default(uuid())
+  agencyId  String    @map("agency_id")
+  userId    String    @map("user_id")
+  type      String
+  title     String
+  message   String
+  data      String?   // JSON string
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+// ─── AUDIT LOGS ───────────────────────────────────────────────────────────────
+model AuditLog {
+  id         String   @id @default(uuid())
+  agencyId   String   @map("agency_id")
+  userId     String?  @map("user_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  oldData    String?  @map("old_data")   // JSON string
+  newData    String?  @map("new_data")   // JSON string
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
