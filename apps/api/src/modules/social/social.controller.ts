@@ -7,6 +7,17 @@ import { encrypt, decrypt, maskSecret } from '../../common/crypto';
 const GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v19.0';
 const GRAPH_URL = `https://graph.facebook.com/${GRAPH_VERSION}`;
 
+// Derived from APP_URL (already required for CORS/portal links) instead of its own env var —
+// every agency on this deployment shares the same physical callback endpoint (the App
+// ID/Secret is what's per-agency, not this URL), and deriving it removes an entire class of
+// "two env vars that must be kept in sync manually" bugs (wrong domain, wrong port...).
+// Settings → Redes Sociais shows agencies this exact same computed value to paste into their
+// Meta App, via window.location.origin on the frontend — the two only ever match if APP_URL is
+// set correctly, which is already a hard requirement for the rest of the app to work at all.
+function getMetaRedirectUri() {
+  return `${process.env.APP_URL || 'http://localhost:5173'}/api/v1/social/meta/callback`;
+}
+
 // ─── META APP SETTINGS (bring-your-own Meta App, per agency) ──────────────────
 
 export async function getMetaSettings(req: AuthRequest, res: Response, next: NextFunction) {
@@ -123,7 +134,7 @@ export async function metaConnect(req: AuthRequest, res: Response, next: NextFun
 
     const authUrl = `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?` + new URLSearchParams({
       client_id: credentials.appId,
-      redirect_uri: process.env.META_REDIRECT_URI || '',
+      redirect_uri: getMetaRedirectUri(),
       state,
       scope: scopes,
       response_type: 'code',
@@ -190,7 +201,7 @@ export async function metaCallback(req: Request, res: Response, next: NextFuncti
     const tokenRes = await fetch(`${GRAPH_URL}/oauth/access_token?` + new URLSearchParams({
       client_id: credentials.appId,
       client_secret: credentials.appSecret,
-      redirect_uri: process.env.META_REDIRECT_URI || '',
+      redirect_uri: getMetaRedirectUri(),
       code: String(code),
     }));
     const tokenData = await tokenRes.json() as any;
