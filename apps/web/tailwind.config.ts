@@ -123,9 +123,21 @@ export default {
           from: { opacity: '0', transform: 'translateY(6px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
+        // Dialog content is centered via `translate(-50%, -50%)` as a static utility class.
+        // A CSS animation's `transform` keyframe value replaces the element's whole transform
+        // while it runs, not composes with it — so reusing plain `fade-in` here would blow away
+        // that centering offset for the animation's duration (element flashes near the
+        // viewport's top-left-of-center, i.e. visually toward the bottom-right of true center,
+        // then snaps to centered once the animation ends). This keyframe bakes the centering
+        // translate into both the from/to states so it survives the whole animation.
+        'dialog-in': {
+          from: { opacity: '0', transform: 'translate(-50%, -50%) translateY(6px)' },
+          to: { opacity: '1', transform: 'translate(-50%, -50%) translateY(0)' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        'dialog-in': 'dialog-in 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
       },
     },
   },

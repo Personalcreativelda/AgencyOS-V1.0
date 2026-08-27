@@ -2,67 +2,55 @@ import { prisma } from '../../database/prisma';
 import { getAgencySmtpConfig, sendMail } from '../../integrations/email/mailer';
 import { sendWhatsAppMedia } from '../social/social.controller';
 
-export interface ApprovalNotifyResult {
-  emailSent: boolean;
-  emailError?: string;
-  whatsappSent: boolean;
-  whatsappError?: string;
-}
+// Sending is always a manual, explicit action by the agency (a button press) — generating an
+// approval link never fires these on its own. Each function below sends over one channel only,
+// so the "Enviar" button per channel in the approval modal can succeed/fail independently.
 
-// Sends the creative + caption + approval link to the client automatically, via whichever
-// channels the agency has configured (SMTP email and/or an active WhatsApp connection for
-// this specific client) — called right after an approval link is generated, with no extra
-// button for the user to press, and reusable by any automated flow (e.g. a future
-// auto-request-on-CLIENT_REVIEW trigger) the same way publishToMeta is reused by the scheduler.
-export async function sendApprovalNotifications(params: {
-  agencyId: string; contentId: string; clientId: string; portalUrl: string;
-}): Promise<ApprovalNotifyResult> {
-  const { agencyId, contentId, clientId, portalUrl } = params;
-  const result: ApprovalNotifyResult = { emailSent: false, whatsappSent: false };
-
-  const [content, client] = await Promise.all([
-    prisma.content.findFirst({
-      where: { id: contentId, agencyId },
-      include: { assets: { include: { asset: true }, orderBy: { createdAt: 'desc' }, take: 1 } },
-    }),
-    prisma.client.findFirst({ where: { id: clientId, agencyId } }),
-  ]);
-  if (!content || !client) return result;
-
+async function loadContentForNotification(agencyId: string, contentId: string) {
+  const content = await prisma.content.findFirst({
+    where: { id: contentId, agencyId },
+    include: { assets: { include: { asset: true }, orderBy: { createdAt: 'desc' }, take: 1 } },
+  });
+  if (!content) return null;
   const image = content.assets[0]?.asset;
   const caption = [content.hook, content.caption, content.cta].filter(Boolean).join('\n\n') || content.title;
+  return { content, image, caption };
+}
 
-  if (client.email) {
-    const smtp = await getAgencySmtpConfig(agencyId);
-    if (smtp) {
-      try {
-        await sendMail(smtp, {
-          to: client.email,
-          subject: `Novo conteúdo para aprovação — ${content.title}`,
-          html: buildApprovalEmailHtml({
-            clientName: client.name, title: content.title, caption, imageUrl: image?.publicUrl ?? undefined, portalUrl,
-          }),
-        });
-        result.emailSent = true;
-      } catch (err: any) {
-        result.emailError = err.message;
-      }
-    }
-  }
+export async function sendApprovalEmail(params: {
+  agencyId: string; contentId: string; email: string; clientName: string; portalUrl: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const data = await loadContentForNotification(params.agencyId, params.contentId);
+  if (!data) return { success: false, error: 'Conteúdo não encontrado.' };
 
-  if (client.phone) {
-    const connection = await prisma.socialConnection.findFirst({
-      where: { agencyId, clientId, platform: 'WHATSAPP', status: 'ACTIVE' },
+  const smtp = await getAgencySmtpConfig(params.agencyId);
+  if (!smtp) return { success: false, error: 'Configure o SMTP em Configurações.' };
+
+  try {
+    await sendMail(smtp, {
+      to: params.email,
+      subject: `Novo conteúdo para aprovação — ${data.content.title}`,
+      html: buildApprovalEmailHtml({
+        clientName: params.clientName, title: data.content.title, caption: data.caption,
+        imageUrl: data.image?.publicUrl ?? undefined, portalUrl: params.portalUrl,
+      }),
     });
-    if (connection) {
-      const message = `📢 Novo conteúdo para aprovação: *${content.title}*\n\n${caption}\n\n✅ Aprovar ou pedir ajustes: ${portalUrl}`;
-      const sent = await sendWhatsAppMedia({ clientId, phone: client.phone, caption: message, mediaUrl: image?.publicUrl ?? undefined });
-      result.whatsappSent = sent.success;
-      if (!sent.success) result.whatsappError = sent.error;
-    }
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Falha ao enviar o email.' };
   }
+}
 
-  return result;
+export async function sendApprovalWhatsApp(params: {
+  agencyId: string; contentId: string; phone: string; portalUrl: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const data = await loadContentForNotification(params.agencyId, params.contentId);
+  if (!data) return { success: false, error: 'Conteúdo não encontrado.' };
+
+  const message = `📢 Novo conteúdo para aprovação: *${data.content.title}*\n\n${data.caption}\n\n✅ Aprovar ou pedir ajustes: ${params.portalUrl}`;
+  return sendWhatsAppMedia({
+    agencyId: params.agencyId, phone: params.phone, caption: message, mediaUrl: data.image?.publicUrl ?? undefined,
+  });
 }
 
 function buildApprovalEmailHtml(params: { clientName: string; title: string; caption: string; imageUrl?: string; portalUrl: string }) {

@@ -8,7 +8,7 @@ import { getStorageProvider } from '../../common/storage';
 import { compositeLogoOntoImage } from '../../integrations/ai/imageCompose';
 
 async function getBrandContext(clientId: string, agencyId: string) {
-  const [profile, rules, products, services, personas, pillars, colors, fonts] = await Promise.all([
+  const [profile, rules, products, services, personas, pillars, colors, fonts, referenceImages] = await Promise.all([
     prisma.brandProfile.findUnique({ where: { clientId } }),
     prisma.brandRule.findMany({ where: { clientId, agencyId, active: true }, take: 20 }),
     prisma.brandProduct.findMany({ where: { clientId, agencyId, status: 'ACTIVE' }, take: 10 }),
@@ -17,9 +17,11 @@ async function getBrandContext(clientId: string, agencyId: string) {
     prisma.brandContentPillar.findMany({ where: { clientId, agencyId, status: 'ACTIVE' } }),
     prisma.brandColor.findMany({ where: { clientId, agencyId }, orderBy: { priority: 'asc' }, take: 5 }),
     prisma.brandFont.findMany({ where: { clientId, agencyId }, take: 5 }),
+    // Raw SQL: brand_reference_images has no typed Prisma delegate yet (see brand.controller.ts).
+    prisma.$queryRaw<Array<{ note: string | null }>>`SELECT note FROM brand_reference_images WHERE client_id = ${clientId} AND note IS NOT NULL LIMIT 10`,
   ]);
 
-  return { profile, rules, products, services, personas, pillars, colors, fonts };
+  return { profile, rules, products, services, personas, pillars, colors, fonts, referenceImages };
 }
 
 async function logGeneration(data: {
@@ -310,10 +312,20 @@ export async function generateImageProposal(req: AuthRequest, res: Response, nex
     const ctaText = String(ctaOverride || linkedContent?.cta || '').trim();
 
     const colorNote = ctx.colors.length
-      ? `Brand color palette — use these as backgrounds, accents and typography colors: ${ctx.colors.map((c) => `${c.name} ${c.hex}`).join(', ')}.`
+      ? `Brand color palette (use each color strictly for its stated purpose): ${ctx.colors.map((c) => `${c.name} ${c.hex}${c.usageNotes ? ` → use as: ${c.usageNotes}` : ''}`).join('; ')}.`
       : '';
     const fontNote = ctx.fonts.length
       ? `Brand typography reference: ${ctx.fonts.map((f) => `${f.name}${f.usageNotes ? ` — ${f.usageNotes}` : ''}`).join(', ')}.`
+      : '';
+    // `as any`: visualStyleDescription was added via a hand-applied migration while `prisma
+    // generate` couldn't reach binaries.prisma.sh, so the generated client's TS types don't
+    // know about it yet — drop the cast once `prisma generate` runs with network access.
+    const profileStyle = (ctx.profile as any)?.visualStyleDescription as string | null | undefined;
+    const visualStyleNote = profileStyle
+      ? `MANDATORY VISUAL STYLE — this overrides any generic design instinct, follow it precisely: ${profileStyle}`
+      : '';
+    const referenceNote = ctx.referenceImages.length
+      ? `Reference mood board notes from the agency (match this look/feel): ${ctx.referenceImages.map((r) => r.note).join(' | ')}`
       : '';
     const contactNote = client.address
       ? `Available contact info (use only if the concept calls for a footer/contact card, e.g. a promotional flyer or store announcement — never force it onto a simple lifestyle post): Address: ${client.address}.${client.website ? ` Website: ${client.website}.` : ''}${client.phone ? ` Phone: ${client.phone}.` : ''}`
@@ -343,6 +355,8 @@ BRAND: "${client.name}"${client.industry ? ` — ${client.industry}` : ''}
 ${ctx.profile?.positioning ? `Positioning: ${ctx.profile.positioning}` : ''}
 ${ctx.profile?.toneOfVoice ? `Brand voice/mood: ${ctx.profile.toneOfVoice}` : ''}
 ${ctx.profile?.brandPersonality ? `Brand personality: ${ctx.profile.brandPersonality}` : ''}
+${visualStyleNote}
+${referenceNote}
 ${colorNote}
 ${fontNote}
 ${contactNote}

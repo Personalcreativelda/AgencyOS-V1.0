@@ -4,7 +4,7 @@ import { prisma } from '../../database/prisma';
 import { NotFoundError } from '../../common/middleware/errorHandler';
 
 const CONTENT_INCLUDE = {
-  client: { select: { id: true, name: true, slug: true, logoUrl: true } },
+  client: { select: { id: true, name: true, slug: true, logoUrl: true, phone: true, email: true } },
   creator: { select: { id: true, name: true, avatarUrl: true } },
   assignee: { select: { id: true, name: true, avatarUrl: true } },
   pillar: { select: { id: true, name: true } },

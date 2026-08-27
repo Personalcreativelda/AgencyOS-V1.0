@@ -87,16 +87,14 @@ export async function listConnections(req: AuthRequest, res: Response, next: Nex
   } catch (err) { next(err); }
 }
 
+// WhatsApp is agency-scoped (see whatsappDisconnect below) and never creates a SocialConnection
+// row, so this only ever handles FACEBOOK/INSTAGRAM connections.
 export async function deleteConnection(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const connection = await prisma.socialConnection.findFirst({
       where: { id: req.params.id, agencyId: req.user!.agencyId },
     });
     if (!connection) throw new NotFoundError('Connection not found');
-
-    if (connection.platform === 'WHATSAPP') {
-      await disconnectEvolutionInstance(instanceNameFor(connection.clientId)).catch(() => {});
-    }
 
     await prisma.socialConnection.delete({ where: { id: connection.id } });
     res.status(204).send();
@@ -135,12 +133,52 @@ export async function metaConnect(req: AuthRequest, res: Response, next: NextFun
   } catch (err) { next(err); }
 }
 
+async function connectPageToClient(
+  params: { agencyId: string; clientId: string; userId: string },
+  page: { id: string; name: string; access_token: string; instagram_business_account?: { id: string } }
+) {
+  await upsertConnection(
+    { agencyId: params.agencyId, clientId: params.clientId, platform: 'FACEBOOK', externalPageId: page.id },
+    { accountName: page.name, accessTokenEncrypted: encrypt(page.access_token), status: 'ACTIVE', connectedBy: params.userId }
+  );
+
+  if (page.instagram_business_account?.id) {
+    const igId = page.instagram_business_account.id;
+    const igInfoRes = await fetch(`${GRAPH_URL}/${igId}?fields=username&access_token=${page.access_token}`);
+    const igInfo = await igInfoRes.json() as any;
+
+    await upsertConnection(
+      { agencyId: params.agencyId, clientId: params.clientId, platform: 'INSTAGRAM', externalPageId: igId },
+      { accountName: igInfo.username || 'Instagram', accessTokenEncrypted: encrypt(page.access_token), status: 'ACTIVE', connectedBy: params.userId }
+    );
+  }
+}
+
+// Pages fetched from a Meta OAuth callback wait here, briefly, when there's more than one —
+// e.g. the agency's Facebook user has Business Manager Partner Access to several clients'
+// Pages at once, so `/me/accounts` returns all of them and we can't tell which one belongs to
+// the client being connected without asking. Single-page connects (the common case) skip this
+// entirely and finish immediately. In-memory + short TTL is enough: single Docker container,
+// and a stale entry just means the agency has to click "Conectar Facebook" again.
+const PENDING_TTL_MS = 10 * 60 * 1000;
+const pendingPageSelections = new Map<string, {
+  agencyId: string; clientId: string; userId: string; expiresAt: number;
+  pages: Array<{ id: string; name: string; access_token: string; instagram_business_account?: { id: string; username?: string } }>;
+}>();
+
+function cleanupExpiredPendingSelections() {
+  const now = Date.now();
+  for (const [token, entry] of pendingPageSelections) {
+    if (entry.expiresAt < now) pendingPageSelections.delete(token);
+  }
+}
+
 export async function metaCallback(req: Request, res: Response, next: NextFunction) {
   const appUrl = process.env.APP_URL || 'http://localhost:5173';
   try {
     const { code, state, error: metaError } = req.query;
     if (metaError || !code || !state) {
-      return res.redirect(`${appUrl}/app/settings?social_error=1`);
+      return res.redirect(`${appUrl}/app/social?social_error=1`);
     }
 
     const { clientId, agencyId, userId } = JSON.parse(Buffer.from(String(state), 'base64url').toString());
@@ -172,36 +210,113 @@ export async function metaCallback(req: Request, res: Response, next: NextFuncti
     const pagesData = await pagesRes.json() as any;
     if (!pagesRes.ok) throw new Error(pagesData.error?.message || 'Failed to list Facebook Pages');
 
-    for (const page of pagesData.data || []) {
-      await upsertConnection(
-        { agencyId, clientId, platform: 'FACEBOOK', externalPageId: page.id },
-        { accountName: page.name, accessTokenEncrypted: encrypt(page.access_token), status: 'ACTIVE', connectedBy: userId }
-      );
+    const pages = pagesData.data || [];
 
-      if (page.instagram_business_account?.id) {
-        const igId = page.instagram_business_account.id;
-        const igInfoRes = await fetch(`${GRAPH_URL}/${igId}?fields=username&access_token=${page.access_token}`);
-        const igInfo = await igInfoRes.json() as any;
-
-        await upsertConnection(
-          { agencyId, clientId, platform: 'INSTAGRAM', externalPageId: igId },
-          { accountName: igInfo.username || 'Instagram', accessTokenEncrypted: encrypt(page.access_token), status: 'ACTIVE', connectedBy: userId }
-        );
-      }
+    if (pages.length > 1) {
+      // Ambiguous — likely Business Manager Partner Access to multiple clients' Pages at
+      // once. Don't guess: let the agency pick which Page(s) actually belong to this client.
+      cleanupExpiredPendingSelections();
+      const token = Buffer.from(`${Date.now()}-${Math.random().toString(36).slice(2)}`).toString('base64url');
+      pendingPageSelections.set(token, { agencyId, clientId, userId, expiresAt: Date.now() + PENDING_TTL_MS, pages });
+      return res.redirect(`${appUrl}/app/social?social_select_page=1&token=${token}&clientId=${clientId}`);
     }
 
-    res.redirect(`${appUrl}/app/settings?social_connected=1&clientId=${clientId}`);
+    for (const page of pages) {
+      await connectPageToClient({ agencyId, clientId, userId }, page);
+    }
+
+    res.redirect(`${appUrl}/app/social?social_connected=1&clientId=${clientId}`);
   } catch (err) {
     console.error('Meta OAuth callback failed:', err);
-    res.redirect(`${appUrl}/app/settings?social_error=1`);
+    res.redirect(`${appUrl}/app/social?social_error=1`);
   }
+}
+
+export async function getPendingPageSelection(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    cleanupExpiredPendingSelections();
+    const entry = pendingPageSelections.get(req.params.token);
+    if (!entry || entry.agencyId !== req.user!.agencyId) throw new NotFoundError('Seleção expirada ou inválida. Clique em Conectar Facebook novamente.');
+
+    res.json({
+      clientId: entry.clientId,
+      pages: entry.pages.map((p) => ({ id: p.id, name: p.name, hasInstagram: !!p.instagram_business_account?.id })),
+    });
+  } catch (err) { next(err); }
+}
+
+export async function confirmPageSelection(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    cleanupExpiredPendingSelections();
+    const entry = pendingPageSelections.get(req.params.token);
+    if (!entry || entry.agencyId !== req.user!.agencyId) throw new NotFoundError('Seleção expirada ou inválida. Clique em Conectar Facebook novamente.');
+
+    const { pageIds } = req.body as { pageIds: string[] };
+    if (!Array.isArray(pageIds) || pageIds.length === 0) {
+      return res.status(400).json({ error: 'Selecione pelo menos uma página.' });
+    }
+
+    const selected = entry.pages.filter((p) => pageIds.includes(p.id));
+    for (const page of selected) {
+      await connectPageToClient({ agencyId: entry.agencyId, clientId: entry.clientId, userId: entry.userId }, page);
+    }
+
+    pendingPageSelections.delete(req.params.token);
+    res.json({ connected: selected.length });
+  } catch (err) { next(err); }
 }
 
 // ─── WHATSAPP (EVOLUTION API — self-hosted) ─────────────────────────────────
 // Docs: https://doc.evolution-api.com — set EVOLUTION_API_URL / EVOLUTION_API_KEY in .env
+//
+// One connection PER AGENCY, not per client: the agency connects its own WhatsApp number once,
+// and that same number sends creative previews to every client's phone for approval. Clients
+// never connect their own WhatsApp here.
+//
+// NOTE: reads/writes to agency_whatsapp_settings go through raw SQL instead of a typed Prisma
+// delegate — the table was added via a hand-applied migration while `prisma generate` couldn't
+// reach binaries.prisma.sh from this machine. Switch to `prisma.agencyWhatsAppSettings.*` once
+// `npx prisma generate` has been run somewhere with network access (e.g. the next Docker build).
 
-function instanceNameFor(clientId: string) {
-  return `agencyos-${clientId}`;
+interface AgencyWhatsAppRow {
+  id: string;
+  agency_id: string;
+  instance_name: string;
+  status: string;
+  connected_number: string | null;
+}
+
+async function getWhatsAppSettingsRow(agencyId: string): Promise<AgencyWhatsAppRow | null> {
+  const rows = await prisma.$queryRaw<AgencyWhatsAppRow[]>`
+    SELECT id, agency_id, instance_name, status, connected_number
+    FROM agency_whatsapp_settings WHERE agency_id = ${agencyId} LIMIT 1
+  `;
+  return rows[0] ?? null;
+}
+
+async function upsertWhatsAppSettingsRow(agencyId: string, instanceName: string, status: string) {
+  await prisma.$executeRaw`
+    INSERT INTO agency_whatsapp_settings (id, agency_id, instance_name, status, updated_at)
+    VALUES (gen_random_uuid()::text, ${agencyId}, ${instanceName}, ${status}, NOW())
+    ON CONFLICT (agency_id) DO UPDATE
+    SET instance_name = EXCLUDED.instance_name, status = EXCLUDED.status, updated_at = NOW()
+  `;
+}
+
+async function updateWhatsAppStatusRow(agencyId: string, status: string, connectedNumber?: string | null) {
+  await prisma.$executeRaw`
+    UPDATE agency_whatsapp_settings
+    SET status = ${status}, connected_number = COALESCE(${connectedNumber ?? null}, connected_number), updated_at = NOW()
+    WHERE agency_id = ${agencyId}
+  `;
+}
+
+async function deleteWhatsAppSettingsRow(agencyId: string) {
+  await prisma.$executeRaw`DELETE FROM agency_whatsapp_settings WHERE agency_id = ${agencyId}`;
+}
+
+function instanceNameForAgency(agencyId: string) {
+  return `agencyos-agency-${agencyId}`;
 }
 
 function evolutionHeaders() {
@@ -219,16 +334,19 @@ async function disconnectEvolutionInstance(instanceName: string) {
   await fetch(`${process.env.EVOLUTION_API_URL}/instance/delete/${instanceName}`, { method: 'DELETE', headers: evolutionHeaders() }).catch(() => {});
 }
 
+export async function getWhatsAppSettings(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const row = await getWhatsAppSettingsRow(req.user!.agencyId);
+    if (!row) return res.json({ configured: false, status: 'DISCONNECTED' });
+    res.json({ configured: row.status === 'ACTIVE', status: row.status, connectedNumber: row.connected_number });
+  } catch (err) { next(err); }
+}
+
 export async function whatsappConnect(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     assertEvolutionConfigured();
-    const { clientId } = req.body;
-    if (!clientId) return res.status(400).json({ error: 'clientId is required' });
-
-    const client = await prisma.client.findFirst({ where: { id: clientId, agencyId: req.user!.agencyId } });
-    if (!client) throw new NotFoundError('Client not found');
-
-    const instanceName = instanceNameFor(clientId);
+    const agencyId = req.user!.agencyId;
+    const instanceName = instanceNameForAgency(agencyId);
 
     const createRes = await fetch(`${process.env.EVOLUTION_API_URL}/instance/create`, {
       method: 'POST',
@@ -238,10 +356,7 @@ export async function whatsappConnect(req: AuthRequest, res: Response, next: Nex
     const createData = await createRes.json() as any;
     if (!createRes.ok) throw new Error(createData.message || createData.error || 'Failed to create WhatsApp instance');
 
-    await upsertConnection(
-      { agencyId: req.user!.agencyId, clientId, platform: 'WHATSAPP' },
-      { externalUserId: instanceName, accountName: `WhatsApp — ${client.name}`, status: 'PENDING', connectedBy: req.user!.id }
-    );
+    await upsertWhatsAppSettingsRow(agencyId, instanceName, 'PENDING');
 
     const qrcode = createData.qrcode?.base64 || createData.qrcode || null;
     res.json({ instanceName, qrcode, status: 'PENDING' });
@@ -253,23 +368,19 @@ export async function whatsappConnect(req: AuthRequest, res: Response, next: Nex
 export async function whatsappStatus(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     assertEvolutionConfigured();
-    const { clientId } = req.query;
-    if (!clientId) return res.status(400).json({ error: 'clientId is required' });
-
-    const instanceName = instanceNameFor(String(clientId));
+    const agencyId = req.user!.agencyId;
+    const instanceName = instanceNameForAgency(agencyId);
     const stateRes = await fetch(`${process.env.EVOLUTION_API_URL}/instance/connectionState/${instanceName}`, {
       headers: evolutionHeaders(),
     });
     const stateData = await stateRes.json() as any;
     const rawState = stateData.instance?.state || stateData.state || 'close';
     const status = rawState === 'open' ? 'ACTIVE' : rawState === 'connecting' ? 'PENDING' : 'DISCONNECTED';
+    const connectedNumber = stateData.instance?.owner ? String(stateData.instance.owner).split('@')[0] : null;
 
-    await prisma.socialConnection.updateMany({
-      where: { agencyId: req.user!.agencyId, clientId: String(clientId), platform: 'WHATSAPP' },
-      data: { status },
-    });
+    await updateWhatsAppStatusRow(agencyId, status, connectedNumber);
 
-    res.json({ status, rawState });
+    res.json({ status, rawState, connectedNumber });
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Erro ao verificar status do WhatsApp.' });
   }
@@ -278,13 +389,9 @@ export async function whatsappStatus(req: AuthRequest, res: Response, next: Next
 export async function whatsappDisconnect(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     assertEvolutionConfigured();
-    const { clientId } = req.body;
-    if (!clientId) return res.status(400).json({ error: 'clientId is required' });
-
-    await disconnectEvolutionInstance(instanceNameFor(clientId));
-    await prisma.socialConnection.deleteMany({
-      where: { agencyId: req.user!.agencyId, clientId, platform: 'WHATSAPP' },
-    });
+    const agencyId = req.user!.agencyId;
+    await disconnectEvolutionInstance(instanceNameForAgency(agencyId));
+    await deleteWhatsAppSettingsRow(agencyId);
     res.status(204).send();
   } catch (err: any) {
     res.status(400).json({ error: err.message || 'Erro ao desconectar WhatsApp.' });
@@ -293,13 +400,13 @@ export async function whatsappDisconnect(req: AuthRequest, res: Response, next: 
 
 // Request-independent — reused by the approval-notification flow (approvalNotify.ts) to send
 // the creative + caption + approval link as a WhatsApp message, the same way publishToMeta is
-// reused by the scheduler.
+// reused by the scheduler. Sends FROM the agency's connected number TO the client's phone.
 export async function sendWhatsAppMedia(params: {
-  clientId: string; phone: string; caption: string; mediaUrl?: string;
+  agencyId: string; phone: string; caption: string; mediaUrl?: string;
 }): Promise<{ success: boolean; error?: string }> {
   try {
     assertEvolutionConfigured();
-    const instanceName = instanceNameFor(params.clientId);
+    const instanceName = instanceNameForAgency(params.agencyId);
     const number = params.phone.replace(/\D/g, '');
     const endpoint = params.mediaUrl ? 'sendMedia' : 'sendText';
     const body = params.mediaUrl
@@ -322,12 +429,12 @@ export async function sendWhatsAppMedia(params: {
 export async function whatsappSend(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     assertEvolutionConfigured();
-    const { clientId, phone, message } = req.body;
-    if (!clientId || !phone || !message) {
-      return res.status(400).json({ error: 'clientId, phone e message são obrigatórios.' });
+    const { phone, message } = req.body;
+    if (!phone || !message) {
+      return res.status(400).json({ error: 'phone e message são obrigatórios.' });
     }
 
-    const instanceName = instanceNameFor(clientId);
+    const instanceName = instanceNameForAgency(req.user!.agencyId);
     const sendRes = await fetch(`${process.env.EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
       method: 'POST',
       headers: evolutionHeaders(),

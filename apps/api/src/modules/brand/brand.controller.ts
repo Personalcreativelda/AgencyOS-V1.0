@@ -24,14 +24,57 @@ export async function updateProfile(req: AuthRequest, res: Response, next: NextF
   try {
     const { clientId } = req.params;
     await ensureClientAccess(clientId, req.user!.agencyId);
-    const { brandSummary, mission, vision, positioning, targetAudience, toneOfVoice, brandPersonality, defaultCta, primaryLanguage } = req.body;
+    const { brandSummary, mission, vision, positioning, targetAudience, toneOfVoice, brandPersonality, defaultCta, primaryLanguage, visualStyleDescription } = req.body;
 
+    // `visualStyleDescription` cast to `any`: added via a hand-applied migration while
+    // `prisma generate` couldn't reach binaries.prisma.sh, so the generated client's TS types
+    // don't know about it yet — drop the cast once `prisma generate` runs with network access.
+    const data = { brandSummary, mission, vision, positioning, targetAudience, toneOfVoice, brandPersonality, defaultCta, primaryLanguage, visualStyleDescription } as any;
     const profile = await prisma.brandProfile.upsert({
       where: { clientId },
-      create: { agencyId: req.user!.agencyId, clientId, brandSummary, mission, vision, positioning, targetAudience, toneOfVoice, brandPersonality, defaultCta, primaryLanguage },
-      update: { brandSummary, mission, vision, positioning, targetAudience, toneOfVoice, brandPersonality, defaultCta, primaryLanguage },
+      create: { agencyId: req.user!.agencyId, clientId, ...data },
+      update: data,
     });
     res.json(profile);
+  } catch (err) { next(err); }
+}
+
+// REFERENCE IMAGES (mood board) — raw SQL: brand_reference_images was added via the same
+// hand-applied migration, so there's no typed Prisma delegate for it yet either.
+export async function getReferenceImages(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { clientId } = req.params;
+    await ensureClientAccess(clientId, req.user!.agencyId);
+    const images = await prisma.$queryRaw`
+      SELECT id, public_url as "publicUrl", storage_key as "storageKey", note, created_at as "createdAt"
+      FROM brand_reference_images WHERE client_id = ${clientId} ORDER BY created_at DESC
+    `;
+    res.json(images);
+  } catch (err) { next(err); }
+}
+
+export async function createReferenceImage(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { clientId } = req.params;
+    await ensureClientAccess(clientId, req.user!.agencyId);
+    const { publicUrl, storageKey, note } = req.body;
+    if (!publicUrl || !storageKey) return res.status(400).json({ error: 'publicUrl and storageKey are required' });
+
+    const [image] = await prisma.$queryRaw<any[]>`
+      INSERT INTO brand_reference_images (id, agency_id, client_id, public_url, storage_key, note)
+      VALUES (gen_random_uuid()::text, ${req.user!.agencyId}, ${clientId}, ${publicUrl}, ${storageKey}, ${note ?? null})
+      RETURNING id, public_url as "publicUrl", storage_key as "storageKey", note, created_at as "createdAt"
+    `;
+    res.status(201).json(image);
+  } catch (err) { next(err); }
+}
+
+export async function deleteReferenceImage(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { clientId, imageId } = req.params;
+    await ensureClientAccess(clientId, req.user!.agencyId);
+    await prisma.$executeRaw`DELETE FROM brand_reference_images WHERE id = ${imageId} AND client_id = ${clientId}`;
+    res.status(204).send();
   } catch (err) { next(err); }
 }
 
@@ -327,5 +370,29 @@ export async function createFeedback(req: AuthRequest, res: Response, next: Next
     }
 
     res.status(201).json(feedback);
+  } catch (err) { next(err); }
+}
+
+export async function updateFeedback(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { clientId, feedbackId } = req.params;
+    await ensureClientAccess(clientId, req.user!.agencyId);
+    const { feedbackText } = req.body;
+    if (!feedbackText) return res.status(400).json({ error: 'feedbackText is required' });
+
+    const feedback = await prisma.brandFeedbackMemory.update({
+      where: { id: feedbackId },
+      data: { feedbackText },
+    });
+    res.json(feedback);
+  } catch (err) { next(err); }
+}
+
+export async function deleteFeedback(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { clientId, feedbackId } = req.params;
+    await ensureClientAccess(clientId, req.user!.agencyId);
+    await prisma.brandFeedbackMemory.delete({ where: { id: feedbackId } });
+    res.status(204).send();
   } catch (err) { next(err); }
 }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core'
-import { format, addMonths, subMonths, addWeeks, subWeeks } from 'date-fns'
+import { format, addMonths, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   Plus, FileText, ChevronRight, ChevronLeft, AlertCircle, List, LayoutGrid,
@@ -20,11 +20,10 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select'
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/Dialog'
 import { CalendarMonthView } from '@/components/planner/CalendarMonthView'
-import { WeekView } from '@/components/planner/WeekView'
 import { BoardView } from '@/components/planner/BoardView'
 import { PlatformIcon } from '@/components/planner/PlatformIcon'
 import { ContentGridTile } from '@/components/planner/ContentGridTile'
-import { getPrimaryImage, getMonthGridRange, getWeekRange, dateKey, capitalize } from '@/components/planner/plannerUtils'
+import { getPrimaryImage, getMonthGridRange, dateKey, capitalize } from '@/components/planner/plannerUtils'
 
 const ALL_CLIENTS = 'ALL'
 const ALL_STATUS = 'ALL'
@@ -33,19 +32,17 @@ const LIST_DISPLAY_KEY = 'agencyos-content-list-display'
 
 type ListDisplay = 'rows' | 'grid'
 
-export type ViewMode = 'list' | 'calendar' | 'week' | 'board'
+export type ViewMode = 'list' | 'calendar' | 'board'
 
 const VIEW_LABELS: Record<ViewMode, string> = {
   list: 'Criativos',
-  calendar: 'Calendário',
-  week: 'Semana',
-  board: 'Board',
+  calendar: 'Planner',
+  board: 'Kanban',
 }
 
 const VIEW_DESCRIPTIONS: Record<ViewMode, string> = {
   list: 'Todos os conteúdos em formato de lista, com thumbnail, cliente e status.',
   calendar: 'Visão mensal — arraste um card para reagendar.',
-  week: 'Plano da semana, organizado por dia e horário.',
   board: 'Fluxo de produção em Kanban — arraste entre colunas para mudar o status.',
 }
 
@@ -108,11 +105,6 @@ export function ContentPage({ view }: ContentPageProps) {
         params.from = gridStart.toISOString()
         params.to = gridEnd.toISOString()
         params.limit = 500
-      } else if (view === 'week') {
-        const { start, end } = getWeekRange(currentDate)
-        params.from = start.toISOString()
-        params.to = end.toISOString()
-        params.limit = 200
       } else if (view === 'board') {
         params.limit = 300
       }
@@ -202,23 +194,18 @@ export function ContentPage({ view }: ContentPageProps) {
     }
   }
 
-  const goPrev = () => setCurrentDate((d) => (view === 'week' ? subWeeks(d, 1) : subMonths(d, 1)))
-  const goNext = () => setCurrentDate((d) => (view === 'week' ? addWeeks(d, 1) : addMonths(d, 1)))
+  const goPrev = () => setCurrentDate((d) => subMonths(d, 1))
+  const goNext = () => setCurrentDate((d) => addMonths(d, 1))
   const goToday = () => setCurrentDate(new Date())
 
-  const dateLabel = view === 'week'
-    ? (() => {
-        const { start, end } = getWeekRange(currentDate)
-        return `${format(start, 'dd MMM', { locale: ptBR })} – ${format(end, 'dd MMM yyyy', { locale: ptBR })}`
-      })()
-    : capitalize(format(currentDate, 'MMMM yyyy', { locale: ptBR }))
+  const dateLabel = capitalize(format(currentDate, 'MMMM yyyy', { locale: ptBR }))
 
   return (
     <div className="p-4 sm:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Workspace Conteúdos — {VIEW_LABELS[view]}</h1>
+          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">{VIEW_LABELS[view]}</h1>
           <p className="text-xs text-muted-foreground font-medium mt-1">
             {VIEW_DESCRIPTIONS[view]}
           </p>
@@ -298,8 +285,8 @@ export function ContentPage({ view }: ContentPageProps) {
         </div>
       </div>
 
-      {/* Temporal navigation (Calendar / Week) */}
-      {(view === 'calendar' || view === 'week') && (
+      {/* Temporal navigation (Planner/Calendar) */}
+      {view === 'calendar' && (
         <div className="flex flex-wrap items-center gap-2.5">
           <Button variant="ghost" size="icon" onClick={goPrev}><ChevronLeft size={18} /></Button>
           <span className="text-sm font-bold text-foreground text-center">{dateLabel}</span>
@@ -392,15 +379,6 @@ export function ContentPage({ view }: ContentPageProps) {
 
           {view === 'calendar' && (
             <CalendarMonthView
-              currentDate={currentDate}
-              contents={contents}
-              onOpenContent={(id) => navigate(`/app/content/${id}`)}
-              onCreateAt={openCreateModal}
-            />
-          )}
-
-          {view === 'week' && (
-            <WeekView
               currentDate={currentDate}
               contents={contents}
               onOpenContent={(id) => navigate(`/app/content/${id}`)}

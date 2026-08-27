@@ -45,12 +45,6 @@ export function getMonthGridRange(date: Date) {
   return { monthStart, gridStart, gridEnd, days: eachDayOfInterval({ start: gridStart, end: gridEnd }) }
 }
 
-export function getWeekRange(date: Date) {
-  const start = startOfWeek(date, { weekStartsOn: 1 })
-  const end = endOfWeek(date, { weekStartsOn: 1 })
-  return { start, end, days: eachDayOfInterval({ start, end }) }
-}
-
 export function capitalize(text: string) {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }

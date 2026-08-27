@@ -9,6 +9,11 @@ router.use(authenticate);
 router.get('/clients/:clientId/profile', ctrl.getProfile);
 router.patch('/clients/:clientId/profile', ctrl.updateProfile);
 
+// Reference images (mood board)
+router.get('/clients/:clientId/reference-images', ctrl.getReferenceImages);
+router.post('/clients/:clientId/reference-images', ctrl.createReferenceImage);
+router.delete('/clients/:clientId/reference-images/:imageId', ctrl.deleteReferenceImage);
+
 // Rules
 router.get('/clients/:clientId/rules', ctrl.getRules);
 router.post('/clients/:clientId/rules', ctrl.createRule);
@@ -49,5 +54,7 @@ router.delete('/clients/:clientId/pillars/:pillarId', ctrl.deletePillar);
 // Feedback Memory
 router.get('/clients/:clientId/feedback', ctrl.getFeedback);
 router.post('/clients/:clientId/feedback', ctrl.createFeedback);
+router.patch('/clients/:clientId/feedback/:feedbackId', ctrl.updateFeedback);
+router.delete('/clients/:clientId/feedback/:feedbackId', ctrl.deleteFeedback);
 
 export default router;

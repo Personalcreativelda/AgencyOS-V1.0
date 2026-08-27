@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Calendar, FileText, CheckSquare,
   BarChart2, Settings, LogOut, Zap, Bell, Search, Sun, Moon, Menu, X, CheckCheck, Inbox, Camera,
-  List, CalendarDays, CalendarRange, Kanban,
+  List, CalendarDays, Kanban, Share2,
 } from 'lucide-react'
 import { useThemeStore } from '@/stores/themeStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -25,25 +25,25 @@ const navSections = [
     items: [
       { label: 'Dashboard', href: '/app/dashboard', icon: LayoutDashboard },
       { label: 'Clientes', href: '/app/clients', icon: Users },
-      { label: 'Calendário', href: '/app/calendar', icon: Calendar },
+      { label: 'Conteúdos', href: '/app/calendar', icon: Calendar },
     ],
   },
   {
     subheader: 'Produção & IA',
     items: [
       {
-        label: 'Workspace Conteúdos',
+        label: 'Workspace',
         href: '/app/content',
         icon: FileText,
         children: [
           { label: 'Criativos', href: '/app/content', icon: List, end: true },
-          { label: 'Calendário', href: '/app/content/calendar', icon: CalendarDays },
-          { label: 'Semana', href: '/app/content/week', icon: CalendarRange },
-          { label: 'Board', href: '/app/content/board', icon: Kanban },
+          { label: 'Planner', href: '/app/content/calendar', icon: CalendarDays },
+          { label: 'Kanban', href: '/app/content/board', icon: Kanban },
         ],
       },
       { label: 'Aprovações do Cliente', href: '/app/approvals', icon: CheckSquare },
       { label: 'Relatórios Mensais', href: '/app/reports', icon: BarChart2 },
+      { label: 'Redes Sociais', href: '/app/social', icon: Share2 },
     ],
   },
 ]
@@ -188,7 +188,7 @@ export function AppLayout() {
                           end={child.end}
                           onClick={closeNav}
                           className={({ isActive }) =>
-                            cn('nav-item-minimals !gap-2.5 !px-3 !py-2 !text-xs', isActive && 'active')
+                            cn('nav-item-minimals !gap-2.5 !px-3 !py-2', isActive && 'active')
                           }
                         >
                           <child.icon size={15} />

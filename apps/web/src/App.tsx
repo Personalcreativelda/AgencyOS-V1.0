@@ -14,6 +14,7 @@ import { ApprovalsPage } from '@/pages/ApprovalsPage'
 import { ApprovalPortalPage } from '@/pages/ApprovalPortalPage'
 import { ReportPublicPage } from '@/pages/ReportPublicPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { SocialConnectionsPage } from '@/pages/SocialConnectionsPage'
 import { ReportsPage } from '@/pages/ReportsPage'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -48,11 +49,11 @@ export default function App() {
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="content" element={<ContentPage view="list" />} />
           <Route path="content/calendar" element={<ContentPage view="calendar" />} />
-          <Route path="content/week" element={<ContentPage view="week" />} />
           <Route path="content/board" element={<ContentPage view="board" />} />
           <Route path="content/:id" element={<ContentDetailPage />} />
           <Route path="approvals" element={<ApprovalsPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="social" element={<SocialConnectionsPage />} />
           <Route path="settings/*" element={<SettingsPage />} />
         </Route>
 

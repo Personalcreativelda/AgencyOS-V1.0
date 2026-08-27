@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Sparkles, Plus, Trash2,
-  CheckCircle2, ArrowLeft, Send
+  CheckCircle2, ArrowLeft, Send, Mail, Phone, Globe, Pencil, X, ImagePlus, Loader2,
+  Brain, Shield, BarChart3, Palette, MessageCircle,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { uploadFile } from '@/lib/upload'
@@ -18,15 +19,16 @@ import { UploadableAvatar } from '@/components/ui/UploadableAvatar'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select'
 
 const TABS = [
-  { id: 'brand', label: '🧠 Perfil & Identidade' },
-  { id: 'rules', label: '🛡️ Regras da Marca (DO / DONT)' },
-  { id: 'pillars', label: '📊 Pilares de Conteúdo' },
-  { id: 'colors', label: '🎨 Cores & Estilo' },
-  { id: 'feedback', label: '💬 Memória de Feedback' },
+  { id: 'brand', label: 'Perfil & Identidade', icon: Brain },
+  { id: 'rules', label: 'Regras da Marca (DO / DONT)', icon: Shield },
+  { id: 'pillars', label: 'Pilares de Conteúdo', icon: BarChart3 },
+  { id: 'colors', label: 'Cores, Estilo & Referências', icon: Palette },
+  { id: 'feedback', label: 'Memória de Feedback', icon: MessageCircle },
 ]
 
 export function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const referenceFileInputRef = useRef<HTMLInputElement>(null)
   const [client, setClient] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('brand')
   const [loading, setLoading] = useState(true)
@@ -35,6 +37,8 @@ export function ClientDetailPage() {
   const [profile, setProfile] = useState<any>({})
   const [rules, setRules] = useState<any[]>([])
   const [colors, setColors] = useState<any[]>([])
+  const [referenceImages, setReferenceImages] = useState<any[]>([])
+  const [uploadingReferenceImage, setUploadingReferenceImage] = useState(false)
   const [pillars, setPillars] = useState<any[]>([])
   const [feedbackList, setFeedbackList] = useState<any[]>([])
 
@@ -42,28 +46,38 @@ export function ClientDetailPage() {
   const [analyzingBrand, setAnalyzingBrand] = useState(false)
   const [aiResult, setAiResult] = useState<any>(null)
 
+  // Contact info (email/phone/website) — edited inline, separate from the brand-profile tabs
+  const [editingContact, setEditingContact] = useState(false)
+  const [contactForm, setContactForm] = useState({ email: '', phone: '', website: '' })
+  const [savingContact, setSavingContact] = useState(false)
+
   // Forms
   const [newRule, setNewRule] = useState({ ruleType: 'DO', ruleText: '', importance: 8 })
-  const [newColor, setNewColor] = useState({ name: '', hex: '#00A76F' })
+  const [newColor, setNewColor] = useState({ name: '', hex: '#00A76F', usageNotes: 'Destaque / Accent' })
   const [newPillar, setNewPillar] = useState({ name: '', description: '', percentageTarget: 25 })
   const [newFeedback, setNewFeedback] = useState({ feedbackText: '', isGlobalRule: true })
+  const [editingFeedbackId, setEditingFeedbackId] = useState<string | null>(null)
+  const [editingFeedbackText, setEditingFeedbackText] = useState('')
 
   const loadData = async () => {
     try {
-      const [cRes, profRes, rulesRes, colorsRes, pillarsRes, fbRes] = await Promise.all([
+      const [cRes, profRes, rulesRes, colorsRes, pillarsRes, fbRes, refImgRes] = await Promise.all([
         api.get(`/clients/${id}`),
         api.get(`/brand/clients/${id}/profile`),
         api.get(`/brand/clients/${id}/rules`),
         api.get(`/brand/clients/${id}/colors`),
         api.get(`/brand/clients/${id}/pillars`),
         api.get(`/brand/clients/${id}/feedback`),
+        api.get(`/brand/clients/${id}/reference-images`),
       ])
       setClient(cRes.data)
+      setContactForm({ email: cRes.data.email || '', phone: cRes.data.phone || '', website: cRes.data.website || '' })
       setProfile(profRes.data || {})
       setRules(rulesRes.data || [])
       setColors(colorsRes.data || [])
       setPillars(pillarsRes.data || [])
       setFeedbackList(fbRes.data || [])
+      setReferenceImages(refImgRes.data || [])
     } catch (err) {
       console.error(err)
     } finally {
@@ -75,6 +89,20 @@ export function ClientDetailPage() {
     loadData()
   }, [id])
 
+  const handleSaveContact = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingContact(true)
+    try {
+      const { data } = await api.patch(`/clients/${id}`, contactForm)
+      setClient(data)
+      setEditingContact(false)
+    } catch (err) {
+      alert('Erro ao salvar os dados de contato.')
+    } finally {
+      setSavingContact(false)
+    }
+  }
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -82,6 +110,32 @@ export function ClientDetailPage() {
       alert('Perfil de marca salvo!')
     } catch (err) {
       alert('Erro ao atualizar perfil.')
+    }
+  }
+
+  const handleUploadReferenceImage = async (file: File) => {
+    setUploadingReferenceImage(true)
+    try {
+      const uploaded = await uploadFile(file) as any
+      const { data } = await api.post(`/brand/clients/${id}/reference-images`, {
+        publicUrl: uploaded.publicUrl,
+        storageKey: uploaded.storageKey,
+      })
+      setReferenceImages([data, ...referenceImages])
+    } catch (err) {
+      alert('Erro ao enviar a imagem de referência.')
+    } finally {
+      setUploadingReferenceImage(false)
+    }
+  }
+
+  const handleDeleteReferenceImage = async (imageId: string) => {
+    if (!confirm('Remover esta imagem de referência?')) return
+    try {
+      await api.delete(`/brand/clients/${id}/reference-images/${imageId}`)
+      setReferenceImages(referenceImages.filter((r) => r.id !== imageId))
+    } catch (err) {
+      alert('Erro ao remover a imagem.')
     }
   }
 
@@ -112,7 +166,7 @@ export function ClientDetailPage() {
     try {
       const { data } = await api.post(`/brand/clients/${id}/colors`, newColor)
       setColors([...colors, data])
-      setNewColor({ name: '', hex: '#00A76F' })
+      setNewColor({ name: '', hex: '#00A76F', usageNotes: 'Destaque / Accent' })
     } catch (err) {
       alert('Erro ao adicionar cor.')
     }
@@ -153,6 +207,32 @@ export function ClientDetailPage() {
       loadData()
     } catch (err) {
       alert('Erro ao registrar feedback.')
+    }
+  }
+
+  const handleStartEditFeedback = (fb: any) => {
+    setEditingFeedbackId(fb.id)
+    setEditingFeedbackText(fb.feedbackText)
+  }
+
+  const handleSaveEditFeedback = async (feedbackId: string) => {
+    if (!editingFeedbackText.trim()) return
+    try {
+      const { data } = await api.patch(`/brand/clients/${id}/feedback/${feedbackId}`, { feedbackText: editingFeedbackText.trim() })
+      setFeedbackList(feedbackList.map((fb) => (fb.id === feedbackId ? data : fb)))
+      setEditingFeedbackId(null)
+    } catch (err) {
+      alert('Erro ao salvar o feedback.')
+    }
+  }
+
+  const handleDeleteFeedback = async (feedbackId: string) => {
+    if (!confirm('Apagar este feedback da memória?')) return
+    try {
+      await api.delete(`/brand/clients/${id}/feedback/${feedbackId}`)
+      setFeedbackList(feedbackList.filter((fb) => fb.id !== feedbackId))
+    } catch (err) {
+      alert('Erro ao apagar o feedback.')
     }
   }
 
@@ -233,6 +313,62 @@ export function ClientDetailPage() {
         </Button>
       </div>
 
+      {/* Contact Info — email/phone (WhatsApp) used for approval-request notifications */}
+      <Card className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider">Dados de Contato</h3>
+          {!editingContact && (
+            <Button type="button" variant="ghost" size="sm" onClick={() => setEditingContact(true)}>
+              <Pencil size={13} />
+              <span>Editar</span>
+            </Button>
+          )}
+        </div>
+
+        {editingContact ? (
+          <form onSubmit={handleSaveContact} className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <Label htmlFor="contactEmail" className="flex items-center gap-1.5"><Mail size={13} className="text-muted-foreground" />Email</Label>
+                <Input id="contactEmail" type="email" placeholder="contato@marca.com.br" value={contactForm.email} onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="contactPhone" className="flex items-center gap-1.5"><Phone size={13} className="text-muted-foreground" />Telefone / WhatsApp</Label>
+                <Input id="contactPhone" type="text" placeholder="+55 11 99999-0000" value={contactForm.phone} onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="contactWebsite" className="flex items-center gap-1.5"><Globe size={13} className="text-muted-foreground" />Website</Label>
+                <Input id="contactWebsite" type="text" placeholder="https://marca.com.br" value={contactForm.website} onChange={(e) => setContactForm({ ...contactForm, website: e.target.value })} />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="submit" size="sm" loading={savingContact}>
+                {!savingContact && <span>Salvar</span>}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingContact(false); setContactForm({ email: client.email || '', phone: client.phone || '', website: client.website || '' }) }}>
+                <X size={13} />
+                <span>Cancelar</span>
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <Mail size={14} className="text-muted-foreground shrink-0" />
+              {client.email ? <span className="text-foreground font-semibold truncate">{client.email}</span> : <span className="text-muted-foreground italic">Email não cadastrado</span>}
+            </div>
+            <div className="flex items-center gap-2">
+              <Phone size={14} className="text-muted-foreground shrink-0" />
+              {client.phone ? <span className="text-foreground font-semibold truncate">{client.phone}</span> : <span className="text-muted-foreground italic">Telefone não cadastrado — necessário para enviar aprovações por WhatsApp</span>}
+            </div>
+            <div className="flex items-center gap-2">
+              <Globe size={14} className="text-muted-foreground shrink-0" />
+              {client.website ? <span className="text-foreground font-semibold truncate">{client.website}</span> : <span className="text-muted-foreground italic">Website não cadastrado</span>}
+            </div>
+          </div>
+        )}
+      </Card>
+
       {/* AI Suggestion Banner */}
       {aiResult && (
         <Card className="space-y-3 animate-fade-in bg-primary/5 border-primary/15">
@@ -272,13 +408,14 @@ export function ClientDetailPage() {
             key={tab.id}
             variant="ghost"
             onClick={() => setActiveTab(tab.id)}
-            className={`rounded-none px-4 py-3 border-b-2 whitespace-nowrap hover:bg-transparent ${
+            className={`rounded-none px-4 py-3 border-b-2 whitespace-nowrap hover:bg-transparent gap-1.5 ${
               activeTab === tab.id
                 ? 'border-primary text-primary hover:text-primary'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            {tab.label}
+            <tab.icon size={15} />
+            <span>{tab.label}</span>
           </Button>
         ))}
       </div>
@@ -491,6 +628,67 @@ export function ClientDetailPage() {
       {/* TAB 4: Colors */}
       {activeTab === 'colors' && (
         <div className="space-y-6">
+          <form onSubmit={handleUpdateProfile} className="card-minimals p-6 space-y-3">
+            <div>
+              <h2 className="text-base font-bold text-foreground mb-1">Estilo Visual</h2>
+              <p className="text-xs text-muted-foreground font-medium">
+                Descreva em texto livre o estilo que a IA deve seguir ao gerar imagens — mood, composição, iconografia, fundo, etc. Isso é usado diretamente no prompt de geração.
+              </p>
+            </div>
+            <Textarea
+              rows={3}
+              placeholder='Ex: "Minimalista, fundo bege/creme, tipografia preta em negrito, ícones 3D dourados, muito espaço em branco."'
+              value={profile.visualStyleDescription || ''}
+              onChange={(e) => setProfile({ ...profile, visualStyleDescription: e.target.value })}
+            />
+            <Button type="submit" size="sm">Salvar Estilo Visual</Button>
+          </form>
+
+          <div className="card-minimals p-6 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-foreground mb-1">Referências Visuais</h2>
+                <p className="text-xs text-muted-foreground font-medium">
+                  Exemplos de posts/criativos que representam o estilo desejado — use como mood board.
+                </p>
+              </div>
+              <input
+                ref={referenceFileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUploadReferenceImage(f); e.target.value = '' }}
+              />
+              <Button
+                type="button" variant="outline" size="sm" className="shrink-0"
+                disabled={uploadingReferenceImage}
+                onClick={() => referenceFileInputRef.current?.click()}
+              >
+                {uploadingReferenceImage ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
+                <span>Adicionar Referência</span>
+              </Button>
+            </div>
+
+            {referenceImages.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">Nenhuma referência visual adicionada ainda.</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {referenceImages.map((img) => (
+                  <div key={img.id} className="relative group rounded-xl overflow-hidden border border-border aspect-square">
+                    <img src={img.publicUrl} alt={img.note || 'Referência visual'} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteReferenceImage(img.id)}
+                      className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="card-minimals p-6">
             <h2 className="text-base font-bold text-foreground mb-1">Paleta de Cores</h2>
             <p className="text-xs text-muted-foreground font-medium mb-4">Cores oficiais da marca para direção criativa.</p>
@@ -516,6 +714,18 @@ export function ClientDetailPage() {
                 onChange={(e) => setNewColor({ ...newColor, hex: e.target.value })}
                 className="w-28 uppercase font-mono"
               />
+              <div className="w-full sm:w-48">
+                <Select value={newColor.usageNotes} onValueChange={(v) => setNewColor({ ...newColor, usageNotes: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Fundo">Fundo</SelectItem>
+                    <SelectItem value="Texto">Texto</SelectItem>
+                    <SelectItem value="Destaque / Accent">Destaque / Accent</SelectItem>
+                    <SelectItem value="Botão / CTA">Botão / CTA</SelectItem>
+                    <SelectItem value="Ícones / Bordas">Ícones / Bordas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Button type="submit" className="w-full sm:w-auto">Salvar Cor</Button>
             </form>
           </div>
@@ -528,15 +738,18 @@ export function ClientDetailPage() {
                   style={{ backgroundColor: color.hex }}
                 />
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">{color.name}</h4>
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-foreground truncate">{color.name}</h4>
                     <span className="text-[11px] font-mono text-muted-foreground uppercase">{color.hex}</span>
+                    {color.usageNotes && (
+                      <span className="block text-[10px] text-muted-foreground font-semibold mt-0.5 truncate">{color.usageNotes}</span>
+                    )}
                   </div>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => handleDeleteColor(color.id)}
-                    className="h-auto w-auto p-1 text-muted-foreground hover:text-error hover:bg-transparent"
+                    className="h-auto w-auto p-1 text-muted-foreground hover:text-error hover:bg-transparent shrink-0"
                   >
                     <Trash2 size={14} />
                   </Button>
@@ -589,9 +802,45 @@ export function ClientDetailPage() {
               <div key={fb.id} className="card-minimals p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <Badge variant="info">{fb.category || 'Geral'}</Badge>
-                  <span className="text-[11px] text-grey-400 font-medium">{new Date(fb.createdAt).toLocaleDateString('pt-BR')}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-grey-400 font-medium">{new Date(fb.createdAt).toLocaleDateString('pt-BR')}</span>
+                    {editingFeedbackId !== fb.id && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditFeedback(fb)}
+                          className="p-1 text-muted-foreground hover:text-foreground rounded-md transition-colors"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteFeedback(fb.id)}
+                          className="p-1 text-muted-foreground hover:text-error rounded-md transition-colors"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <p className="text-xs font-bold text-grey-800">"{fb.feedbackText}"</p>
+
+                {editingFeedbackId === fb.id ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      rows={2}
+                      value={editingFeedbackText}
+                      onChange={(e) => setEditingFeedbackText(e.target.value)}
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button type="button" size="sm" onClick={() => handleSaveEditFeedback(fb.id)}>Salvar</Button>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setEditingFeedbackId(null)}>Cancelar</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs font-bold text-grey-800">"{fb.feedbackText}"</p>
+                )}
+
                 {fb.isGlobalRule && (
                   <Badge variant="success" className="flex items-center gap-1 w-fit normal-case">
                     <CheckCircle2 size={12} />

@@ -4,7 +4,7 @@ import { AuthRequest } from '../../common/middleware/auth';
 import { prisma } from '../../database/prisma';
 import { NotFoundError } from '../../common/middleware/errorHandler';
 import { notify } from '../notifications/notifications.controller';
-import { sendApprovalNotifications } from './approvalNotify';
+import { sendApprovalEmail, sendApprovalWhatsApp } from './approvalNotify';
 
 function notifyContentOwners(content: { createdById: string; assignedToId?: string | null; title: string }, agencyId: string, opts: { type: string; title: string; message: string; entityId?: string }) {
   const recipients = new Set([content.createdById, content.assignedToId].filter(Boolean) as string[]);
@@ -59,13 +59,33 @@ export async function requestApproval(req: AuthRequest, res: Response, next: Nex
 
     const portalUrl = `${process.env.APP_URL || 'http://localhost:5173'}/approval/${token}`;
 
-    // Auto-dispatch to the client over whichever channels the agency has configured — no
-    // extra button to press; generating the link and sending it are the same action.
-    const sent = await sendApprovalNotifications({
-      agencyId: req.user!.agencyId, contentId, clientId: content.clientId, portalUrl,
-    });
+    // Generating the link never sends anything on its own — the agency presses "Enviar" per
+    // channel (see sendApprovalEmailManual / sendApprovalWhatsAppManual below) whenever it wants.
+    res.status(201).json({ ...approval, portalUrl });
+  } catch (err) { next(err); }
+}
 
-    res.status(201).json({ ...approval, portalUrl, sent });
+export async function sendApprovalEmailManual(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { contentId } = req.params;
+    const { email, clientName, portalUrl } = req.body;
+    if (!email || !portalUrl) return res.status(400).json({ error: 'email e portalUrl são obrigatórios.' });
+
+    const result = await sendApprovalEmail({ agencyId: req.user!.agencyId, contentId, email, clientName: clientName || '', portalUrl });
+    if (!result.success) return res.status(400).json({ error: result.error });
+    res.json({ sent: true });
+  } catch (err) { next(err); }
+}
+
+export async function sendApprovalWhatsAppManual(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { contentId } = req.params;
+    const { phone, portalUrl } = req.body;
+    if (!phone || !portalUrl) return res.status(400).json({ error: 'phone e portalUrl são obrigatórios.' });
+
+    const result = await sendApprovalWhatsApp({ agencyId: req.user!.agencyId, contentId, phone, portalUrl });
+    if (!result.success) return res.status(400).json({ error: result.error });
+    res.json({ sent: true });
   } catch (err) { next(err); }
 }
 

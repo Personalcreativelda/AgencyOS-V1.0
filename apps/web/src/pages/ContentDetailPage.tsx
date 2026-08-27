@@ -35,11 +35,17 @@ export function ContentDetailPage() {
   const [previewPlatform, setPreviewPlatform] = useState<SocialPlatform>('INSTAGRAM')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Approval Link State
+  // Approval Link State — generating the link never sends anything automatically; each channel
+  // below is an explicit manual "Enviar" action.
   const [approvalModal, setApprovalModal] = useState(false)
   const [approvalUrl, setApprovalUrl] = useState('')
-  const [approvalSent, setApprovalSent] = useState<{ emailSent: boolean; emailError?: string; whatsappSent: boolean; whatsappError?: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [manualPhone, setManualPhone] = useState('')
+  const [sendingManualWa, setSendingManualWa] = useState(false)
+  const [manualWaResult, setManualWaResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [manualEmail, setManualEmail] = useState('')
+  const [sendingManualEmail, setSendingManualEmail] = useState(false)
+  const [manualEmailResult, setManualEmailResult] = useState<{ success: boolean; message: string } | null>(null)
 
   // Comments
   const [comments, setComments] = useState<any[]>([])
@@ -195,7 +201,10 @@ export function ContentDetailPage() {
         expiresInDays: 7,
       })
       setApprovalUrl(data.portalUrl)
-      setApprovalSent(data.sent || null)
+      setManualPhone(content.client?.phone || '')
+      setManualWaResult(null)
+      setManualEmail(content.client?.email || '')
+      setManualEmailResult(null)
       setApprovalModal(true)
       setContent({ ...content, status: 'CLIENT_REVIEW' })
     } catch (err) {
@@ -219,6 +228,34 @@ export function ContentDetailPage() {
     navigator.clipboard.writeText(approvalUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleSendManualWhatsapp = async () => {
+    if (!manualPhone.trim()) return
+    setSendingManualWa(true)
+    setManualWaResult(null)
+    try {
+      await api.post(`/approvals/contents/${id}/send-whatsapp`, { phone: manualPhone.trim(), portalUrl: approvalUrl })
+      setManualWaResult({ success: true, message: 'Enviado com sucesso!' })
+    } catch (err: any) {
+      setManualWaResult({ success: false, message: err.response?.data?.error || 'Erro ao enviar. Verifique se o WhatsApp da agência está conectado em Redes Sociais.' })
+    } finally {
+      setSendingManualWa(false)
+    }
+  }
+
+  const handleSendManualEmail = async () => {
+    if (!manualEmail.trim()) return
+    setSendingManualEmail(true)
+    setManualEmailResult(null)
+    try {
+      await api.post(`/approvals/contents/${id}/send-email`, { email: manualEmail.trim(), clientName: content.client?.name, portalUrl: approvalUrl })
+      setManualEmailResult({ success: true, message: 'Enviado com sucesso!' })
+    } catch (err: any) {
+      setManualEmailResult({ success: false, message: err.response?.data?.error || 'Erro ao enviar. Verifique se o SMTP está configurado em Configurações.' })
+    } finally {
+      setSendingManualEmail(false)
+    }
   }
 
   if (loading || !content) {
@@ -544,22 +581,57 @@ export function ContentDetailPage() {
             </Button>
           </div>
 
-          {approvalSent && (approvalSent.emailSent || approvalSent.whatsappSent || approvalSent.emailError || approvalSent.whatsappError) && (
-            <div className="space-y-1.5 text-xs">
-              {(approvalSent.emailSent || approvalSent.emailError) && (
-                <div className={`flex items-center gap-2 p-2.5 rounded-xl font-semibold ${approvalSent.emailSent ? 'bg-success/10 text-success-dark' : 'bg-muted text-muted-foreground'}`}>
-                  {approvalSent.emailSent ? <Mail size={14} className="shrink-0" /> : <XCircle size={14} className="shrink-0" />}
-                  <span>{approvalSent.emailSent ? 'Enviado por email ao cliente' : `Não enviado por email${approvalSent.emailError ? ` — ${approvalSent.emailError}` : ' — configure o SMTP em Configurações'}`}</span>
-                </div>
-              )}
-              {(approvalSent.whatsappSent || approvalSent.whatsappError) && (
-                <div className={`flex items-center gap-2 p-2.5 rounded-xl font-semibold ${approvalSent.whatsappSent ? 'bg-success/10 text-success-dark' : 'bg-muted text-muted-foreground'}`}>
-                  {approvalSent.whatsappSent ? <MessageCircle size={14} className="shrink-0" /> : <XCircle size={14} className="shrink-0" />}
-                  <span>{approvalSent.whatsappSent ? 'Enviado por WhatsApp ao cliente' : `Não enviado por WhatsApp${approvalSent.whatsappError ? ` — ${approvalSent.whatsappError}` : ''}`}</span>
-                </div>
+          <div className="space-y-3 pt-1 border-t border-border">
+            <p className="text-[11px] text-muted-foreground font-medium pt-2">
+              O link não é enviado automaticamente — escolha o canal e clique em Enviar.
+            </p>
+
+            <div className="space-y-2">
+              <Label htmlFor="manualEmail" className="flex items-center gap-1.5">
+                <Mail size={13} className="text-info" />
+                Enviar por Email
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="manualEmail"
+                  type="email"
+                  placeholder="cliente@marca.com.br"
+                  value={manualEmail}
+                  onChange={(e) => setManualEmail(e.target.value)}
+                  className="flex-1"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={handleSendManualEmail} loading={sendingManualEmail} disabled={!manualEmail.trim()} className="shrink-0">
+                  {!sendingManualEmail && <span>Enviar</span>}
+                </Button>
+              </div>
+              {manualEmailResult && (
+                <p className={`text-xs font-semibold ${manualEmailResult.success ? 'text-success-dark' : 'text-error'}`}>{manualEmailResult.message}</p>
               )}
             </div>
-          )}
+
+            <div className="space-y-2">
+              <Label htmlFor="manualWaPhone" className="flex items-center gap-1.5">
+                <MessageCircle size={13} className="text-[#25D366]" />
+                Enviar por WhatsApp
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="manualWaPhone"
+                  type="text"
+                  placeholder="+55 11 99999-0000"
+                  value={manualPhone}
+                  onChange={(e) => setManualPhone(e.target.value)}
+                  className="flex-1"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={handleSendManualWhatsapp} loading={sendingManualWa} disabled={!manualPhone.trim()} className="shrink-0">
+                  {!sendingManualWa && <span>Enviar</span>}
+                </Button>
+              </div>
+              {manualWaResult && (
+                <p className={`text-xs font-semibold ${manualWaResult.success ? 'text-success-dark' : 'text-error'}`}>{manualWaResult.message}</p>
+              )}
+            </div>
+          </div>
 
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="ghost" onClick={() => setApprovalModal(false)}>

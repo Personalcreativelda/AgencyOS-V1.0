@@ -81,6 +81,7 @@ model Agency {
   aiSettings        AgencyAiSettings?
   socialSettings    AgencySocialSettings?
   smtpSettings      AgencySmtpSettings?
+  whatsappSettings  AgencyWhatsAppSettings?
 
   @@map("agencies")
 }
@@ -100,6 +101,24 @@ model AgencySocialSettings {
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
   @@map("agency_social_settings")
+}
+
+// ─── AGENCY WHATSAPP SETTINGS (one connection per agency, not per client) ──────────────
+// The agency connects ITS OWN WhatsApp number once (Evolution API instance keyed by agencyId).
+// That single number is what sends creative previews to every client's phone for approval —
+// clients never connect their own WhatsApp, they just receive messages on theirs.
+model AgencyWhatsAppSettings {
+  id              String   @id @default(uuid())
+  agencyId        String   @unique @map("agency_id")
+  instanceName    String   @map("instance_name")
+  status          String   @default("PENDING") @map("status")
+  connectedNumber String?  @map("connected_number")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
+
+  @@map("agency_whatsapp_settings")
 }
 
 // ─── AGENCY SMTP SETTINGS (bring-your-own email, for approval-request notifications) ───
@@ -192,6 +211,7 @@ model Client {
   brandPillars   BrandContentPillar[]
   brandRules     BrandRule[]
   feedbackMemory BrandFeedbackMemory[]
+  referenceImages BrandReferenceImage[]
   assets         Asset[]
   strategies     Strategy[]
   calendars      ContentCalendar[]
@@ -254,12 +274,32 @@ model BrandProfile {
   primaryLanguage   String   @default("pt") @map("primary_language")
   secondaryLanguage String?  @map("secondary_language")
   defaultCta        String?  @map("default_cta")
+  // Free-text visual-style guidance (mood, composition, iconography, backgrounds...) — distinct
+  // from BrandColor/BrandFont, which are structured. Injected into the AI image-generation
+  // prompt so creatives follow the agency's actual visual identity instead of generic stock art.
+  visualStyleDescription String? @map("visual_style_description")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@map("brand_profiles")
+}
+
+// Reference images / mood board — real examples of the look the agency wants AI-generated
+// creatives to follow (distinct from Content assets, which are the actual published creatives).
+model BrandReferenceImage {
+  id         String   @id @default(uuid())
+  agencyId   String   @map("agency_id")
+  clientId   String   @map("client_id")
+  publicUrl  String   @map("public_url")
+  storageKey String   @map("storage_key")
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("brand_reference_images")
 }
 
 model BrandColor {

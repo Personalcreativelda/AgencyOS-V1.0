@@ -6,6 +6,8 @@ const router = Router();
 
 // Authenticated routes (agency side)
 router.post('/contents/:contentId/request', authenticate, ctrl.requestApproval);
+router.post('/contents/:contentId/send-email', authenticate, ctrl.sendApprovalEmailManual);
+router.post('/contents/:contentId/send-whatsapp', authenticate, ctrl.sendApprovalWhatsAppManual);
 router.get('/', authenticate, ctrl.listApprovals);
 
 // Public routes (client portal - token based, no auth)

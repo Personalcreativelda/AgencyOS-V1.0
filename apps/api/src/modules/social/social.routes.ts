@@ -16,7 +16,10 @@ router.get('/meta/settings', ctrl.getMetaSettings);
 router.put('/meta/settings', ctrl.saveMetaSettings);
 router.delete('/meta/settings', ctrl.deleteMetaSettings);
 router.get('/meta/connect', ctrl.metaConnect);
+router.get('/meta/pending/:token', ctrl.getPendingPageSelection);
+router.post('/meta/pending/:token/confirm', ctrl.confirmPageSelection);
 
+router.get('/whatsapp/settings', ctrl.getWhatsAppSettings);
 router.post('/whatsapp/connect', ctrl.whatsappConnect);
 router.get('/whatsapp/status', ctrl.whatsappStatus);
 router.post('/whatsapp/disconnect', ctrl.whatsappDisconnect);
