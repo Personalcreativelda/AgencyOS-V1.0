@@ -17,9 +17,14 @@
 # Usage (from the repo root):
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
-# Only the `web` container needs to be reachable from outside — point your reverse proxy /
-# Coolify's domain settings at WEB_PORT below. The `api` container is only ever called
-# internally by web's nginx, so its port doesn't need to be public.
+# Neither service publishes a host port directly — both use `expose` (container-internal
+# only, reachable over the compose network by service name). This avoids "port already
+# allocated" conflicts on a shared host running multiple apps. Only `web` needs to be
+# reachable from outside: point your reverse proxy / Coolify's domain settings at it — Coolify's
+# built-in proxy (Traefik) attaches to `web`'s exposed port 80 automatically once you set a
+# domain for that service in its UI. `api` is only ever called internally by web's nginx, so it
+# has no public entry point at all — if you need to hit it directly for debugging, use
+# `docker compose -f docker-compose.prod.yml exec api sh` or add a temporary `ports:` mapping.
 
 services:
   api:
@@ -54,8 +59,8 @@ services:
       EVOLUTION_API_URL: ${EVOLUTION_API_URL}
       EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-    ports:
-      - '${API_PORT:-4820}:4820'
+    expose:
+      - '4820'
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:4820/api/v1/health', r => process.exit(r.statusCode===200?0:1)).on('error', () => process.exit(1))"]
       interval: 15s
@@ -71,5 +76,5 @@ services:
     depends_on:
       api:
         condition: service_healthy
-    ports:
-      - '${WEB_PORT:-8080}:80'
+    expose:
+      - '80'
