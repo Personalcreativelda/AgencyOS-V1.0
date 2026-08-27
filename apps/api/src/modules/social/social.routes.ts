@@ -24,6 +24,7 @@ router.post('/whatsapp/connect', ctrl.whatsappConnect);
 router.get('/whatsapp/status', ctrl.whatsappStatus);
 router.post('/whatsapp/disconnect', ctrl.whatsappDisconnect);
 router.post('/whatsapp/send', ctrl.whatsappSend);
+router.post('/whatsapp/send-content', ctrl.sendContentViaWhatsApp);
 
 router.post('/publish', ctrl.publishContent);
 

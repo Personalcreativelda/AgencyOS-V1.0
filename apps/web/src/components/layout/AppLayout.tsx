@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Calendar, FileText, CheckSquare,
   BarChart2, Settings, LogOut, Zap, Bell, Search, Sun, Moon, Menu, X, CheckCheck, Inbox, Camera,
@@ -53,6 +53,10 @@ export function AppLayout() {
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const { mode, toggle } = useThemeStore()
   const navigate = useNavigate()
+  const location = useLocation()
+  // The header search only ever drives the Clientes list filter (?q=) — showing it elsewhere
+  // (Redes Sociais, Configurações...) with no real target behind it is just confusing.
+  const showSearch = location.pathname.startsWith('/app/clients')
   const [navOpen, setNavOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -249,25 +253,29 @@ export function AppLayout() {
               >
                 <Menu size={20} />
               </button>
-              <form onSubmit={handleSearch} className="hidden sm:block">
-                <Input
-                  type="text"
-                  placeholder="Pesquisar clientes..."
-                  icon={<Search />}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-40 sm:w-64 bg-muted border-0 text-foreground placeholder:text-muted-foreground focus:ring-primary/40"
-                />
-              </form>
+              {showSearch && (
+                <form onSubmit={handleSearch} className="hidden sm:block">
+                  <Input
+                    type="text"
+                    placeholder="Pesquisar clientes..."
+                    icon={<Search />}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-40 sm:w-64 bg-muted border-0 text-foreground placeholder:text-muted-foreground focus:ring-primary/40"
+                  />
+                </form>
+              )}
             </div>
 
             <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-              <button
-                onClick={() => setMobileSearchOpen((v) => !v)}
-                className="p-2.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:hidden shrink-0"
-              >
-                <Search size={20} />
-              </button>
+              {showSearch && (
+                <button
+                  onClick={() => setMobileSearchOpen((v) => !v)}
+                  className="p-2.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:hidden shrink-0"
+                >
+                  <Search size={20} />
+                </button>
+              )}
               <Button variant="ghost" size="icon" onClick={toggle} className="rounded-full hover:bg-muted text-muted-foreground hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                 {mode === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
               </Button>
@@ -366,7 +374,7 @@ export function AppLayout() {
             </div>
           </div>
 
-          {mobileSearchOpen && (
+          {showSearch && mobileSearchOpen && (
             <form onSubmit={handleSearch} className="sm:hidden px-4 pb-3">
               <Input
                 autoFocus

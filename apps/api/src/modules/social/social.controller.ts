@@ -413,7 +413,7 @@ export async function whatsappDisconnect(req: AuthRequest, res: Response, next: 
 // the creative + caption + approval link as a WhatsApp message, the same way publishToMeta is
 // reused by the scheduler. Sends FROM the agency's connected number TO the client's phone.
 export async function sendWhatsAppMedia(params: {
-  agencyId: string; phone: string; caption: string; mediaUrl?: string;
+  agencyId: string; phone: string; caption: string; mediaUrl?: string; mediaType?: 'image' | 'video';
 }): Promise<{ success: boolean; error?: string }> {
   try {
     assertEvolutionConfigured();
@@ -421,7 +421,7 @@ export async function sendWhatsAppMedia(params: {
     const number = params.phone.replace(/\D/g, '');
     const endpoint = params.mediaUrl ? 'sendMedia' : 'sendText';
     const body = params.mediaUrl
-      ? { number, mediatype: 'image', media: params.mediaUrl, caption: params.caption }
+      ? { number, mediatype: params.mediaType || 'image', media: params.mediaUrl, caption: params.caption }
       : { number, text: params.caption };
 
     const sendRes = await fetch(`${process.env.EVOLUTION_API_URL}/message/${endpoint}/${instanceName}`, {
@@ -460,16 +460,68 @@ export async function whatsappSend(req: AuthRequest, res: Response, next: NextFu
   }
 }
 
+// Sends the finished creative straight to the CLIENT's own phone via the agency's connected
+// WhatsApp — e.g. sharing the final piece for their records, not the approval-request flow
+// (which sends a portal link instead and lives in approvals/approvalNotify.ts). Doesn't touch
+// Content/ContentPlatform status — this is a private share, not a public platform publish.
+export async function sendContentViaWhatsApp(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    assertEvolutionConfigured();
+    const { contentId } = req.body;
+    if (!contentId) return res.status(400).json({ error: 'contentId is required' });
+
+    const content = await prisma.content.findFirst({
+      where: { id: contentId, agencyId: req.user!.agencyId, deletedAt: null },
+      include: {
+        client: { select: { name: true, phone: true } },
+        assets: { include: { asset: true }, orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    });
+    if (!content) throw new NotFoundError('Content not found');
+    if (!content.client.phone) {
+      throw new ValidationError(`${content.client.name} não tem telefone cadastrado. Adicione um na ficha do cliente.`);
+    }
+
+    const media = content.assets[0]?.asset;
+    const caption = [content.hook, content.caption, content.cta].filter(Boolean).join('\n\n') || content.title;
+
+    const result = await sendWhatsAppMedia({
+      agencyId: req.user!.agencyId, phone: content.client.phone, caption,
+      mediaUrl: media?.publicUrl ?? undefined,
+      mediaType: media?.mimeType?.startsWith('video/') ? 'video' : 'image',
+    });
+    if (!result.success) return res.status(400).json({ error: result.error });
+    res.json({ sent: true });
+  } catch (err) { next(err); }
+}
+
 // ─── PUBLISH (FACEBOOK / INSTAGRAM) ─────────────────────────────────────────
 //
 // `publishToMeta` is the request-independent core — used by the manual "Publicar" button
 // (via the `publishContent` HTTP handler below) AND by the scheduled publisher
 // (see jobs/scheduledPublisher.ts), which has no req/res to work with.
 
+// Instagram processes video containers (Reels/Stories) asynchronously — calling media_publish
+// before status_code reaches FINISHED fails. Polls every 3s, up to ~2 minutes (short-form
+// marketing video should finish well within that; a slower upload just fails cleanly after).
+async function waitForIgContainerReady(containerId: string, accessToken: string) {
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const res = await fetch(`${GRAPH_URL}/${containerId}?fields=status_code&access_token=${accessToken}`);
+    const data = await res.json() as any;
+    if (data.status_code === 'FINISHED') return;
+    if (data.status_code === 'ERROR') throw new Error('O processamento do vídeo falhou no Instagram.');
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+  }
+  throw new Error('O vídeo demorou demais para processar no Instagram. Tente novamente em alguns minutos.');
+}
+
 export async function publishToMeta(params: {
-  agencyId: string; contentId: string; platform: 'FACEBOOK' | 'INSTAGRAM';
+  agencyId: string; contentId: string; platform: 'FACEBOOK' | 'INSTAGRAM' | 'INSTAGRAM_STORY';
 }): Promise<{ success: boolean; externalPostId?: string; externalPostUrl?: string; error?: string }> {
   const { agencyId, contentId, platform } = params;
+  // Instagram Stories publish through the same IG Business Account connection as regular feed
+  // posts — there's no separate "story connection" to manage, just a different Graph API call.
+  const connectionPlatform = platform === 'INSTAGRAM_STORY' ? 'INSTAGRAM' : platform;
   try {
     const content = await prisma.content.findFirst({
       where: { id: contentId, agencyId, deletedAt: null },
@@ -478,13 +530,14 @@ export async function publishToMeta(params: {
     if (!content) throw new Error('Content not found');
 
     const connection = await prisma.socialConnection.findFirst({
-      where: { agencyId, clientId: content.clientId, platform, status: 'ACTIVE' },
+      where: { agencyId, clientId: content.clientId, platform: connectionPlatform, status: 'ACTIVE' },
     });
     if (!connection || !connection.accessTokenEncrypted) {
-      throw new Error(`Nenhuma conta ${platform === 'FACEBOOK' ? 'do Facebook' : 'do Instagram'} conectada para este cliente.`);
+      throw new Error(`Nenhuma conta ${connectionPlatform === 'FACEBOOK' ? 'do Facebook' : 'do Instagram'} conectada para este cliente.`);
     }
 
-    const image = content.assets[0]?.asset;
+    const media = content.assets[0]?.asset;
+    const isVideo = !!media?.mimeType?.startsWith('video/');
     const pageToken = decrypt(connection.accessTokenEncrypted);
     const caption = [content.hook, content.caption, content.cta].filter(Boolean).join('\n\n');
 
@@ -492,11 +545,20 @@ export async function publishToMeta(params: {
     let externalPostUrl: string | undefined;
 
     if (platform === 'FACEBOOK') {
-      if (image) {
+      if (media && isVideo) {
+        const publishRes = await fetch(`${GRAPH_URL}/${connection.externalPageId}/videos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ file_url: media.publicUrl, description: caption, access_token: pageToken }),
+        });
+        const publishData = await publishRes.json() as any;
+        if (!publishRes.ok) throw new Error(publishData.error?.message || 'Falha ao publicar vídeo no Facebook');
+        externalPostId = publishData.id;
+      } else if (media) {
         const publishRes = await fetch(`${GRAPH_URL}/${connection.externalPageId}/photos`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: image.publicUrl, caption, access_token: pageToken }),
+          body: JSON.stringify({ url: media.publicUrl, caption, access_token: pageToken }),
         });
         const publishData = await publishRes.json() as any;
         if (!publishRes.ok) throw new Error(publishData.error?.message || 'Falha ao publicar no Facebook');
@@ -512,16 +574,51 @@ export async function publishToMeta(params: {
         externalPostId = publishData.id;
       }
       externalPostUrl = `https://www.facebook.com/${externalPostId}`;
+    } else if (platform === 'INSTAGRAM_STORY') {
+      if (!media) throw new Error('Stories exigem uma imagem ou vídeo — gere ou envie um criativo primeiro.');
+
+      // Stories don't support a caption/text overlay via the Graph API — any text needs to
+      // already be baked into the media itself (unlike feed posts, which take `caption`).
+      const containerRes = await fetch(`${GRAPH_URL}/${connection.externalPageId}/media`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          isVideo
+            ? { video_url: media.publicUrl, media_type: 'STORIES', access_token: pageToken }
+            : { image_url: media.publicUrl, media_type: 'STORIES', access_token: pageToken }
+        ),
+      });
+      const containerData = await containerRes.json() as any;
+      if (!containerRes.ok) throw new Error(containerData.error?.message || 'Falha ao preparar o Story');
+
+      // Video containers process asynchronously on Meta's side — publishing before they're
+      // ready fails, so poll status_code until FINISHED (images are ready immediately).
+      if (isVideo) await waitForIgContainerReady(containerData.id, pageToken);
+
+      const publishRes = await fetch(`${GRAPH_URL}/${connection.externalPageId}/media_publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ creation_id: containerData.id, access_token: pageToken }),
+      });
+      const publishData = await publishRes.json() as any;
+      if (!publishRes.ok) throw new Error(publishData.error?.message || 'Falha ao publicar o Story');
+      externalPostId = publishData.id;
     } else {
-      if (!image) throw new Error('Instagram exige uma imagem — gere ou envie um criativo primeiro.');
+      if (!media) throw new Error('Instagram exige uma imagem ou vídeo — gere ou envie um criativo primeiro.');
 
       const containerRes = await fetch(`${GRAPH_URL}/${connection.externalPageId}/media`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image_url: image.publicUrl, caption, access_token: pageToken }),
+        body: JSON.stringify(
+          isVideo
+            ? { video_url: media.publicUrl, media_type: 'REELS', caption, access_token: pageToken }
+            : { image_url: media.publicUrl, caption, access_token: pageToken }
+        ),
       });
       const containerData = await containerRes.json() as any;
       if (!containerRes.ok) throw new Error(containerData.error?.message || 'Falha ao preparar publicação no Instagram');
+
+      if (isVideo) await waitForIgContainerReady(containerData.id, pageToken);
 
       const publishRes = await fetch(`${GRAPH_URL}/${connection.externalPageId}/media_publish`, {
         method: 'POST',
@@ -557,8 +654,8 @@ export async function publishToMeta(params: {
 export async function publishContent(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const { contentId, platform } = req.body;
-    if (!contentId || !platform || !['FACEBOOK', 'INSTAGRAM'].includes(platform)) {
-      return res.status(400).json({ error: 'contentId e platform (FACEBOOK ou INSTAGRAM) são obrigatórios.' });
+    if (!contentId || !platform || !['FACEBOOK', 'INSTAGRAM', 'INSTAGRAM_STORY'].includes(platform)) {
+      return res.status(400).json({ error: 'contentId e platform (FACEBOOK, INSTAGRAM ou INSTAGRAM_STORY) são obrigatórios.' });
     }
 
     const result = await publishToMeta({ agencyId: req.user!.agencyId, contentId, platform });

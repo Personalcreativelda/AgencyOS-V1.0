@@ -11,7 +11,7 @@ import { Response, NextFunction } from 'express';
 // (local disk or S3/MinIO — see common/storage.ts). Keeps this route provider-agnostic.
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB — short marketing videos (Reels/Stories) need more room than images
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'application/pdf'];
     if (allowed.includes(file.mimetype)) cb(null, true);
@@ -42,7 +42,10 @@ router.post('/upload', upload.single('file'), async (req: AuthRequest, res: Resp
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-    const { clientId, contentId, type = 'IMAGE', name } = req.body;
+    const { clientId, contentId, name } = req.body;
+    // Derived from the actual file, not trusted from the client — this is what
+    // publishToMeta/sendWhatsAppMedia branch on to pick image vs video Graph API calls.
+    const type = req.file.mimetype.startsWith('video/') ? 'VIDEO' : req.file.mimetype === 'application/pdf' ? 'DOCUMENT' : 'IMAGE';
     const { storageKey, publicUrl } = await getStorageProvider().upload(
       req.file.buffer,
       req.file.originalname,

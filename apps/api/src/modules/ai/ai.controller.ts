@@ -506,10 +506,10 @@ export async function deleteAiSettings(req: AuthRequest, res: Response, next: Ne
 
 export async function testAiSettings(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const { apiKey, textModel } = req.body;
+    const { apiKey, provider, textModel } = req.body;
     if (!apiKey) throw new ValidationError('Informe a chave de API para testar.');
 
-    const ai = getAIProvider({ apiKey, textModel });
+    const ai = getAIProvider({ apiKey, provider, textModel });
     const result = await ai.generateText({
       systemPrompt: 'Responda apenas com a palavra: ok',
       userPrompt: 'teste de conexão',

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import {
   Trash2, Eye, EyeOff, Loader2, CheckCircle2, XCircle,
   Share2, Facebook, Instagram, MessageCircle, QrCode, Unplug, Copy, Check, Mail, Building2, Contact,
+  ChevronLeft, ChevronRight, ExternalLink,
 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
@@ -25,6 +26,54 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 // Built from wherever the app is actually running (works for localhost, staging, prod,
 // Coolify's auto-generated domain, a custom domain — no manual "figure out your API URL" step).
 const META_CALLBACK_URL = `${window.location.origin}/api/v1/social/meta/callback`
+
+// Guided setup for a first-time Meta App — every step here comes from an actual snag hit while
+// building this integration (rate-limited app creation, "Invalid Scopes" from a missing
+// Instagram product, the redirect URI being pasted into the wrong field...). The last step
+// (index 4, 1-based step 5) is followed by the real form (see META_WIZARD_STEPS.length + 1).
+const META_WIZARD_STEPS: { title: string; items: string[] }[] = [
+  {
+    title: 'Criar o App na Meta',
+    items: [
+      'Acesse developers.facebook.com/apps e clique em "Criar App".',
+      'Escolha o tipo "Empresa" (ou o mais próximo disso).',
+      'Dê um nome que NÃO contenha a palavra "teste" — a Meta costuma bloquear nomes assim como spam.',
+      'Se aparecer o erro "Essa ação não é permitida", espere alguns minutos e tente de novo — é limite temporário da Meta, não é nada errado que você fez.',
+    ],
+  },
+  {
+    title: 'Adicionar os produtos certos',
+    items: [
+      'No painel do app, clique em "Adicionar Produto".',
+      'Adicione "Login do Facebook" e configure como "Empresa" (não "Consumidor").',
+      'Adicione também o produto "Instagram" — sem ele, a conexão falha com o erro "Invalid Scopes", mesmo com o Login do Facebook certo.',
+    ],
+  },
+  {
+    title: 'Registrar a URL de redirecionamento',
+    items: [
+      'Vá em Login do Facebook → Configurações.',
+      'Cole a URL abaixo no campo "URIs de redirecionamento do OAuth válidos" — não no campo de verificação lá em cima, que é só um teste e não salva nada.',
+      'Role até o final da página e clique em "Salvar Alterações". Esse passo é fácil de esquecer.',
+    ],
+  },
+  {
+    title: 'Adicionar você como testador',
+    items: [
+      'Vá em Funções do App → Funções.',
+      'Adicione o usuário que vai conectar as páginas (você) com papel de Admin, Developer ou Tester.',
+      'Enquanto o app não passa pela revisão da Meta (App Review), só quem tem um desses papéis consegue fazer login e conectar páginas.',
+    ],
+  },
+  {
+    title: 'Copiar as credenciais',
+    items: [
+      'Vá em Configurações → Básico.',
+      'Copie o "ID do Aplicativo" e a "Chave Secreta do Aplicativo" (pode precisar confirmar sua senha pra ver a chave).',
+      'Cole os dois no próximo passo.',
+    ],
+  },
+]
 
 export function SocialConnectionsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -57,6 +106,7 @@ export function SocialConnectionsPage() {
   // Meta App (bring-your-own) settings
   const [metaSettings, setMetaSettings] = useState<any>(null)
   const [showMetaModal, setShowMetaModal] = useState(false)
+  const [metaWizardStep, setMetaWizardStep] = useState(1) // guided setup — the last step is the actual form
   const [metaAppIdInput, setMetaAppIdInput] = useState('')
   const [metaAppSecretInput, setMetaAppSecretInput] = useState('')
   const [showMetaSecret, setShowMetaSecret] = useState(false)
@@ -167,6 +217,8 @@ export function SocialConnectionsPage() {
   const openMetaModal = () => {
     setMetaAppIdInput('')
     setMetaAppSecretInput('')
+    // Already configured once? Skip straight to the form — the guide is for first-timers.
+    setMetaWizardStep(metaSettings?.configured ? META_WIZARD_STEPS.length + 1 : 1)
     setShowMetaModal(true)
   }
 
@@ -554,7 +606,7 @@ export function SocialConnectionsPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Meta App Modal */}
+      {/* Meta App Modal — guided setup wizard for first-timers, straight to the form for edits */}
       <Dialog open={showMetaModal} onOpenChange={setShowMetaModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -563,66 +615,121 @@ export function SocialConnectionsPage() {
                 <Share2 size={20} />
               </div>
               <div>
-                <DialogTitle>{metaSettings?.configured ? 'Editar Meta App' : 'Configurar Meta App'}</DialogTitle>
+                <DialogTitle>
+                  {metaWizardStep <= META_WIZARD_STEPS.length
+                    ? `Passo ${metaWizardStep} de ${META_WIZARD_STEPS.length + 1} — ${META_WIZARD_STEPS[metaWizardStep - 1].title}`
+                    : metaSettings?.configured ? 'Editar Meta App' : `Passo ${META_WIZARD_STEPS.length + 1} de ${META_WIZARD_STEPS.length + 1} — Salvar credenciais`}
+                </DialogTitle>
                 <DialogDescription>Facebook + Instagram — registrado uma vez, usado para conectar a conta de qualquer cliente</DialogDescription>
               </div>
             </div>
           </DialogHeader>
 
-          {metaSettings?.configured && (
-            <div className="flex items-center justify-between p-3 bg-muted rounded-xl border border-border text-xs">
-              <span className="text-muted-foreground">App ID: <span className="font-mono font-bold text-foreground">{metaSettings.metaAppId}</span> • Secret: <span className="font-mono">{metaSettings.metaAppSecretMasked}</span></span>
-            </div>
-          )}
+          {metaWizardStep <= META_WIZARD_STEPS.length ? (
+            <div className="space-y-4">
+              {/* Progress dots */}
+              <div className="flex items-center gap-1.5">
+                {META_WIZARD_STEPS.map((_, i) => (
+                  <div key={i} className={`h-1.5 flex-1 rounded-full ${i < metaWizardStep ? 'bg-primary' : 'bg-muted'}`} />
+                ))}
+              </div>
 
-          <form onSubmit={handleSaveMetaSettings} className="space-y-3" autoComplete="off">
-            <p className="text-[11px] text-muted-foreground font-medium">
-              Crie um app em <span className="font-mono">developers.facebook.com</span>, adicione o produto "Facebook Login for Business" e registre esta URI de redirecionamento:
-            </p>
-            <div className="flex items-center gap-2 p-2.5 bg-background rounded-lg border border-border">
-              <span className="flex-1 min-w-0 truncate text-[11px] font-mono font-bold text-foreground/80">{META_CALLBACK_URL}</span>
-              <button
-                type="button"
-                onClick={handleCopyCallbackUrl}
-                className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                title="Copiar URL"
-              >
-                {copiedCallback ? <Check size={13} className="text-success" /> : <Copy size={13} />}
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="metaAppId">App ID</Label>
-                <Input id="metaAppId" name="meta_app_id" autoComplete="off" placeholder="App ID" value={metaAppIdInput} onChange={(e) => setMetaAppIdInput(e.target.value)} />
+              <ul className="space-y-2.5">
+                {META_WIZARD_STEPS[metaWizardStep - 1].items.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-xs text-foreground/90 font-medium">
+                    <span className="w-4 h-4 rounded-full bg-secondary/15 text-secondary text-[10px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Step 3 needs the actual redirect URI to copy */}
+              {metaWizardStep === 3 && (
+                <div className="flex items-center gap-2 p-2.5 bg-background rounded-lg border border-border">
+                  <span className="flex-1 min-w-0 truncate text-[11px] font-mono font-bold text-foreground/80">{META_CALLBACK_URL}</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyCallbackUrl}
+                    className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    title="Copiar URL"
+                  >
+                    {copiedCallback ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                  </button>
+                </div>
+              )}
+
+              {metaWizardStep === 1 && (
+                <a href="https://developers.facebook.com/apps" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-secondary hover:underline">
+                  Abrir developers.facebook.com/apps <ExternalLink size={12} />
+                </a>
+              )}
+
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
+                {metaWizardStep === 1 ? (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setMetaWizardStep(META_WIZARD_STEPS.length + 1)}>
+                    Já sei, ir direto pro formulário
+                  </Button>
+                ) : (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setMetaWizardStep((s) => s - 1)} className="gap-1">
+                    <ChevronLeft size={14} /> Voltar
+                  </Button>
+                )}
+                <Button type="button" size="sm" onClick={() => setMetaWizardStep((s) => s + 1)} className="gap-1">
+                  Próximo <ChevronRight size={14} />
+                </Button>
               </div>
-              <div>
-                <Label htmlFor="metaAppSecret">App Secret</Label>
-                <Input
-                  id="metaAppSecret"
-                  name="meta_app_secret"
-                  autoComplete="new-password"
-                  type={showMetaSecret ? 'text' : 'password'}
-                  placeholder="App Secret"
-                  value={metaAppSecretInput}
-                  onChange={(e) => setMetaAppSecretInput(e.target.value)}
-                  endAdornment={
-                    <button type="button" onClick={() => setShowMetaSecret(!showMetaSecret)} className="text-muted-foreground hover:text-foreground p-1">
-                      {showMetaSecret ? <EyeOff size={14} /> : <Eye size={14} />}
-                    </button>
-                  }
-                />
-              </div>
             </div>
-            <p className="text-[11px] text-muted-foreground font-medium italic">
-              Não é o token de publicação — é só a credencial do seu app na Meta, usada pelo servidor para autenticar o login. O token que de fato autoriza postar em cada página é gerado automaticamente, por cliente, quando você clica em "Conectar Facebook" na aba Cliente.
-            </p>
-            <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="ghost" onClick={() => setShowMetaModal(false)}>Cancelar</Button>
-              <Button type="submit" disabled={!metaAppIdInput.trim() || !metaAppSecretInput.trim()} loading={savingMeta}>
-                {!savingMeta && <span>{metaSettings?.configured ? 'Substituir Meta App' : 'Salvar Meta App'}</span>}
-              </Button>
-            </div>
-          </form>
+          ) : (
+            <>
+              {metaSettings?.configured && (
+                <div className="flex items-center justify-between p-3 bg-muted rounded-xl border border-border text-xs">
+                  <span className="text-muted-foreground">App ID: <span className="font-mono font-bold text-foreground">{metaSettings.metaAppId}</span> • Secret: <span className="font-mono">{metaSettings.metaAppSecretMasked}</span></span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveMetaSettings} className="space-y-3" autoComplete="off">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="metaAppId">App ID</Label>
+                    <Input id="metaAppId" name="meta_app_id" autoComplete="off" placeholder="App ID" value={metaAppIdInput} onChange={(e) => setMetaAppIdInput(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="metaAppSecret">App Secret</Label>
+                    <Input
+                      id="metaAppSecret"
+                      name="meta_app_secret"
+                      autoComplete="new-password"
+                      type={showMetaSecret ? 'text' : 'password'}
+                      placeholder="App Secret"
+                      value={metaAppSecretInput}
+                      onChange={(e) => setMetaAppSecretInput(e.target.value)}
+                      endAdornment={
+                        <button type="button" onClick={() => setShowMetaSecret(!showMetaSecret)} className="text-muted-foreground hover:text-foreground p-1">
+                          {showMetaSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      }
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-medium italic">
+                  Não é o token de publicação — é só a credencial do seu app na Meta, usada pelo servidor para autenticar o login. O token que de fato autoriza postar em cada página é gerado automaticamente, por cliente, quando você clica em "Conectar Facebook" na aba Cliente.
+                </p>
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  {!metaSettings?.configured && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setMetaWizardStep((s) => s - 1)} className="gap-1">
+                      <ChevronLeft size={14} /> Voltar ao guia
+                    </Button>
+                  )}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button type="button" variant="ghost" onClick={() => setShowMetaModal(false)}>Cancelar</Button>
+                    <Button type="submit" disabled={!metaAppIdInput.trim() || !metaAppSecretInput.trim()} loading={savingMeta}>
+                      {!savingMeta && <span>{metaSettings?.configured ? 'Substituir Meta App' : 'Salvar Meta App'}</span>}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

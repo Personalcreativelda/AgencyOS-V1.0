@@ -23,17 +23,40 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/Select'
 
-const TEXT_MODELS = [
-  { value: 'gpt-4o-mini', label: 'GPT-4o mini (rápido e barato)' },
-  { value: 'gpt-4o', label: 'GPT-4o (mais qualidade)' },
-  { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+const AI_PROVIDERS = [
+  { value: 'openai', label: 'OpenAI' },
+  { value: 'gemini', label: 'Google Gemini' },
+  { value: 'anthropic', label: 'Anthropic (Claude)' },
 ]
 
-const IMAGE_MODELS = [
-  { value: 'gpt-image-1', label: 'GPT Image 1 (modelo atual da OpenAI)' },
-  { value: 'dall-e-3', label: 'DALL·E 3 (contas mais antigas)' },
-  { value: 'dall-e-2', label: 'DALL·E 2 (mais barato, contas mais antigas)' },
-]
+const TEXT_MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
+  openai: [
+    { value: 'gpt-4o-mini', label: 'GPT-4o mini (rápido e barato)' },
+    { value: 'gpt-4o', label: 'GPT-4o (mais qualidade)' },
+    { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+  ],
+  gemini: [
+    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (rápido e barato)' },
+    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (mais qualidade)' },
+  ],
+  anthropic: [
+    { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (rápido e barato)' },
+    { value: 'claude-sonnet-5', label: 'Claude Sonnet 5 (equilibrado)' },
+    { value: 'claude-opus-5', label: 'Claude Opus 5 (mais qualidade)' },
+  ],
+}
+
+const IMAGE_MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
+  openai: [
+    { value: 'gpt-image-1', label: 'GPT Image 1 (modelo atual da OpenAI)' },
+    { value: 'dall-e-3', label: 'DALL·E 3 (contas mais antigas)' },
+    { value: 'dall-e-2', label: 'DALL·E 2 (mais barato, contas mais antigas)' },
+  ],
+  gemini: [
+    { value: 'gemini-2.5-flash-image', label: 'Gemini 2.5 Flash Image' },
+  ],
+  anthropic: [], // Claude não gera imagens
+}
 
 export function SettingsPage() {
   const { user } = useAuthStore()
@@ -51,6 +74,7 @@ export function SettingsPage() {
   const [showAiModal, setShowAiModal] = useState(false)
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
+  const [aiProvider, setAiProvider] = useState('openai')
   const [textModel, setTextModel] = useState('gpt-4o-mini')
   const [imageModel, setImageModel] = useState('gpt-image-1')
   const [savingAi, setSavingAi] = useState(false)
@@ -68,6 +92,7 @@ export function SettingsPage() {
         setAgency(agRes.data)
         setMembers(memRes.data || [])
         setAiSettings(aiRes.data)
+        setAiProvider(aiRes.data.provider || 'openai')
         setTextModel(aiRes.data.textModel || 'gpt-4o-mini')
         setImageModel(aiRes.data.imageModel || 'gpt-image-1')
       } catch (err) {
@@ -84,7 +109,7 @@ export function SettingsPage() {
     setTestingAi(true)
     setTestResult(null)
     try {
-      const { data } = await api.post('/ai/settings/test', { apiKey: apiKeyInput.trim(), textModel })
+      const { data } = await api.post('/ai/settings/test', { apiKey: apiKeyInput.trim(), provider: aiProvider, textModel })
       setTestResult({ success: true, message: `Conectado com sucesso ao modelo ${data.model}.` })
     } catch (err: any) {
       setTestResult({ success: false, message: err.response?.data?.error || 'Não foi possível conectar com essa chave.' })
@@ -96,7 +121,15 @@ export function SettingsPage() {
   const openAiModal = () => {
     setApiKeyInput('')
     setTestResult(null)
+    setAiProvider(aiSettings?.provider || 'openai')
     setShowAiModal(true)
+  }
+
+  const handleChangeProvider = (value: string) => {
+    setAiProvider(value)
+    setTextModel(TEXT_MODELS_BY_PROVIDER[value][0].value)
+    setImageModel(IMAGE_MODELS_BY_PROVIDER[value][0]?.value || '')
+    setTestResult(null)
   }
 
   const handleSaveAi = async (e: React.FormEvent) => {
@@ -104,7 +137,7 @@ export function SettingsPage() {
     if (!apiKeyInput.trim()) return
     setSavingAi(true)
     try {
-      const { data } = await api.put('/ai/settings', { apiKey: apiKeyInput.trim(), textModel, imageModel })
+      const { data } = await api.put('/ai/settings', { apiKey: apiKeyInput.trim(), provider: aiProvider, textModel, imageModel: imageModel || undefined })
       setAiSettings(data)
       setApiKeyInput('')
       setTestResult(null)
@@ -282,7 +315,9 @@ export function SettingsPage() {
               <div className="min-w-0">
                 <p className="text-xs font-extrabold text-foreground truncate">Integração de IA</p>
                 <p className="text-[11px] text-muted-foreground font-medium truncate">
-                  {aiSettings?.configured ? `Chave: ${aiSettings.apiKeyMasked}` : 'Chave própria para gerar legendas, estratégias e imagens'}
+                  {aiSettings?.configured
+                    ? `${AI_PROVIDERS.find((p) => p.value === aiSettings.provider)?.label || aiSettings.provider} — Chave: ${aiSettings.apiKeyMasked}`
+                    : 'Chave própria para gerar legendas, estratégias e imagens'}
                 </p>
               </div>
             </div>
@@ -322,11 +357,21 @@ export function SettingsPage() {
 
           <form onSubmit={handleSaveAi} className="space-y-4">
             <div>
-              <Label htmlFor="apiKey">{aiSettings?.configured ? 'Substituir chave de API' : 'Chave de API da OpenAI'}</Label>
+              <Label htmlFor="aiProvider">Provedor</Label>
+              <Select value={aiProvider} onValueChange={handleChangeProvider}>
+                <SelectTrigger id="aiProvider"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {AI_PROVIDERS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="apiKey">{aiSettings?.configured ? 'Substituir chave de API' : `Chave de API — ${AI_PROVIDERS.find((p) => p.value === aiProvider)?.label}`}</Label>
               <Input
                 id="apiKey"
                 type={showApiKey ? 'text' : 'password'}
-                placeholder="sk-..."
+                placeholder={aiProvider === 'openai' ? 'sk-...' : aiProvider === 'anthropic' ? 'sk-ant-...' : 'AIza...'}
                 value={apiKeyInput}
                 onChange={(e) => { setApiKeyInput(e.target.value); setTestResult(null) }}
                 endAdornment={
@@ -336,29 +381,35 @@ export function SettingsPage() {
                 }
               />
               <p className="text-[11px] text-muted-foreground font-medium mt-1.5">
-                Sua chave fica criptografada no banco e é usada só para gerar conteúdo desta agência — o custo de uso vai direto para sua conta na OpenAI.
+                Sua chave fica criptografada no banco e é usada só para gerar conteúdo desta agência — o custo de uso vai direto para sua conta no provedor escolhido.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className={`grid grid-cols-1 gap-4 ${IMAGE_MODELS_BY_PROVIDER[aiProvider]?.length ? 'sm:grid-cols-2' : ''}`}>
               <div>
                 <Label htmlFor="textModel">Modelo de texto</Label>
                 <Select value={textModel} onValueChange={setTextModel}>
                   <SelectTrigger id="textModel"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {TEXT_MODELS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                    {TEXT_MODELS_BY_PROVIDER[aiProvider].map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label htmlFor="imageModel">Modelo de imagem</Label>
-                <Select value={imageModel} onValueChange={setImageModel}>
-                  <SelectTrigger id="imageModel"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {IMAGE_MODELS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              {IMAGE_MODELS_BY_PROVIDER[aiProvider]?.length > 0 ? (
+                <div>
+                  <Label htmlFor="imageModel">Modelo de imagem</Label>
+                  <Select value={imageModel} onValueChange={setImageModel}>
+                    <SelectTrigger id="imageModel"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {IMAGE_MODELS_BY_PROVIDER[aiProvider].map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted-foreground font-medium self-end pb-2.5">
+                  {AI_PROVIDERS.find((p) => p.value === aiProvider)?.label} não gera imagens — configure OpenAI ou Gemini pra isso.
+                </p>
+              )}
             </div>
 
             {testResult && (

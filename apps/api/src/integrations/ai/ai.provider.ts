@@ -239,11 +239,151 @@ class OpenAIProvider implements AIProvider {
   }
 }
 
-// Factory — pass `override` to use a specific (e.g. per-agency) API key instead of the server default.
+// Gemini (Google) provider — text via generateContent; image via the same endpoint on an
+// image-capable model, requesting an image response modality (the current documented way to
+// get Gemini to return generated image bytes, as opposed to Vertex AI's separate Imagen API).
+class GeminiProvider implements AIProvider {
+  constructor(
+    private apiKey: string,
+    private textModel = 'gemini-2.0-flash',
+    private imageModel = 'gemini-2.5-flash-image'
+  ) {}
+
+  private async callGenerateContent(model: string, body: any) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+    );
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Gemini API error: ${err}`);
+    }
+    return response.json() as Promise<any>;
+  }
+
+  async generateText(input: AIRequest): Promise<AIResponse> {
+    const data = await this.callGenerateContent(this.textModel, {
+      systemInstruction: { parts: [{ text: input.systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: input.userPrompt }] }],
+      generationConfig: { temperature: input.temperature ?? 0.7, maxOutputTokens: input.maxTokens ?? 2000 },
+    });
+    const text = data.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join('') || '';
+    return {
+      text,
+      inputTokens: data.usageMetadata?.promptTokenCount,
+      outputTokens: data.usageMetadata?.candidatesTokenCount,
+      model: this.textModel,
+      provider: 'gemini',
+    };
+  }
+
+  async generateJSON<T>(input: AIRequest): Promise<T> {
+    const response = await this.generateText({
+      ...input,
+      systemPrompt: input.systemPrompt + '\n\nSempre retorne SOMENTE JSON válido, sem markdown, sem texto extra.',
+    });
+    try {
+      const cleaned = response.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      return JSON.parse(cleaned) as T;
+    } catch {
+      throw new Error(`AI returned invalid JSON: ${response.text.substring(0, 200)}`);
+    }
+  }
+
+  async generateImage(prompt: string): Promise<AIImageResult> {
+    const data = await this.callGenerateContent(this.imageModel, {
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { responseModalities: ['IMAGE'] },
+    });
+    const imagePart = data.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData?.data);
+    if (!imagePart) throw new Error('Gemini não retornou uma imagem — verifique se o modelo configurado suporta geração de imagem.');
+    return {
+      b64: imagePart.inlineData.data,
+      mimeType: imagePart.inlineData.mimeType || 'image/png',
+      model: this.imageModel,
+      provider: 'gemini',
+    };
+  }
+
+  describe() {
+    return { provider: 'gemini', model: this.textModel };
+  }
+}
+
+// Anthropic (Claude) provider — text/JSON only. Claude models don't generate images; agencies
+// on this provider need to keep OpenAI or Gemini configured elsewhere for image generation
+// (there's no per-capability provider mixing yet — one provider serves the whole agency).
+class AnthropicProvider implements AIProvider {
+  constructor(
+    private apiKey: string,
+    private textModel = 'claude-sonnet-5'
+  ) {}
+
+  async generateText(input: AIRequest): Promise<AIResponse> {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': this.apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: this.textModel,
+        system: input.systemPrompt,
+        messages: [{ role: 'user', content: input.userPrompt }],
+        max_tokens: input.maxTokens ?? 2000,
+        temperature: input.temperature ?? 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(`Anthropic API error: ${err}`);
+    }
+
+    const data = await response.json() as any;
+    return {
+      text: data.content?.map((c: any) => c.text).filter(Boolean).join('') || '',
+      inputTokens: data.usage?.input_tokens,
+      outputTokens: data.usage?.output_tokens,
+      model: this.textModel,
+      provider: 'anthropic',
+    };
+  }
+
+  async generateJSON<T>(input: AIRequest): Promise<T> {
+    const response = await this.generateText({
+      ...input,
+      systemPrompt: input.systemPrompt + '\n\nSempre retorne SOMENTE JSON válido, sem markdown, sem texto extra.',
+    });
+    try {
+      const cleaned = response.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      return JSON.parse(cleaned) as T;
+    } catch {
+      throw new Error(`AI returned invalid JSON: ${response.text.substring(0, 200)}`);
+    }
+  }
+
+  async generateImage(): Promise<AIImageResult> {
+    throw new Error('A Anthropic (Claude) não gera imagens. Configure OpenAI ou Gemini para gerar criativos com IA.');
+  }
+
+  describe() {
+    return { provider: 'anthropic', model: this.textModel };
+  }
+}
+
+// Factory — pass `override` to use a specific (e.g. per-agency) provider/key instead of the
+// server default. `provider` selects which class backs the AIProvider interface; every call
+// site is provider-agnostic from here on.
 let _defaultProvider: AIProvider | null = null;
 
-export function getAIProvider(override?: { apiKey?: string; textModel?: string; imageModel?: string }): AIProvider {
+export function getAIProvider(override?: {
+  apiKey?: string; provider?: string; textModel?: string; imageModel?: string;
+}): AIProvider {
   if (override?.apiKey) {
+    if (override.provider === 'gemini') return new GeminiProvider(override.apiKey, override.textModel, override.imageModel);
+    if (override.provider === 'anthropic') return new AnthropicProvider(override.apiKey, override.textModel);
     return new OpenAIProvider(override.apiKey, override.textModel, override.imageModel);
   }
 
@@ -269,7 +409,7 @@ export async function resolveAgencyAIProvider(agencyId: string): Promise<AIProvi
   if (settings?.apiKeyEncrypted) {
     try {
       const apiKey = decrypt(settings.apiKeyEncrypted);
-      return getAIProvider({ apiKey, textModel: settings.textModel, imageModel: settings.imageModel });
+      return getAIProvider({ apiKey, provider: settings.provider, textModel: settings.textModel, imageModel: settings.imageModel });
     } catch {
       // Decryption failed (e.g. ENCRYPTION_KEY rotated) — fall through to the server default.
     }

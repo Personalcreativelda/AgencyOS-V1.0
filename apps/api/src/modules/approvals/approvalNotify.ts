@@ -12,9 +12,10 @@ async function loadContentForNotification(agencyId: string, contentId: string) {
     include: { assets: { include: { asset: true }, orderBy: { createdAt: 'desc' }, take: 1 } },
   });
   if (!content) return null;
-  const image = content.assets[0]?.asset;
+  const media = content.assets[0]?.asset;
+  const isVideo = !!media?.mimeType?.startsWith('video/');
   const caption = [content.hook, content.caption, content.cta].filter(Boolean).join('\n\n') || content.title;
-  return { content, image, caption };
+  return { content, media, isVideo, caption };
 }
 
 export async function sendApprovalEmail(params: {
@@ -32,7 +33,9 @@ export async function sendApprovalEmail(params: {
       subject: `Novo conteúdo para aprovação — ${data.content.title}`,
       html: buildApprovalEmailHtml({
         clientName: params.clientName, title: data.content.title, caption: data.caption,
-        imageUrl: data.image?.publicUrl ?? undefined, portalUrl: params.portalUrl,
+        // Email clients don't reliably play inline video, so only embed actual images —
+        // the portal link still lets the client watch the real video.
+        imageUrl: !data.isVideo ? (data.media?.publicUrl ?? undefined) : undefined, portalUrl: params.portalUrl,
       }),
     });
     return { success: true };
@@ -49,7 +52,9 @@ export async function sendApprovalWhatsApp(params: {
 
   const message = `📢 Novo conteúdo para aprovação: *${data.content.title}*\n\n${data.caption}\n\n✅ Aprovar ou pedir ajustes: ${params.portalUrl}`;
   return sendWhatsAppMedia({
-    agencyId: params.agencyId, phone: params.phone, caption: message, mediaUrl: data.image?.publicUrl ?? undefined,
+    agencyId: params.agencyId, phone: params.phone, caption: message,
+    mediaUrl: data.media?.publicUrl ?? undefined,
+    mediaType: data.isVideo ? 'video' : 'image',
   });
 }
 

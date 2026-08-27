@@ -53,7 +53,8 @@ export function ContentDetailPage() {
 
   // Social publishing
   const [connections, setConnections] = useState<any[]>([])
-  const [publishing, setPublishing] = useState<'FACEBOOK' | 'INSTAGRAM' | null>(null)
+  const [publishing, setPublishing] = useState<'FACEBOOK' | 'INSTAGRAM' | 'INSTAGRAM_STORY' | null>(null)
+  const [sendingWhatsAppContent, setSendingWhatsAppContent] = useState(false)
 
   const loadContent = async () => {
     try {
@@ -76,17 +77,41 @@ export function ContentDetailPage() {
     loadContent()
   }, [id])
 
-  const handlePublish = async (platform: 'FACEBOOK' | 'INSTAGRAM') => {
-    if (!confirm(`Publicar este conteúdo agora no ${platform === 'FACEBOOK' ? 'Facebook' : 'Instagram'}? Isso vai ao ar imediatamente.`)) return
+  const PLATFORM_PUBLISH_LABEL: Record<'FACEBOOK' | 'INSTAGRAM' | 'INSTAGRAM_STORY', string> = {
+    FACEBOOK: 'Facebook', INSTAGRAM: 'Instagram', INSTAGRAM_STORY: 'Stories do Instagram',
+  }
+
+  const handlePublish = async (platform: 'FACEBOOK' | 'INSTAGRAM' | 'INSTAGRAM_STORY') => {
+    const label = PLATFORM_PUBLISH_LABEL[platform]
+    if (!confirm(`Publicar este conteúdo agora no ${label}? Isso vai ao ar imediatamente.`)) return
     setPublishing(platform)
     try {
-      await api.post('/social/publish', { contentId: content.id, platform })
-      alert('Publicado com sucesso!')
+      const { data } = await api.post('/social/publish', { contentId: content.id, platform })
+      if (data.externalPostUrl) {
+        if (confirm(`Publicado com sucesso! Abrir o post no ${label} pra conferir?`)) {
+          window.open(data.externalPostUrl, '_blank', 'noopener,noreferrer')
+        }
+      } else {
+        alert('Publicado com sucesso!')
+      }
       await loadContent()
     } catch (err: any) {
       alert(err.response?.data?.error || 'Erro ao publicar.')
     } finally {
       setPublishing(null)
+    }
+  }
+
+  const handleSendWhatsAppContent = async () => {
+    if (!confirm(`Enviar este criativo por WhatsApp para ${content.client?.name}?`)) return
+    setSendingWhatsAppContent(true)
+    try {
+      await api.post('/social/whatsapp/send-content', { contentId: content.id })
+      alert('Enviado com sucesso!')
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Erro ao enviar por WhatsApp.')
+    } finally {
+      setSendingWhatsAppContent(false)
     }
   }
 
@@ -184,7 +209,6 @@ export function ContentDetailPage() {
       formData.append('file', file)
       formData.append('clientId', content.clientId)
       formData.append('contentId', content.id)
-      formData.append('type', 'IMAGE')
       await api.post('/assets/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       await loadContent()
     } catch (err) {
@@ -369,28 +393,46 @@ export function ContentDetailPage() {
                 <Upload size={13} />
                 <span>{uploadingCreative ? 'Enviando...' : 'Enviar Criativo'}</span>
               </Button>
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUploadCreative} />
+              <input ref={fileInputRef} type="file" accept="image/*,video/mp4" className="hidden" onChange={handleUploadCreative} />
 
-              {(previewPlatform === 'FACEBOOK' || previewPlatform === 'INSTAGRAM') && (
-                connections.some((c) => c.platform === previewPlatform && c.status === 'ACTIVE') ? (
+              {(previewPlatform === 'FACEBOOK' || previewPlatform === 'INSTAGRAM' || previewPlatform === 'STORY') && (() => {
+                const targetPlatform = previewPlatform === 'STORY' ? 'INSTAGRAM_STORY' : previewPlatform
+                const connectionPlatform = previewPlatform === 'STORY' ? 'INSTAGRAM' : previewPlatform
+                return connections.some((c) => c.platform === connectionPlatform && c.status === 'ACTIVE') ? (
                   <Button
                     size="sm"
-                    onClick={() => handlePublish(previewPlatform)}
-                    loading={publishing === previewPlatform}
+                    onClick={() => handlePublish(targetPlatform)}
+                    loading={publishing === targetPlatform}
                     className="gap-1.5 ml-auto"
                   >
-                    {publishing !== previewPlatform && (
+                    {publishing !== targetPlatform && (
                       <>
                         <Send size={13} />
-                        <span>Publicar no {previewPlatform === 'FACEBOOK' ? 'Facebook' : 'Instagram'}</span>
+                        <span>Publicar {previewPlatform === 'STORY' ? 'Story no Instagram' : `no ${connectionPlatform === 'FACEBOOK' ? 'Facebook' : 'Instagram'}`}</span>
                       </>
                     )}
                   </Button>
                 ) : (
                   <span className="text-[11px] text-muted-foreground font-medium ml-auto">
-                    Conecte o {previewPlatform === 'FACEBOOK' ? 'Facebook' : 'Instagram'} em Configurações para publicar direto
+                    Conecte o {connectionPlatform === 'FACEBOOK' ? 'Facebook' : 'Instagram'} em Configurações para publicar direto
                   </span>
                 )
+              })()}
+
+              {previewPlatform === 'WHATSAPP' && (
+                <Button
+                  size="sm"
+                  onClick={handleSendWhatsAppContent}
+                  loading={sendingWhatsAppContent}
+                  className="gap-1.5 ml-auto"
+                >
+                  {!sendingWhatsAppContent && (
+                    <>
+                      <MessageCircle size={13} />
+                      <span>Enviar por WhatsApp</span>
+                    </>
+                  )}
+                </Button>
               )}
             </div>
           </Card>
