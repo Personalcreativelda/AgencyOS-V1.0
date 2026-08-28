@@ -22,6 +22,9 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/Select'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
+import { toast } from '@/lib/toast'
+import { confirmDialog } from '@/lib/confirm'
+import { getErrorMessage } from '@/lib/errors'
 
 // Built from wherever the app is actually running (works for localhost, staging, prod,
 // Coolify's auto-generated domain, a custom domain — no manual "figure out your API URL" step).
@@ -154,7 +157,7 @@ export function SocialConnectionsPage() {
     if (searchParams.get('social_connected')) {
       const cid = searchParams.get('clientId')
       if (cid) setSocialClientId(cid)
-      alert('Conta conectada com sucesso!')
+      toast.success('Conta conectada com sucesso!')
       setSearchParams({}, { replace: true })
     } else if (searchParams.get('social_select_page')) {
       const token = searchParams.get('token')
@@ -163,7 +166,7 @@ export function SocialConnectionsPage() {
       if (token) loadPendingPages(token)
       setSearchParams({}, { replace: true })
     } else if (searchParams.get('social_error')) {
-      alert('Não foi possível conectar a conta. Tente novamente.')
+      toast.error('Não foi possível conectar a conta', 'Tente novamente.')
       setSearchParams({}, { replace: true })
     }
   }, [searchParams])
@@ -177,7 +180,7 @@ export function SocialConnectionsPage() {
       setPagePickerClientId(data.clientId)
       setPagePickerToken(token)
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Não foi possível carregar as páginas encontradas. Tente conectar novamente.')
+      toast.error('Não foi possível carregar as páginas', getErrorMessage(err, 'Tente conectar novamente.'))
     } finally {
       setLoadingPendingPages(false)
     }
@@ -193,10 +196,10 @@ export function SocialConnectionsPage() {
     try {
       await api.post(`/social/meta/pending/${pagePickerToken}/confirm`, { pageIds: selectedPageIds })
       setPagePickerToken(null)
-      alert('Página(s) conectada(s) com sucesso!')
+      toast.success('Página(s) conectada(s) com sucesso!')
       if (pagePickerClientId) loadConnections(pagePickerClientId)
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao confirmar a seleção.')
+      toast.error('Erro ao confirmar a seleção', getErrorMessage(err))
     } finally {
       setConfirmingPageSelection(false)
     }
@@ -236,19 +239,25 @@ export function SocialConnectionsPage() {
       setMetaAppSecretInput('')
       setShowMetaModal(false)
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao salvar o Meta App.')
+      toast.error('Erro ao salvar o Meta App', getErrorMessage(err))
     } finally {
       setSavingMeta(false)
     }
   }
 
   const handleRemoveMetaSettings = async () => {
-    if (!confirm('Remover o Meta App? Você não vai conseguir conectar novas contas de Facebook/Instagram até reconfigurar.')) return
+    const ok = await confirmDialog({
+      title: 'Remover o Meta App?',
+      description: 'Você não vai conseguir conectar novas contas de Facebook/Instagram até reconfigurar.',
+      variant: 'destructive',
+      confirmLabel: 'Remover',
+    })
+    if (!ok) return
     try {
       const { data } = await api.delete('/social/meta/settings')
       setMetaSettings(data)
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao remover o Meta App.')
+      toast.error('Erro ao remover o Meta App', getErrorMessage(err))
     }
   }
 
@@ -267,7 +276,7 @@ export function SocialConnectionsPage() {
       const { data } = await api.get('/social/meta/connect', { params: { clientId: socialClientId } })
       window.location.href = data.authUrl
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao iniciar conexão com a Meta.')
+      toast.error('Erro ao iniciar conexão com a Meta', getErrorMessage(err))
       setConnectingMeta(false)
     }
   }
@@ -281,7 +290,7 @@ export function SocialConnectionsPage() {
       setWaQr(data.qrcode)
       setWaPolling(true)
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao conectar WhatsApp.')
+      toast.error('Erro ao conectar WhatsApp', getErrorMessage(err))
       setShowWaModal(false)
     } finally {
       setWaConnecting(false)
@@ -289,12 +298,18 @@ export function SocialConnectionsPage() {
   }
 
   const handleDisconnectWhatsapp = async () => {
-    if (!confirm('Desconectar o WhatsApp da agência? As aprovações deixarão de ser enviadas por WhatsApp até reconectar.')) return
+    const ok = await confirmDialog({
+      title: 'Desconectar o WhatsApp da agência?',
+      description: 'As aprovações deixarão de ser enviadas por WhatsApp até reconectar.',
+      variant: 'destructive',
+      confirmLabel: 'Desconectar',
+    })
+    if (!ok) return
     try {
       await api.post('/social/whatsapp/disconnect')
       setWaSettings({ configured: false, status: 'DISCONNECTED' })
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao desconectar WhatsApp.')
+      toast.error('Erro ao desconectar WhatsApp', getErrorMessage(err))
     }
   }
 
@@ -315,12 +330,12 @@ export function SocialConnectionsPage() {
   }, [waPolling])
 
   const handleDeleteConnection = async (connId: string) => {
-    if (!confirm('Desconectar esta conta?')) return
+    if (!(await confirmDialog({ title: 'Desconectar esta conta?', variant: 'destructive', confirmLabel: 'Desconectar' }))) return
     try {
       await api.delete(`/social/connections/${connId}`)
       setConnections(connections.filter((c) => c.id !== connId))
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao desconectar.')
+      toast.error('Erro ao desconectar', getErrorMessage(err))
     }
   }
 
@@ -351,7 +366,7 @@ export function SocialConnectionsPage() {
       setSmtpTestResult(null)
       setShowSmtpModal(false)
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao salvar as configurações de email.')
+      toast.error('Erro ao salvar as configurações de email', getErrorMessage(err))
     } finally {
       setSavingSmtp(false)
     }
@@ -379,12 +394,18 @@ export function SocialConnectionsPage() {
   }
 
   const handleRemoveSmtp = async () => {
-    if (!confirm('Remover a configuração de email? Links de aprovação deixarão de ser enviados por email.')) return
+    const ok = await confirmDialog({
+      title: 'Remover a configuração de email?',
+      description: 'Links de aprovação deixarão de ser enviados por email.',
+      variant: 'destructive',
+      confirmLabel: 'Remover',
+    })
+    if (!ok) return
     try {
       const { data } = await api.delete('/email/settings')
       setSmtpSettings(data)
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao remover as configurações de email.')
+      toast.error('Erro ao remover as configurações de email', getErrorMessage(err))
     }
   }
 
@@ -423,7 +444,7 @@ export function SocialConnectionsPage() {
 
             <CardContent className="space-y-2.5">
               {/* Meta App row */}
-              <div className="flex items-center justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div className="w-11 h-11 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
                     <Share2 size={19} />
@@ -453,7 +474,7 @@ export function SocialConnectionsPage() {
               </div>
 
               {/* WhatsApp row */}
-              <div className="flex items-center justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div className="w-11 h-11 rounded-2xl bg-[#25D366]/10 text-[#25D366] flex items-center justify-center shrink-0">
                     <MessageCircle size={19} />
@@ -486,7 +507,7 @@ export function SocialConnectionsPage() {
               </div>
 
               {/* Email (SMTP) row */}
-              <div className="flex items-center justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div className="w-11 h-11 rounded-2xl bg-info/10 text-info-dark flex items-center justify-center shrink-0">
                     <Mail size={19} />

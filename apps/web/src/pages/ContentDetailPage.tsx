@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Sparkles, Send, Copy, ImagePlus, Upload,
-  MessageSquare, Share2, Check, RefreshCw, Mail, MessageCircle, XCircle
+  MessageSquare, Share2, Check, RefreshCw, Mail, MessageCircle, XCircle, Trash2
 } from 'lucide-react'
 import api from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -18,9 +18,13 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/Dialog'
 import { SocialPreview, type SocialPlatform } from '@/components/SocialPreview'
 import { useThemeStore } from '@/stores/themeStore'
+import { toast } from '@/lib/toast'
+import { confirmDialog } from '@/lib/confirm'
+import { getErrorMessage } from '@/lib/errors'
 
 export function ContentDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { mode } = useThemeStore()
   const [content, setContent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -83,33 +87,47 @@ export function ContentDetailPage() {
 
   const handlePublish = async (platform: 'FACEBOOK' | 'INSTAGRAM' | 'INSTAGRAM_STORY') => {
     const label = PLATFORM_PUBLISH_LABEL[platform]
-    if (!confirm(`Publicar este conteúdo agora no ${label}? Isso vai ao ar imediatamente.`)) return
+    const ok = await confirmDialog({
+      title: `Publicar no ${label}?`,
+      description: 'Isso vai ao ar imediatamente.',
+      confirmLabel: 'Publicar',
+    })
+    if (!ok) return
     setPublishing(platform)
     try {
       const { data } = await api.post('/social/publish', { contentId: content.id, platform })
       if (data.externalPostUrl) {
-        if (confirm(`Publicado com sucesso! Abrir o post no ${label} pra conferir?`)) {
-          window.open(data.externalPostUrl, '_blank', 'noopener,noreferrer')
-        }
+        const openPost = await confirmDialog({
+          title: 'Publicado com sucesso!',
+          description: `Abrir o post no ${label} pra conferir?`,
+          confirmLabel: 'Abrir',
+          cancelLabel: 'Agora não',
+        })
+        if (openPost) window.open(data.externalPostUrl, '_blank', 'noopener,noreferrer')
       } else {
-        alert('Publicado com sucesso!')
+        toast.success('Publicado com sucesso!')
       }
       await loadContent()
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao publicar.')
+      toast.error('Erro ao publicar', getErrorMessage(err))
     } finally {
       setPublishing(null)
     }
   }
 
   const handleSendWhatsAppContent = async () => {
-    if (!confirm(`Enviar este criativo por WhatsApp para ${content.client?.name}?`)) return
+    const ok = await confirmDialog({
+      title: 'Enviar por WhatsApp?',
+      description: `Enviar este criativo por WhatsApp para ${content.client?.name}?`,
+      confirmLabel: 'Enviar',
+    })
+    if (!ok) return
     setSendingWhatsAppContent(true)
     try {
       await api.post('/social/whatsapp/send-content', { contentId: content.id })
-      alert('Enviado com sucesso!')
+      toast.success('Enviado com sucesso!')
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao enviar por WhatsApp.')
+      toast.error('Erro ao enviar por WhatsApp', getErrorMessage(err))
     } finally {
       setSendingWhatsAppContent(false)
     }
@@ -127,11 +145,28 @@ export function ContentDetailPage() {
         status: content.status,
         scheduledAt: content.scheduledAt,
       })
-      alert('Conteúdo salvo com sucesso!')
+      toast.success('Conteúdo salvo com sucesso!')
     } catch (err) {
-      alert('Erro ao salvar conteúdo.')
+      toast.error('Erro ao salvar conteúdo', getErrorMessage(err))
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDeleteContent = async () => {
+    const ok = await confirmDialog({
+      title: 'Excluir conteúdo?',
+      description: `"${content.title}" será removido do calendário e da lista de criativos. Essa ação não pode ser desfeita.`,
+      variant: 'destructive',
+      confirmLabel: 'Excluir',
+    })
+    if (!ok) return
+    try {
+      await api.delete(`/contents/${id}`)
+      toast.success('Conteúdo excluído.')
+      navigate('/app/content')
+    } catch (err) {
+      toast.error('Erro ao excluir conteúdo', getErrorMessage(err))
     }
   }
 
@@ -140,7 +175,7 @@ export function ContentDetailPage() {
       const { data } = await api.post(`/contents/${id}/change-status`, { status: newStatus })
       setContent({ ...content, status: data.status })
     } catch (err) {
-      alert('Erro ao alterar status.')
+      toast.error('Erro ao alterar status', getErrorMessage(err))
     }
   }
 
@@ -160,7 +195,7 @@ export function ContentDetailPage() {
         cta: data.cta || content.cta,
       })
     } catch (err) {
-      alert('Erro ao gerar legenda com IA.')
+      toast.error('Erro ao gerar legenda com IA', getErrorMessage(err))
     } finally {
       setGeneratingCaption(false)
     }
@@ -176,7 +211,7 @@ export function ContentDetailPage() {
       })
       setAiHooks(data.hooks || [])
     } catch (err) {
-      alert('Erro ao gerar hooks.')
+      toast.error('Erro ao gerar hooks', getErrorMessage(err))
     } finally {
       setGeneratingHooks(false)
     }
@@ -194,7 +229,7 @@ export function ContentDetailPage() {
       })
       await loadContent()
     } catch (err) {
-      alert('Erro ao gerar proposta de imagem com IA.')
+      toast.error('Erro ao gerar proposta de imagem com IA', getErrorMessage(err))
     } finally {
       setGeneratingImage(false)
     }
@@ -212,7 +247,7 @@ export function ContentDetailPage() {
       await api.post('/assets/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
       await loadContent()
     } catch (err) {
-      alert('Erro ao enviar o criativo.')
+      toast.error('Erro ao enviar o criativo', getErrorMessage(err))
     } finally {
       setUploadingCreative(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -232,7 +267,7 @@ export function ContentDetailPage() {
       setApprovalModal(true)
       setContent({ ...content, status: 'CLIENT_REVIEW' })
     } catch (err) {
-      alert('Erro ao gerar link de aprovação.')
+      toast.error('Erro ao gerar link de aprovação', getErrorMessage(err))
     }
   }
 
@@ -244,7 +279,7 @@ export function ContentDetailPage() {
       setComments([...comments, data])
       setNewComment('')
     } catch (err) {
-      alert('Erro ao adicionar comentário.')
+      toast.error('Erro ao adicionar comentário', getErrorMessage(err))
     }
   }
 
@@ -349,6 +384,10 @@ export function ContentDetailPage() {
             {!saving && <span>Salvar Alterações</span>}
             {saving && <span>Salvando...</span>}
           </Button>
+
+          <Button variant="ghost" size="icon" title="Excluir conteúdo" onClick={handleDeleteContent} className="hover:text-error hover:bg-error/10">
+            <Trash2 size={16} />
+          </Button>
         </div>
       </div>
 
@@ -372,6 +411,7 @@ export function ContentDetailPage() {
               caption={content.caption}
               cta={content.cta}
               image={primaryImage}
+              generating={generatingImage}
               value={previewPlatform}
               onChange={setPreviewPlatform}
               dark={mode === 'dark'}
@@ -511,7 +551,7 @@ export function ContentDetailPage() {
                     key={i}
                     variant="ghost"
                     onClick={() => setContent({ ...content, hook: h })}
-                    className="w-full justify-start text-left h-auto p-3 bg-muted hover:bg-primary/10 text-foreground hover:text-primary border border-border"
+                    className="w-full justify-start text-left h-auto p-3 whitespace-normal break-words bg-muted hover:bg-primary/10 text-foreground hover:text-primary border border-border"
                   >
                     "{h}"
                   </Button>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Sparkles, Globe, ThumbsUp, MessageCircle, Share2, Heart, Send, Bookmark, MoreHorizontal,
-  Phone, Video, CheckCheck, ChevronLeft,
+  Phone, Video, CheckCheck, ChevronLeft, Loader2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/Badge'
@@ -17,6 +17,10 @@ interface SocialPreviewProps {
   caption?: string | null
   cta?: string | null
   image?: { publicUrl: string } | null
+  /** true while the AI is generating/regenerating the creative image — shows a loading
+   *  animation over the preview so it's obvious the process is still running (instead of
+   *  the person navigating away thinking it silently finished or failed). */
+  generating?: boolean
   defaultPlatform?: SocialPlatform
   /** Controlled mode — pass both to let the parent know/drive which tab is active
    *  (e.g. the workspace uses this to show a matching "Publicar no X" button). */
@@ -36,9 +40,29 @@ const PLATFORMS: { value: SocialPlatform; label: string }[] = [
 
 // Fixed slate tones (not our theme-reactive `grey`) — this simulates a real phone screenshot,
 // so it must look the same regardless of whether the surrounding app is in light or dark mode.
+function GeneratingOverlay({ overImage }: { overImage: boolean }) {
+  return (
+    <div
+      className={cn(
+        'absolute inset-0 flex flex-col items-center justify-center gap-2.5 text-center px-4',
+        overImage ? 'bg-[#000]/60 backdrop-blur-sm' : ''
+      )}
+    >
+      <div className="relative w-12 h-12 flex items-center justify-center">
+        <span className="absolute inset-0 rounded-full bg-primary/30 animate-ping" />
+        <div className="relative w-12 h-12 rounded-full bg-[#fff]/10 flex items-center justify-center backdrop-blur-md border border-[#fff]/20">
+          <Loader2 size={20} className="text-primary-light animate-spin" />
+        </div>
+      </div>
+      <p className="text-xs font-extrabold text-[#fff]">Gerando criativo com IA...</p>
+      <p className="text-[10px] text-slate-300 font-medium">Isso pode levar até 1 minuto — não feche esta página.</p>
+    </div>
+  )
+}
+
 function PreviewMedia({
-  image, title, hook, aspect, fill,
-}: { image: { publicUrl: string } | null; title: string; hook?: string | null; aspect?: string; fill?: boolean }) {
+  image, title, hook, aspect, fill, generating,
+}: { image: { publicUrl: string } | null; title: string; hook?: string | null; aspect?: string; fill?: boolean; generating?: boolean }) {
   const wrapperClass = fill ? 'absolute inset-0' : `relative w-full ${aspect || ''}`
 
   if (image) {
@@ -46,17 +70,24 @@ function PreviewMedia({
       <div className={`${wrapperClass} overflow-hidden`}>
         <img src={image.publicUrl} alt={title} className="w-full h-full object-cover" />
         {!fill && <Badge variant="primary" className="absolute top-2.5 left-2.5">Criativo</Badge>}
+        {generating && <GeneratingOverlay overImage />}
       </div>
     )
   }
 
   return (
     <div className={`${wrapperClass} bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center p-6 text-center text-[#fff]`}>
-      <div className="w-14 h-14 rounded-2xl bg-[#fff]/10 flex items-center justify-center mb-3 backdrop-blur-md border border-[#fff]/20">
-        <Sparkles size={24} className="text-primary-light" />
-      </div>
-      <p className="text-sm font-extrabold max-w-xs">{title}</p>
-      {hook && <p className="text-xs text-slate-300 mt-2 italic max-w-xs font-medium">"{hook}"</p>}
+      {generating ? (
+        <GeneratingOverlay overImage={false} />
+      ) : (
+        <>
+          <div className="w-14 h-14 rounded-2xl bg-[#fff]/10 flex items-center justify-center mb-3 backdrop-blur-md border border-[#fff]/20">
+            <Sparkles size={24} className="text-primary-light" />
+          </div>
+          <p className="text-sm font-extrabold max-w-xs">{title}</p>
+          {hook && <p className="text-xs text-slate-300 mt-2 italic max-w-xs font-medium">"{hook}"</p>}
+        </>
+      )}
     </div>
   )
 }
@@ -74,7 +105,7 @@ function renderCaption(caption?: string | null) {
 }
 
 export function SocialPreview({
-  clientName, clientLogoUrl, title, hook, caption, cta, image = null,
+  clientName, clientLogoUrl, title, hook, caption, cta, image = null, generating = false,
   defaultPlatform = 'INSTAGRAM', value, onChange, dark = false,
 }: SocialPreviewProps) {
   const [internalPlatform, setInternalPlatform] = useState<SocialPlatform>(defaultPlatform)
@@ -120,7 +151,7 @@ export function SocialPreview({
             <MoreHorizontal size={18} className="text-slate-700" />
           </div>
 
-          <PreviewMedia image={image} title={title} hook={hook} aspect="aspect-square" />
+          <PreviewMedia image={image} title={title} hook={hook} aspect="aspect-square" generating={generating} />
 
           <div className="flex items-center justify-between px-3.5 pt-3">
             <div className="flex items-center gap-3.5 text-slate-800">
@@ -163,7 +194,7 @@ export function SocialPreview({
             {renderCaption(caption)}
           </div>
 
-          <PreviewMedia image={image} title={title} hook={hook} aspect="aspect-square" />
+          <PreviewMedia image={image} title={title} hook={hook} aspect="aspect-square" generating={generating} />
 
           <div className="flex items-center gap-1.5 px-3.5 py-2 text-[11px] text-slate-500 font-medium border-b border-slate-100">
             <span className="w-4 h-4 rounded-full bg-[#1877F2] flex items-center justify-center shrink-0">
@@ -195,7 +226,7 @@ export function SocialPreview({
             <span className="text-[10px] text-[#fff]/70">agora</span>
           </div>
 
-          <PreviewMedia image={image} title={title} hook={hook} fill />
+          <PreviewMedia image={image} title={title} hook={hook} fill generating={generating} />
 
           <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-[#000]/70 via-[#000]/20 to-transparent">
             {hook && <p className="text-[11px] text-[#fff]/90 italic mb-1 line-clamp-2">"{hook}"</p>}
@@ -226,7 +257,7 @@ export function SocialPreview({
             style={{ backgroundColor: '#E5DDD5' }}
           >
             <div className="ml-auto max-w-[80%] rounded-xl rounded-tr-sm overflow-hidden shadow-z1" style={{ backgroundColor: '#DCF8C6' }}>
-              <PreviewMedia image={image} title={title} hook={hook} aspect="aspect-square" />
+              <PreviewMedia image={image} title={title} hook={hook} aspect="aspect-square" generating={generating} />
               <div className="px-2.5 pt-1.5 pb-1 space-y-1">
                 <p className="text-[13px] text-slate-800 leading-snug whitespace-pre-line font-medium">
                   {caption || title}

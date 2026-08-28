@@ -29,8 +29,14 @@ export async function create(req: AuthRequest, res: Response, next: NextFunction
     if (!clientId || !name || !month || !year) {
       return res.status(400).json({ error: 'clientId, name, month, year are required' });
     }
-    const calendar = await prisma.contentCalendar.create({
-      data: {
+    // A client can only have one calendar per month/year (`@@unique([clientId, month, year])`).
+    // Upsert instead of a bare create so re-generating a month (e.g. running the AI calendar
+    // generator again after adding more posts) reuses the existing calendar instead of failing
+    // on the unique constraint.
+    const calendar = await prisma.contentCalendar.upsert({
+      where: { clientId_month_year: { clientId, month: Number(month), year: Number(year) } },
+      update: { name, strategyId },
+      create: {
         agencyId: req.user!.agencyId,
         clientId,
         name,

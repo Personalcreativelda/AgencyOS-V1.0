@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import app from './app';
 import { startScheduledPublisher } from './jobs/scheduledPublisher';
+import { startAdsSync } from './jobs/adsSync';
 
 const PORT = process.env.PORT || 3001;
 
@@ -12,6 +13,7 @@ app.listen(PORT, () => {
   console.log(`\n📡 API base: http://localhost:${PORT}/api/v1\n`);
 
   startScheduledPublisher();
+  startAdsSync();
 });
 
 process.on('unhandledRejection', (reason, promise) => {

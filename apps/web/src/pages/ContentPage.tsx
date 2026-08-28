@@ -6,7 +6,7 @@ import {
 import { format, addMonths, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
-  Plus, FileText, ChevronRight, ChevronLeft, AlertCircle, List, LayoutGrid,
+  Plus, FileText, ChevronRight, ChevronLeft, AlertCircle, List, LayoutGrid, Trash2,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -22,8 +22,12 @@ import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/u
 import { CalendarMonthView } from '@/components/planner/CalendarMonthView'
 import { BoardView } from '@/components/planner/BoardView'
 import { PlatformIcon } from '@/components/planner/PlatformIcon'
+import { PlatformPicker } from '@/components/planner/PlatformPicker'
 import { ContentGridTile } from '@/components/planner/ContentGridTile'
 import { getPrimaryImage, getMonthGridRange, dateKey, capitalize } from '@/components/planner/plannerUtils'
+import { toast } from '@/lib/toast'
+import { confirmDialog } from '@/lib/confirm'
+import { getErrorMessage } from '@/lib/errors'
 
 const ALL_CLIENTS = 'ALL'
 const ALL_STATUS = 'ALL'
@@ -72,6 +76,7 @@ export function ContentPage({ view }: ContentPageProps) {
     contentType: 'IMAGE',
     brief: '',
     scheduledAt: '',
+    platforms: ['INSTAGRAM'] as string[],
   })
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
@@ -143,12 +148,31 @@ export function ContentPage({ view }: ContentPageProps) {
         contentType: newContent.contentType,
         brief: newContent.brief,
         scheduledAt: newContent.scheduledAt ? new Date(newContent.scheduledAt).toISOString() : undefined,
-        platforms: ['INSTAGRAM', 'FACEBOOK'],
+        platforms: newContent.platforms.length ? newContent.platforms : ['INSTAGRAM'],
       })
       setShowModal(false)
       window.location.href = `/app/content/${data.id}`
     } catch (err) {
-      alert('Erro ao criar conteúdo.')
+      toast.error('Erro ao criar conteúdo', getErrorMessage(err))
+    }
+  }
+
+  const handleDeleteContent = async (contentId: string, title: string) => {
+    const ok = await confirmDialog({
+      title: 'Excluir conteúdo?',
+      description: `"${title}" será removido do calendário e da lista de criativos. Essa ação não pode ser desfeita.`,
+      variant: 'destructive',
+      confirmLabel: 'Excluir',
+    })
+    if (!ok) return
+    const prevContents = contents
+    setContents((cs) => cs.filter((c) => c.id !== contentId))
+    try {
+      await api.delete(`/contents/${contentId}`)
+      toast.success('Conteúdo excluído.')
+    } catch (err) {
+      setContents(prevContents)
+      toast.error('Erro ao excluir conteúdo', getErrorMessage(err))
     }
   }
 
@@ -165,7 +189,11 @@ export function ContentPage({ view }: ContentPageProps) {
       if (newKey === oldKey) return
       if (content.status === 'SCHEDULED') {
         const label = new Date(`${newKey}T00:00:00`).toLocaleDateString('pt-BR')
-        if (!confirm(`"${content.title}" já está agendado. Reagendar publicação para ${label}?`)) return
+        const ok = await confirmDialog({
+          title: 'Reagendar publicação?',
+          description: `"${content.title}" já está agendado. Reagendar publicação para ${label}?`,
+        })
+        if (!ok) return
       }
       const prevTime = content.scheduledAt ? new Date(content.scheduledAt) : null
       const newDate = new Date(`${newKey}T00:00:00`)
@@ -176,9 +204,9 @@ export function ContentPage({ view }: ContentPageProps) {
       setContents((cs) => cs.map((c) => (c.id === content.id ? { ...c, scheduledAt: newDate.toISOString() } : c)))
       try {
         await api.patch(`/contents/${content.id}`, { scheduledAt: newDate.toISOString() })
-      } catch {
+      } catch (err) {
         setContents(prevContents)
-        alert('Erro ao reagendar conteúdo.')
+        toast.error('Erro ao reagendar conteúdo', getErrorMessage(err))
       }
     } else if (overId.startsWith('status:')) {
       const newStatus = overId.slice(7)
@@ -187,9 +215,9 @@ export function ContentPage({ view }: ContentPageProps) {
       setContents((cs) => cs.map((c) => (c.id === content.id ? { ...c, status: newStatus } : c)))
       try {
         await api.post(`/contents/${content.id}/change-status`, { status: newStatus })
-      } catch {
+      } catch (err) {
         setContents(prevContents)
-        alert('Erro ao alterar status.')
+        toast.error('Erro ao alterar status', getErrorMessage(err))
       }
     }
   }
@@ -323,7 +351,12 @@ export function ContentPage({ view }: ContentPageProps) {
             ) : listDisplay === 'grid' ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 {contents.map((item) => (
-                  <ContentGridTile key={item.id} content={item} onClick={() => navigate(`/app/content/${item.id}`)} />
+                  <ContentGridTile
+                    key={item.id}
+                    content={item}
+                    onClick={() => navigate(`/app/content/${item.id}`)}
+                    onDelete={() => handleDeleteContent(item.id, item.title)}
+                  />
                 ))}
               </div>
             ) : (
@@ -366,8 +399,16 @@ export function ContentPage({ view }: ContentPageProps) {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4 shrink-0">
+                      <div className="flex items-center gap-3 shrink-0">
                         <StatusBadge status={item.status} />
+                        <button
+                          type="button"
+                          title="Excluir conteúdo"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteContent(item.id, item.title) }}
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
+                        >
+                          <Trash2 size={15} />
+                        </button>
                         <ChevronRight size={18} className="text-muted-foreground group-hover:text-foreground transition-colors" />
                       </div>
                     </div>
@@ -440,6 +481,14 @@ export function ContentPage({ view }: ContentPageProps) {
                   <SelectItem value="VIDEO">Vídeo Longo</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div>
+              <Label>Redes Sociais *</Label>
+              <PlatformPicker
+                value={newContent.platforms}
+                onChange={(platforms) => setNewContent({ ...newContent, platforms })}
+              />
             </div>
 
             <div>

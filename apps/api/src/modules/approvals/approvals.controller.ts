@@ -110,6 +110,19 @@ export async function listApprovals(req: AuthRequest, res: Response, next: NextF
   } catch (err) { next(err); }
 }
 
+export async function deleteApproval(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { id } = req.params;
+    const approval = await prisma.approvalRequest.findFirst({ where: { id, agencyId: req.user!.agencyId } });
+    if (!approval) throw new NotFoundError('Approval request not found');
+
+    // Only removes this link's own record (and its ApprovalAction history, cascaded at the DB
+    // level) — it never touches the Content it was generated for.
+    await prisma.approvalRequest.delete({ where: { id } });
+    res.status(204).send();
+  } catch (err) { next(err); }
+}
+
 // PUBLIC PORTAL ROUTES
 async function getValidApproval(token: string) {
   const approval = await prisma.approvalRequest.findUnique({

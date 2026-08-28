@@ -14,6 +14,8 @@ import { Badge } from '@/components/ui/Badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
 import { SocialPreview } from '@/components/SocialPreview'
 import { useThemeStore } from '@/stores/themeStore'
+import { toast } from '@/lib/toast'
+import { getErrorMessage } from '@/lib/errors'
 
 export function ApprovalPortalPage() {
   const { token } = useParams<{ token: string }>()
@@ -54,7 +56,7 @@ export function ApprovalPortalPage() {
       })
       setActionDone('APPROVED')
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao aprovar.')
+      toast.error('Erro ao aprovar', getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -63,7 +65,7 @@ export function ApprovalPortalPage() {
   const handleRequestChanges = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!comment.trim()) {
-      alert('Por favor, descreva as alterações desejadas.')
+      toast.error('Descreva as alterações desejadas', 'O campo de comentário é obrigatório para solicitar alterações.')
       return
     }
     setSubmitting(true)
@@ -75,7 +77,7 @@ export function ApprovalPortalPage() {
       setActionDone('CHANGES_REQUESTED')
       setShowChangesModal(false)
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao solicitar alterações.')
+      toast.error('Erro ao solicitar alterações', getErrorMessage(err))
     } finally {
       setSubmitting(false)
     }

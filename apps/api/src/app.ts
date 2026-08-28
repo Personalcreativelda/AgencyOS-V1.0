@@ -20,6 +20,7 @@ import reportRoutes from './modules/reports/reports.routes';
 import notificationRoutes from './modules/notifications/notifications.routes';
 import socialRoutes from './modules/social/social.routes';
 import emailRoutes from './modules/email/email.routes';
+import adsRoutes from './modules/ads/ads.routes';
 
 // Middleware
 import { errorHandler } from './common/middleware/errorHandler';
@@ -82,6 +83,7 @@ app.use(`${api}/reports`, reportRoutes);
 app.use(`${api}/notifications`, notificationRoutes);
 app.use(`${api}/social`, socialRoutes);
 app.use(`${api}/email`, emailRoutes);
+app.use(`${api}/ads`, adsRoutes);
 
 // Error handling
 app.use(notFound);

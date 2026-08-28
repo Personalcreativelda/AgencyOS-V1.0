@@ -22,6 +22,9 @@ import {
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/Select'
+import { toast } from '@/lib/toast'
+import { confirmDialog } from '@/lib/confirm'
+import { getErrorMessage } from '@/lib/errors'
 
 const AI_PROVIDERS = [
   { value: 'openai', label: 'OpenAI' },
@@ -36,8 +39,8 @@ const TEXT_MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]
     { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
   ],
   gemini: [
-    { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (rápido e barato)' },
-    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (mais qualidade)' },
+    { value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash (rápido e barato)' },
+    { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (mais qualidade)' },
   ],
   anthropic: [
     { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (rápido e barato)' },
@@ -69,9 +72,13 @@ export function SettingsPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState('MANAGER')
 
-  // AI integration
-  const [aiSettings, setAiSettings] = useState<any>(null)
+  // AI integrations — an agency can connect several providers at once (OpenAI, Gemini,
+  // Anthropic) and assign which one handles text tasks vs image tasks.
+  const [aiProviders, setAiProviders] = useState<any[]>([])
+  const [aiRouting, setAiRouting] = useState<{ textProvider: string | null; imageProvider: string | null }>({ textProvider: null, imageProvider: null })
+  const [savingRouting, setSavingRouting] = useState(false)
   const [showAiModal, setShowAiModal] = useState(false)
+  const [editingProvider, setEditingProvider] = useState<string | null>(null) // null = connecting a new provider
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
   const [aiProvider, setAiProvider] = useState('openai')
@@ -81,20 +88,25 @@ export function SettingsPage() {
   const [testingAi, setTestingAi] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
 
+  const connectedProviderValues = aiProviders.map((p) => p.provider)
+  const availableToAdd = AI_PROVIDERS.filter((p) => !connectedProviderValues.includes(p.value))
+
+  const loadAiSettings = async () => {
+    const { data } = await api.get('/ai/settings')
+    setAiProviders(data.providers || [])
+    setAiRouting({ textProvider: data.textProvider || null, imageProvider: data.imageProvider || null })
+  }
+
   useEffect(() => {
     async function load() {
       try {
-        const [agRes, memRes, aiRes] = await Promise.all([
+        const [agRes, memRes] = await Promise.all([
           api.get('/agencies/current'),
           api.get('/agencies/current/members'),
-          api.get('/ai/settings'),
         ])
         setAgency(agRes.data)
         setMembers(memRes.data || [])
-        setAiSettings(aiRes.data)
-        setAiProvider(aiRes.data.provider || 'openai')
-        setTextModel(aiRes.data.textModel || 'gpt-4o-mini')
-        setImageModel(aiRes.data.imageModel || 'gpt-image-1')
+        await loadAiSettings()
       } catch (err) {
         console.error(err)
       } finally {
@@ -112,16 +124,21 @@ export function SettingsPage() {
       const { data } = await api.post('/ai/settings/test', { apiKey: apiKeyInput.trim(), provider: aiProvider, textModel })
       setTestResult({ success: true, message: `Conectado com sucesso ao modelo ${data.model}.` })
     } catch (err: any) {
-      setTestResult({ success: false, message: err.response?.data?.error || 'Não foi possível conectar com essa chave.' })
+      setTestResult({ success: false, message: getErrorMessage(err, 'Não foi possível conectar com essa chave.') })
     } finally {
       setTestingAi(false)
     }
   }
 
-  const openAiModal = () => {
+  const openAiModal = (provider?: string) => {
+    const existing = provider ? aiProviders.find((p) => p.provider === provider) : null
+    const initialProvider = provider || availableToAdd[0]?.value || 'openai'
+    setEditingProvider(provider || null)
     setApiKeyInput('')
     setTestResult(null)
-    setAiProvider(aiSettings?.provider || 'openai')
+    setAiProvider(initialProvider)
+    setTextModel(existing?.textModel || TEXT_MODELS_BY_PROVIDER[initialProvider][0].value)
+    setImageModel(existing?.imageModel || IMAGE_MODELS_BY_PROVIDER[initialProvider][0]?.value || '')
     setShowAiModal(true)
   }
 
@@ -137,25 +154,48 @@ export function SettingsPage() {
     if (!apiKeyInput.trim()) return
     setSavingAi(true)
     try {
-      const { data } = await api.put('/ai/settings', { apiKey: apiKeyInput.trim(), provider: aiProvider, textModel, imageModel: imageModel || undefined })
-      setAiSettings(data)
+      await api.put('/ai/settings', { apiKey: apiKeyInput.trim(), provider: aiProvider, textModel, imageModel: imageModel || undefined })
+      await loadAiSettings()
       setApiKeyInput('')
       setTestResult(null)
       setShowAiModal(false)
+      toast.success(`${AI_PROVIDERS.find((p) => p.value === aiProvider)?.label} conectado!`)
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao salvar a integração de IA.')
+      toast.error('Erro ao salvar a integração de IA', getErrorMessage(err))
     } finally {
       setSavingAi(false)
     }
   }
 
-  const handleRemoveAi = async () => {
-    if (!confirm('Remover a integração de IA? O sistema volta a usar o provedor padrão do servidor (ou respostas mock).')) return
+  const handleRemoveAi = async (provider: string) => {
+    const ok = await confirmDialog({
+      title: `Remover ${AI_PROVIDERS.find((p) => p.value === provider)?.label}?`,
+      description: 'Tarefas apontadas para esse provedor passam a usar outro conectado (ou o padrão do servidor, se nenhum sobrar).',
+      variant: 'destructive',
+      confirmLabel: 'Remover',
+    })
+    if (!ok) return
     try {
-      const { data } = await api.delete('/ai/settings')
-      setAiSettings(data)
+      await api.delete(`/ai/settings/${provider}`)
+      await loadAiSettings()
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao remover a integração de IA.')
+      toast.error('Erro ao remover a integração de IA', getErrorMessage(err))
+    }
+  }
+
+  const handleChangeRouting = async (task: 'textProvider' | 'imageProvider', value: string) => {
+    const next = { ...aiRouting, [task]: value }
+    setAiRouting(next)
+    setSavingRouting(true)
+    try {
+      const { data } = await api.put('/ai/settings/routing', next)
+      setAiRouting({ textProvider: data.textProvider || null, imageProvider: data.imageProvider || null })
+      toast.success('Roteamento de IA atualizado!')
+    } catch (err: any) {
+      await loadAiSettings() // revert to server state
+      toast.error('Erro ao atualizar o roteamento', getErrorMessage(err))
+    } finally {
+      setSavingRouting(false)
     }
   }
 
@@ -164,8 +204,8 @@ export function SettingsPage() {
       const { publicUrl } = await uploadFile(file)
       const { data } = await api.patch('/agencies/current', { logoUrl: publicUrl })
       setAgency(data)
-    } catch {
-      alert('Erro ao enviar o logotipo da agência.')
+    } catch (err) {
+      toast.error('Erro ao enviar o logotipo da agência', getErrorMessage(err))
     }
   }
 
@@ -179,19 +219,20 @@ export function SettingsPage() {
       setMembers([...members, data])
       setShowInviteModal(false)
       setInviteEmail('')
-      alert('Membro adicionado com sucesso!')
+      toast.success('Membro adicionado com sucesso!')
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao convidar membro.')
+      toast.error('Erro ao convidar membro', getErrorMessage(err))
     }
   }
 
   const handleRemoveMember = async (memberId: string) => {
-    if (!confirm('Deseja remover este membro da agência?')) return
+    const ok = await confirmDialog({ title: 'Remover este membro da agência?', variant: 'destructive', confirmLabel: 'Remover' })
+    if (!ok) return
     try {
       await api.delete(`/agencies/current/members/${memberId}`)
       setMembers(members.filter((m) => m.id !== memberId))
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao remover membro.')
+      toast.error('Erro ao remover membro', getErrorMessage(err))
     }
   }
 
@@ -270,7 +311,7 @@ export function SettingsPage() {
           {members.map((member) => (
             <div
               key={member.id}
-              className="flex items-center justify-between p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors"
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors"
             >
               <div className="flex items-center gap-3.5 min-w-0">
                 <Avatar className="h-10 w-10 shrink-0">
@@ -299,44 +340,112 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* AI Integration */}
+      {/* AI Integrations */}
       <Card>
         <CardHeader>
-          <CardTitle>Integrações</CardTitle>
-          <CardDescription>Credenciais únicas da agência</CardDescription>
+          <div>
+            <CardTitle>Integrações de IA</CardTitle>
+            <CardDescription>Conecte quantos provedores quiser e escolha quem faz o quê</CardDescription>
+          </div>
+
+          {availableToAdd.length > 0 && (
+            <Button size="sm" variant="outline" onClick={() => openAiModal()}>
+              <Plus size={14} />
+              <span>Conectar Provedor</span>
+            </Button>
+          )}
         </CardHeader>
 
-        <CardContent>
-          <div className="flex items-center justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary-dark flex items-center justify-center shrink-0">
-                <Sparkles size={19} />
+        <CardContent className="space-y-2">
+          {aiProviders.length === 0 ? (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 rounded-2xl border border-border">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary-dark flex items-center justify-center shrink-0">
+                  <Sparkles size={19} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-extrabold text-foreground truncate">Nenhum provedor conectado</p>
+                  <p className="text-[11px] text-muted-foreground font-medium truncate">Sem chave própria, o app usa o padrão do servidor (ou respostas mock).</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-extrabold text-foreground truncate">Integração de IA</p>
-                <p className="text-[11px] text-muted-foreground font-medium truncate">
-                  {aiSettings?.configured
-                    ? `${AI_PROVIDERS.find((p) => p.value === aiSettings.provider)?.label || aiSettings.provider} — Chave: ${aiSettings.apiKeyMasked}`
-                    : 'Chave própria para gerar legendas, estratégias e imagens'}
+              <Button size="sm" onClick={() => openAiModal()}>
+                <Plus size={14} />
+                <span>Conectar Provedor</span>
+              </Button>
+            </div>
+          ) : (
+            aiProviders.map((p) => (
+              <div
+                key={p.provider}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary-dark flex items-center justify-center shrink-0">
+                    <Sparkles size={19} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-extrabold text-foreground truncate">{AI_PROVIDERS.find((a) => a.value === p.provider)?.label || p.provider}</p>
+                    <p className="text-[11px] text-muted-foreground font-medium truncate">
+                      Chave: {p.apiKeyMasked} • {TEXT_MODELS_BY_PROVIDER[p.provider]?.find((m) => m.value === p.textModel)?.label || p.textModel}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  {aiRouting.textProvider === p.provider && <Badge variant="success">Texto</Badge>}
+                  {aiRouting.imageProvider === p.provider && <Badge variant="success">Imagem</Badge>}
+                  <Button type="button" variant="outline" size="sm" onClick={() => openAiModal(p.provider)}>
+                    <span>Editar</span>
+                  </Button>
+                  <button
+                    onClick={() => handleRemoveAi(p.provider)}
+                    className="p-1.5 text-muted-foreground hover:text-error rounded-lg transition-colors"
+                    title="Remover"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+
+          {aiProviders.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <div>
+                <Label className="normal-case tracking-normal font-bold text-grey-600 mb-1">Provedor para tarefas de texto</Label>
+                <Select
+                  value={aiRouting.textProvider || ''}
+                  onValueChange={(v) => handleChangeRouting('textProvider', v)}
+                  disabled={savingRouting}
+                >
+                  <SelectTrigger><SelectValue placeholder="Escolha um provedor" /></SelectTrigger>
+                  <SelectContent>
+                    {aiProviders.map((p) => (
+                      <SelectItem key={p.provider} value={p.provider}>{AI_PROVIDERS.find((a) => a.value === p.provider)?.label || p.provider}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground font-medium mt-1.5">Calendário, legendas, hooks, Brand Brain, feedback...</p>
+              </div>
+              <div>
+                <Label className="normal-case tracking-normal font-bold text-grey-600 mb-1">Provedor para tarefas de imagem</Label>
+                <Select
+                  value={aiRouting.imageProvider || ''}
+                  onValueChange={(v) => handleChangeRouting('imageProvider', v)}
+                  disabled={savingRouting}
+                >
+                  <SelectTrigger><SelectValue placeholder="Escolha um provedor" /></SelectTrigger>
+                  <SelectContent>
+                    {aiProviders.filter((p) => p.imageCapable).map((p) => (
+                      <SelectItem key={p.provider} value={p.provider}>{AI_PROVIDERS.find((a) => a.value === p.provider)?.label || p.provider}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground font-medium mt-1.5">
+                  {aiProviders.some((p) => p.imageCapable) ? 'Geração de criativos e análise de referências visuais.' : 'Conecte OpenAI ou Gemini para gerar imagens.'}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {aiSettings?.configured ? <Badge variant="success">Conectado</Badge> : <Badge variant="default">Não configurado</Badge>}
-              <Button type="button" variant="outline" size="sm" onClick={openAiModal}>
-                <span>{aiSettings?.configured ? 'Editar' : 'Configurar'}</span>
-              </Button>
-              {aiSettings?.configured && (
-                <button
-                  onClick={handleRemoveAi}
-                  className="p-1.5 text-muted-foreground hover:text-error rounded-lg transition-colors"
-                  title="Remover"
-                >
-                  <Trash2 size={15} />
-                </button>
-              )}
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -349,7 +458,7 @@ export function SettingsPage() {
                 <Sparkles size={20} />
               </div>
               <div>
-                <DialogTitle>{aiSettings?.configured ? 'Editar Integração de IA' : 'Configurar Integração de IA'}</DialogTitle>
+                <DialogTitle>{editingProvider ? `Editar ${AI_PROVIDERS.find((p) => p.value === editingProvider)?.label}` : 'Conectar Provedor de IA'}</DialogTitle>
                 <DialogDescription>Conecte sua própria chave de API para gerar legendas, estratégias e propostas de imagem</DialogDescription>
               </div>
             </div>
@@ -358,16 +467,16 @@ export function SettingsPage() {
           <form onSubmit={handleSaveAi} className="space-y-4">
             <div>
               <Label htmlFor="aiProvider">Provedor</Label>
-              <Select value={aiProvider} onValueChange={handleChangeProvider}>
+              <Select value={aiProvider} onValueChange={handleChangeProvider} disabled={!!editingProvider}>
                 <SelectTrigger id="aiProvider"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {AI_PROVIDERS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                  {(editingProvider ? AI_PROVIDERS : availableToAdd).map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="apiKey">{aiSettings?.configured ? 'Substituir chave de API' : `Chave de API — ${AI_PROVIDERS.find((p) => p.value === aiProvider)?.label}`}</Label>
+              <Label htmlFor="apiKey">{editingProvider ? 'Substituir chave de API' : `Chave de API — ${AI_PROVIDERS.find((p) => p.value === aiProvider)?.label}`}</Label>
               <Input
                 id="apiKey"
                 type={showApiKey ? 'text' : 'password'}

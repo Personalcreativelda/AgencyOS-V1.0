@@ -9,6 +9,7 @@ router.post('/contents/:contentId/request', authenticate, ctrl.requestApproval);
 router.post('/contents/:contentId/send-email', authenticate, ctrl.sendApprovalEmailManual);
 router.post('/contents/:contentId/send-whatsapp', authenticate, ctrl.sendApprovalWhatsAppManual);
 router.get('/', authenticate, ctrl.listApprovals);
+router.delete('/:id', authenticate, ctrl.deleteApproval);
 
 // Public routes (client portal - token based, no auth)
 router.get('/portal/:token', ctrl.getPortal);

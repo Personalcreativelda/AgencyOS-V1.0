@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Label } from '@/components/ui/Label'
 import { UploadableAvatar } from '@/components/ui/UploadableAvatar'
+import { toast } from '@/lib/toast'
+import { getErrorMessage } from '@/lib/errors'
 
 export function NewClientPage() {
   const navigate = useNavigate()
@@ -30,8 +32,8 @@ export function NewClientPage() {
     try {
       const { publicUrl } = await uploadFile(file)
       setFormData((prev) => ({ ...prev, logoUrl: publicUrl }))
-    } catch {
-      alert('Erro ao enviar o logotipo.')
+    } catch (err) {
+      toast.error('Erro ao enviar o logotipo', getErrorMessage(err))
     }
   }
 
@@ -42,7 +44,7 @@ export function NewClientPage() {
       const { data } = await api.post('/clients', formData)
       navigate(`/app/clients/${data.id}`)
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao criar cliente')
+      toast.error('Erro ao criar cliente', getErrorMessage(err))
     } finally {
       setLoading(false)
     }

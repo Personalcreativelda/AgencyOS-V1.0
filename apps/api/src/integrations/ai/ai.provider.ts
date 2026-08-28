@@ -2,6 +2,26 @@
 
 import { prisma } from '../../database/prisma';
 import { decrypt } from '../../common/crypto';
+import { AIProviderError } from '../../common/middleware/errorHandler';
+
+// Builds a curated, user-safe AIProviderError from a failed provider HTTP response — extracts
+// just the provider's own public-facing error message (e.g. "You have no credits remaining...",
+// itself already meant to be shown to whoever holds the API key) instead of letting the raw
+// response body reach the generic 500 handler, which would otherwise flatten it down to an
+// unhelpful "Internal server error" and hide genuinely actionable problems like exhausted
+// credits or an invalid key.
+function providerError(providerLabel: string, rawBody: string): AIProviderError {
+  try {
+    const parsed = JSON.parse(rawBody);
+    const msg = parsed?.error?.message || parsed?.error?.type;
+    if (typeof msg === 'string' && msg.trim()) {
+      return new AIProviderError(`${providerLabel}: ${msg}`);
+    }
+  } catch {
+    // Not JSON (or unexpected shape) — fall through to the generic message below.
+  }
+  return new AIProviderError(`${providerLabel} não conseguiu processar a solicitação. Verifique a configuração da chave de IA em Configurações.`);
+}
 
 export interface AIRequest {
   systemPrompt: string;
@@ -28,10 +48,24 @@ export interface AIImageResult {
 
 export type AIImageSize = '1024x1024' | '1024x1536' | '1536x1024';
 
+// Providers that can actually generate images — used to validate task-routing assignments
+// (Anthropic/Claude is text-only, so it can never be picked for the image task).
+export const IMAGE_CAPABLE_PROVIDERS = ['openai', 'gemini'];
+
+export interface AIImageInput {
+  buffer: Buffer;
+  mimeType: string;
+}
+
 export interface AIProvider {
   generateText(input: AIRequest): Promise<AIResponse>;
   generateJSON<T>(input: AIRequest): Promise<T>;
   generateImage(prompt: string, size?: AIImageSize): Promise<AIImageResult>;
+  /** Vision analysis: looks at reference images and returns a text (typically JSON) description
+   *  per `instructions` — used to distill a reference image's style into reusable text guidance
+   *  instead of feeding the raw pixels into the generation call (which tends to get copied too
+   *  literally). Not every provider generates images, but all of them can look at one. */
+  analyzeImages(images: AIImageInput[], instructions: string): Promise<string>;
   describe(): { provider: string; model: string };
 }
 
@@ -140,6 +174,17 @@ class MockAIProvider implements AIProvider {
     };
   }
 
+  async analyzeImages(): Promise<string> {
+    return JSON.stringify({
+      colorPalette: ['tons neutros com um destaque de cor da marca'],
+      typography: { style: 'sans-serif bold para headline', sizeHierarchy: 'headline grande, texto de apoio pequeno', weight: 'bold no título, regular no resto' },
+      composition: 'grid centrado, espaço negativo generoso nas bordas',
+      logoPlacement: 'canto inferior esquerdo, pequeno',
+      mood: 'clean, moderno, profissional',
+      recurringElements: ['fundo sólido', 'tipografia como elemento gráfico principal'],
+    });
+  }
+
   describe() {
     return { provider: 'mock', model: 'mock-1.0' };
   }
@@ -173,7 +218,7 @@ class OpenAIProvider implements AIProvider {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`OpenAI API error: ${err}`);
+      throw providerError('OpenAI', err);
     }
 
     const data = await response.json() as any;
@@ -197,13 +242,14 @@ class OpenAIProvider implements AIProvider {
       const cleaned = response.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       return JSON.parse(cleaned) as T;
     } catch {
-      throw new Error(`AI returned invalid JSON: ${response.text.substring(0, 200)}`);
+      throw new AIProviderError(`A IA retornou uma resposta em formato inválido: ${response.text.substring(0, 200)}`);
     }
   }
 
   async generateImage(prompt: string, size: AIImageSize = '1024x1024'): Promise<AIImageResult> {
     // dall-e-2 only supports square sizes — fall back rather than error on older accounts.
     const effectiveSize = this.imageModel === 'dall-e-2' ? '1024x1024' : size;
+
     const response = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
@@ -220,7 +266,7 @@ class OpenAIProvider implements AIProvider {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`OpenAI Images API error: ${err}`);
+      throw providerError('OpenAI', err);
     }
 
     const data = await response.json() as any;
@@ -234,6 +280,35 @@ class OpenAIProvider implements AIProvider {
     };
   }
 
+  async analyzeImages(images: AIImageInput[], instructions: string): Promise<string> {
+    const content: any[] = [{ type: 'text', text: instructions }];
+    for (const img of images.slice(0, 8)) {
+      content.push({ type: 'image_url', image_url: { url: `data:${img.mimeType};base64,${img.buffer.toString('base64')}` } });
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: this.textModel,
+        messages: [{ role: 'user', content }],
+        temperature: 0.3,
+        max_tokens: 1200,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw providerError('OpenAI', err);
+    }
+
+    const data = await response.json() as any;
+    return data.choices[0].message.content as string;
+  }
+
   describe() {
     return { provider: 'openai', model: this.textModel };
   }
@@ -245,7 +320,7 @@ class OpenAIProvider implements AIProvider {
 class GeminiProvider implements AIProvider {
   constructor(
     private apiKey: string,
-    private textModel = 'gemini-2.0-flash',
+    private textModel = 'gemini-3.6-flash',
     private imageModel = 'gemini-2.5-flash-image'
   ) {}
 
@@ -256,7 +331,7 @@ class GeminiProvider implements AIProvider {
     );
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Gemini API error: ${err}`);
+      throw providerError('Gemini', err);
     }
     return response.json() as Promise<any>;
   }
@@ -286,7 +361,7 @@ class GeminiProvider implements AIProvider {
       const cleaned = response.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       return JSON.parse(cleaned) as T;
     } catch {
-      throw new Error(`AI returned invalid JSON: ${response.text.substring(0, 200)}`);
+      throw new AIProviderError(`A IA retornou uma resposta em formato inválido: ${response.text.substring(0, 200)}`);
     }
   }
 
@@ -296,13 +371,24 @@ class GeminiProvider implements AIProvider {
       generationConfig: { responseModalities: ['IMAGE'] },
     });
     const imagePart = data.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData?.data);
-    if (!imagePart) throw new Error('Gemini não retornou uma imagem — verifique se o modelo configurado suporta geração de imagem.');
+    if (!imagePart) throw new AIProviderError('Gemini não retornou uma imagem — verifique se o modelo configurado suporta geração de imagem.');
     return {
       b64: imagePart.inlineData.data,
       mimeType: imagePart.inlineData.mimeType || 'image/png',
       model: this.imageModel,
       provider: 'gemini',
     };
+  }
+
+  async analyzeImages(images: AIImageInput[], instructions: string): Promise<string> {
+    const imageParts = images.slice(0, 8).map((img) => ({
+      inlineData: { mimeType: img.mimeType, data: img.buffer.toString('base64') },
+    }));
+    const data = await this.callGenerateContent(this.textModel, {
+      contents: [{ role: 'user', parts: [...imageParts, { text: instructions }] }],
+      generationConfig: { temperature: 0.3, maxOutputTokens: 1200 },
+    });
+    return data.candidates?.[0]?.content?.parts?.map((p: any) => p.text).filter(Boolean).join('') || '';
   }
 
   describe() {
@@ -338,7 +424,7 @@ class AnthropicProvider implements AIProvider {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Anthropic API error: ${err}`);
+      throw providerError('Anthropic', err);
     }
 
     const data = await response.json() as any;
@@ -360,12 +446,43 @@ class AnthropicProvider implements AIProvider {
       const cleaned = response.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
       return JSON.parse(cleaned) as T;
     } catch {
-      throw new Error(`AI returned invalid JSON: ${response.text.substring(0, 200)}`);
+      throw new AIProviderError(`A IA retornou uma resposta em formato inválido: ${response.text.substring(0, 200)}`);
     }
   }
 
   async generateImage(): Promise<AIImageResult> {
-    throw new Error('A Anthropic (Claude) não gera imagens. Configure OpenAI ou Gemini para gerar criativos com IA.');
+    throw new AIProviderError('A Anthropic (Claude) não gera imagens. Configure OpenAI ou Gemini para gerar criativos com IA.');
+  }
+
+  async analyzeImages(images: AIImageInput[], instructions: string): Promise<string> {
+    const content: any[] = images.slice(0, 8).map((img) => ({
+      type: 'image',
+      source: { type: 'base64', media_type: img.mimeType, data: img.buffer.toString('base64') },
+    }));
+    content.push({ type: 'text', text: instructions });
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': this.apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: this.textModel,
+        messages: [{ role: 'user', content }],
+        max_tokens: 1200,
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      throw providerError('Anthropic', err);
+    }
+
+    const data = await response.json() as any;
+    return data.content?.map((c: any) => c.text).filter(Boolean).join('') || '';
   }
 
   describe() {
@@ -401,21 +518,37 @@ export function getAIProvider(override?: {
   return _defaultProvider;
 }
 
-// Resolves the AI provider for an agency: its own configured key first, falling back to the
-// server-wide default (env var or mock). This is the single entry point controllers should use.
-export async function resolveAgencyAIProvider(agencyId: string): Promise<AIProvider> {
-  const settings = await prisma.agencyAiSettings.findUnique({ where: { agencyId } });
+// Resolves the AI provider for an agency for a given task category. An agency can connect
+// several providers at once (e.g. OpenAI + Gemini) and assign which one handles text tasks vs
+// image tasks via Agency.aiTextProvider / Agency.aiImageProvider — the "agents" doing the work.
+// If no assignment is set (or the assigned provider isn't connected), falls back to whichever
+// connected provider comes first; if nothing is connected at all, falls back to the server-wide
+// default (env var or mock). This is the single entry point controllers should use.
+export async function resolveAgencyAIProvider(
+  agencyId: string,
+  task: 'text' | 'image' = 'text'
+): Promise<AIProvider> {
+  const [agency, allSettings] = await Promise.all([
+    // `as any`: aiTextProvider/aiImageProvider were added via a hand-applied migration while
+    // `prisma generate` couldn't reach binaries.prisma.sh — drop the cast once it runs with
+    // network access.
+    prisma.agency.findUnique({ where: { id: agencyId } }) as Promise<any>,
+    prisma.agencyAiSettings.findMany({ where: { agencyId } }),
+  ]);
 
-  if (settings?.apiKeyEncrypted) {
-    try {
-      const apiKey = decrypt(settings.apiKeyEncrypted);
-      return getAIProvider({ apiKey, provider: settings.provider, textModel: settings.textModel, imageModel: settings.imageModel });
-    } catch {
-      // Decryption failed (e.g. ENCRYPTION_KEY rotated) — fall through to the server default.
-    }
+  if (!allSettings.length) return getAIProvider();
+
+  const preferredProvider = task === 'image' ? agency?.aiImageProvider : agency?.aiTextProvider;
+  const settings =
+    (preferredProvider && allSettings.find((s) => s.provider === preferredProvider)) || allSettings[0];
+
+  try {
+    const apiKey = decrypt(settings.apiKeyEncrypted);
+    return getAIProvider({ apiKey, provider: settings.provider, textModel: settings.textModel, imageModel: settings.imageModel });
+  } catch {
+    // Decryption failed (e.g. ENCRYPTION_KEY rotated) — fall through to the server default.
+    return getAIProvider();
   }
-
-  return getAIProvider();
 }
 
 export const CONTENT_TYPES_PT: Record<string, string> = {

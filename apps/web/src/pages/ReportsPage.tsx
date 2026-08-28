@@ -9,6 +9,8 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select'
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/Dialog'
+import { toast } from '@/lib/toast'
+import { getErrorMessage } from '@/lib/errors'
 
 export function ReportsPage() {
   const [reports, setReports] = useState<any[]>([])
@@ -61,7 +63,7 @@ export function ReportsPage() {
       setReports([pubRes.data, ...reports])
       setShowModal(false)
     } catch (err) {
-      alert('Erro ao gerar relatório.')
+      toast.error('Erro ao gerar relatório', getErrorMessage(err))
     } finally {
       setCreating(false)
     }

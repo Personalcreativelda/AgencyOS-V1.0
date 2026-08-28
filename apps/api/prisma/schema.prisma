@@ -78,10 +78,16 @@ model Agency {
   notifications     Notification[]
   auditLogs         AuditLog[]
   reports           Report[]
-  aiSettings        AgencyAiSettings?
+  aiSettings        AgencyAiSettings[]
   socialSettings    AgencySocialSettings?
   smtpSettings      AgencySmtpSettings?
   whatsappSettings  AgencyWhatsAppSettings?
+
+  // Which connected AI provider handles each task category — null means "use whichever is
+  // connected" (falls back to the first configured provider). Kept on Agency rather than a
+  // separate table since it's just two picks, not a growing list.
+  aiTextProvider  String? @map("ai_text_provider")
+  aiImageProvider String? @map("ai_image_provider")
 
   @@map("agencies")
 }
@@ -141,9 +147,12 @@ model AgencySmtpSettings {
 }
 
 // ─── AGENCY AI SETTINGS (bring-your-own API key) ───────────────────────────────
+// One row per (agency, provider) — an agency can connect several providers at once (e.g. OpenAI
+// for images and Gemini for text) and pick which handles which task via Agency.aiTextProvider /
+// Agency.aiImageProvider.
 model AgencyAiSettings {
   id              String   @id @default(uuid())
-  agencyId        String   @unique @map("agency_id")
+  agencyId        String   @map("agency_id")
   provider        String   @default("openai")
   apiKeyEncrypted String   @map("api_key_encrypted")
   textModel       String   @default("gpt-4o-mini") @map("text_model")
@@ -153,6 +162,7 @@ model AgencyAiSettings {
 
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
+  @@unique([agencyId, provider])
   @@map("agency_ai_settings")
 }
 
@@ -730,6 +740,51 @@ model SocialConnection {
   client Client @relation(fields: [clientId], references: [id])
 
   @@map("social_connections")
+}
+
+// ─── ADS (Meta Ads) ────────────────────────────────────────────────────────────
+// The connected ad account itself is a SocialConnection row (platform "META_ADS",
+// externalPageId holding the act_<id>) — reuses the existing token storage instead of a new
+// table. These two models hold what's specific to ads: synced daily performance and the AI's
+// suggested actions on top of it.
+model AdInsightDaily {
+  id                 String   @id @default(uuid())
+  agencyId           String   @map("agency_id")
+  clientId           String   @map("client_id")
+  connectionId       String   @map("connection_id")
+  date               DateTime @db.Date
+  campaignExternalId String   @map("campaign_external_id")
+  campaignName       String   @map("campaign_name")
+  status             String
+  spend              Float
+  impressions        Int
+  clicks             Int
+  ctr                Float
+  cpc                Float
+  results            Int?
+  costPerResult      Float?   @map("cost_per_result")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  @@unique([connectionId, campaignExternalId, date])
+  @@map("ad_insights_daily")
+}
+
+model AdRecommendation {
+  id                 String    @id @default(uuid())
+  agencyId           String    @map("agency_id")
+  clientId           String    @map("client_id")
+  connectionId       String    @map("connection_id")
+  campaignExternalId String    @map("campaign_external_id")
+  campaignName       String    @map("campaign_name")
+  actionType         String    @map("action_type")
+  actionParams       String?   @map("action_params")
+  reasoning          String
+  status             String    @default("PENDING")
+  appliedAt          DateTime? @map("applied_at")
+  appliedBy          String?   @map("applied_by")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  @@map("ad_recommendations")
 }
 
 // ─── REPORTS ──────────────────────────────────────────────────────────────────

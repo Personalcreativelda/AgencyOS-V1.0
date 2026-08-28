@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
-  Calendar as CalendarIcon, Sparkles, Eye
+  Calendar as CalendarIcon, Sparkles, Eye, Plus, Trash2
 } from 'lucide-react'
 import api from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -14,10 +14,16 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
+import { PlatformIcon } from '@/components/planner/PlatformIcon'
+import { PlatformPicker } from '@/components/planner/PlatformPicker'
+import { toast } from '@/lib/toast'
+import { confirmDialog } from '@/lib/confirm'
+import { getErrorMessage } from '@/lib/errors'
 
 const ALL_CLIENTS = 'ALL'
 
 export function CalendarPage() {
+  const navigate = useNavigate()
   const [clients, setClients] = useState<any[]>([])
   const [selectedClient, setSelectedClient] = useState('')
   const [contents, setContents] = useState<any[]>([])
@@ -34,6 +40,19 @@ export function CalendarPage() {
     reelsCount: 4,
     storiesCount: 8,
     objectives: 'Engajamento e crescimento de seguidores',
+    platforms: ['INSTAGRAM'] as string[],
+  })
+
+  // Manual Content Modal
+  const [showManualModal, setShowManualModal] = useState(false)
+  const [creatingManual, setCreatingManual] = useState(false)
+  const [manualContent, setManualContent] = useState({
+    clientId: '',
+    title: '',
+    contentType: 'IMAGE',
+    brief: '',
+    scheduledAt: '',
+    platforms: ['INSTAGRAM'] as string[],
   })
 
   useEffect(() => {
@@ -44,6 +63,7 @@ export function CalendarPage() {
         if (data.data?.length > 0 && !selectedClient) {
           setSelectedClient(data.data[0].id)
           setAiForm((prev) => ({ ...prev, clientId: data.data[0].id }))
+          setManualContent((prev) => ({ ...prev, clientId: data.data[0].id }))
         }
       } catch (err) {
         console.error(err)
@@ -96,17 +116,58 @@ export function CalendarPage() {
           caption: item.captionDraft,
           cta: item.cta,
           scheduledAt: item.date ? new Date(item.date) : null,
-          platforms: ['INSTAGRAM', 'FACEBOOK'],
+          platforms: aiForm.platforms.length ? aiForm.platforms : ['INSTAGRAM'],
         })
       }
 
       setShowAiModal(false)
       loadContents()
-      alert('🎉 Calendário gerado com sucesso pela IA!')
+      toast.success('Calendário gerado com sucesso pela IA!')
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Erro ao gerar calendário.')
+      toast.error('Erro ao gerar calendário', getErrorMessage(err))
     } finally {
       setAiLoading(false)
+    }
+  }
+
+  const handleCreateManualContent = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!manualContent.clientId || !manualContent.title) return
+    setCreatingManual(true)
+    try {
+      const { data } = await api.post('/contents', {
+        clientId: manualContent.clientId,
+        title: manualContent.title,
+        contentType: manualContent.contentType,
+        brief: manualContent.brief,
+        scheduledAt: manualContent.scheduledAt ? new Date(manualContent.scheduledAt).toISOString() : undefined,
+        platforms: manualContent.platforms.length ? manualContent.platforms : ['INSTAGRAM'],
+      })
+      setShowManualModal(false)
+      navigate(`/app/content/${data.id}`)
+    } catch (err) {
+      toast.error('Erro ao criar conteúdo', getErrorMessage(err))
+    } finally {
+      setCreatingManual(false)
+    }
+  }
+
+  const handleDeleteContent = async (contentId: string, title: string) => {
+    const ok = await confirmDialog({
+      title: 'Excluir conteúdo?',
+      description: `"${title}" será removido do calendário. Essa ação não pode ser desfeita.`,
+      variant: 'destructive',
+      confirmLabel: 'Excluir',
+    })
+    if (!ok) return
+    const prevContents = contents
+    setContents((cs) => cs.filter((c) => c.id !== contentId))
+    try {
+      await api.delete(`/contents/${contentId}`)
+      toast.success('Conteúdo excluído.')
+    } catch (err) {
+      setContents(prevContents)
+      toast.error('Erro ao excluir conteúdo', getErrorMessage(err))
     }
   }
 
@@ -140,6 +201,11 @@ export function CalendarPage() {
               </SelectContent>
             </Select>
           </div>
+
+          <Button variant="outline" onClick={() => setShowManualModal(true)}>
+            <Plus size={16} />
+            <span>Novo Conteúdo</span>
+          </Button>
 
           <Button onClick={() => setShowAiModal(true)}>
             <Sparkles size={16} />
@@ -187,6 +253,11 @@ export function CalendarPage() {
                     <span className="text-xs text-muted-foreground font-medium">
                       {CONTENT_TYPE_LABELS[item.contentType] || item.contentType}
                     </span>
+                    {(item.platforms || []).length > 0 && (
+                      <span className="flex items-center gap-1">
+                        {item.platforms.map((p: any) => <PlatformIcon key={p.id} platform={p.platform} size={12} />)}
+                      </span>
+                    )}
                   </div>
 
                   <h3 className="text-sm font-bold text-foreground line-clamp-1">{item.title}</h3>
@@ -203,6 +274,15 @@ export function CalendarPage() {
                     <span>Workspace</span>
                   </Link>
                 </Button>
+
+                <button
+                  type="button"
+                  title="Excluir conteúdo"
+                  onClick={() => handleDeleteContent(item.id, item.title)}
+                  className="p-2 rounded-xl text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
+                >
+                  <Trash2 size={15} />
+                </button>
               </div>
             </div>
           ))}
@@ -272,6 +352,14 @@ export function CalendarPage() {
             </div>
 
             <div>
+              <Label>Redes Sociais *</Label>
+              <PlatformPicker
+                value={aiForm.platforms}
+                onChange={(platforms) => setAiForm({ ...aiForm, platforms })}
+              />
+            </div>
+
+            <div>
               <Label htmlFor="objectives">Objetivo Principal do Mês</Label>
               <Textarea
                 id="objectives"
@@ -294,6 +382,101 @@ export function CalendarPage() {
                   </>
                 )}
                 {aiLoading && <span>Planejando...</span>}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Content Creation Modal */}
+      <Dialog open={showManualModal} onOpenChange={setShowManualModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Novo Conteúdo</DialogTitle>
+            <DialogDescription>Crie um conteúdo manualmente e agende-o no calendário.</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateManualContent} className="space-y-4">
+            <div>
+              <Label htmlFor="manualClientId">Cliente / Marca *</Label>
+              <Select required value={manualContent.clientId} onValueChange={(v) => setManualContent({ ...manualContent, clientId: v })}>
+                <SelectTrigger id="manualClientId">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="manualTitle">Título do Post *</Label>
+              <Input
+                id="manualTitle"
+                type="text"
+                required
+                placeholder="Ex: Lançamento Coleção / Dica de Segunda"
+                value={manualContent.title}
+                onChange={(e) => setManualContent({ ...manualContent, title: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="manualContentType">Formato *</Label>
+              <Select value={manualContent.contentType} onValueChange={(v) => setManualContent({ ...manualContent, contentType: v })}>
+                <SelectTrigger id="manualContentType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="IMAGE">Imagem Estática</SelectItem>
+                  <SelectItem value="CAROUSEL">Carrossel</SelectItem>
+                  <SelectItem value="REEL">Reel / Vídeo Curto</SelectItem>
+                  <SelectItem value="STORY">Story</SelectItem>
+                  <SelectItem value="VIDEO">Vídeo Longo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Redes Sociais *</Label>
+              <PlatformPicker
+                value={manualContent.platforms}
+                onChange={(platforms) => setManualContent({ ...manualContent, platforms })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="manualScheduledAt">Data e Hora Agendada (Opcional)</Label>
+              <Input
+                id="manualScheduledAt"
+                type="datetime-local"
+                value={manualContent.scheduledAt}
+                onChange={(e) => setManualContent({ ...manualContent, scheduledAt: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="manualBrief">Briefing Inicial (Opcional)</Label>
+              <Textarea
+                id="manualBrief"
+                rows={2}
+                placeholder="Ideia central ou objetivo do post..."
+                value={manualContent.brief}
+                onChange={(e) => setManualContent({ ...manualContent, brief: e.target.value })}
+              />
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setShowManualModal(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" loading={creatingManual}>
+                {!creatingManual && <span>Criar e Abrir Workspace</span>}
+                {creatingManual && <span>Criando...</span>}
               </Button>
             </DialogFooter>
           </form>

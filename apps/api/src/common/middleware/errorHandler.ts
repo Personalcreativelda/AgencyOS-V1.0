@@ -42,6 +42,25 @@ export class ConflictError extends AppError {
   }
 }
 
+// Thrown when an external AI provider (OpenAI/Gemini/Anthropic) call fails — the message is a
+// curated, safe-to-display summary (e.g. "sem créditos", "chave inválida"), never a raw stack
+// trace or internal detail, so it's fine for this one to reach the user instead of being
+// replaced by the generic 500 fallback below.
+export class AIProviderError extends AppError {
+  constructor(message: string) {
+    super(message, 502);
+  }
+}
+
+// Same idea as AIProviderError, for the Meta Graph/Marketing API — a curated, safe-to-display
+// summary of what Meta itself said went wrong (e.g. a missing ads_management permission),
+// instead of the generic 500 fallback.
+export class MetaApiError extends AppError {
+  constructor(message: string) {
+    super(message, 502);
+  }
+}
+
 export function errorHandler(
   err: Error,
   req: Request,

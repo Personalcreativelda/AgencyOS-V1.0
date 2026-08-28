@@ -13,7 +13,14 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Auto-refresh on 401
+// Auto-refresh on 401. The backend rotates refresh tokens (each one is single-use, deleted the
+// moment it's redeemed) — if two requests 401 around the same time (e.g. the notifications poll
+// racing another call), firing two independent /auth/refresh calls with the same token means
+// only the first succeeds; the second gets 'Invalid or expired refresh token' and would log the
+// user out for no real reason. Sharing one in-flight refresh promise across concurrent 401s fixes
+// that: everyone awaits the same call instead of each redeeming (and invalidating) their own.
+let refreshPromise: Promise<{ accessToken: string; refreshToken: string }> | null = null
+
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
@@ -23,7 +30,12 @@ api.interceptors.response.use(
       const { refreshToken, setAuth, logout } = useAuthStore.getState()
       if (refreshToken) {
         try {
-          const { data } = await axios.post('/api/v1/auth/refresh', { refreshToken })
+          if (!refreshPromise) {
+            refreshPromise = axios.post('/api/v1/auth/refresh', { refreshToken })
+              .then((res) => res.data)
+              .finally(() => { refreshPromise = null })
+          }
+          const data = await refreshPromise
           const current = useAuthStore.getState()
           setAuth(data.accessToken, data.refreshToken, current.user!)
           original.headers.Authorization = `Bearer ${data.accessToken}`

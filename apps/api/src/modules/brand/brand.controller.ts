@@ -273,7 +273,7 @@ export async function createPersona(req: AuthRequest, res: Response, next: NextF
         ageRange,
         location,
         profession,
-        description,
+        description: description || '', // required in the schema — callers (e.g. AI analysis) may omit it
         painPoints: painPoints ? JSON.stringify(painPoints) : null,
         goals: goals ? JSON.stringify(goals) : null,
         objections: objections ? JSON.stringify(objections) : null,
@@ -309,7 +309,7 @@ export async function createPillar(req: AuthRequest, res: Response, next: NextFu
         agencyId: req.user!.agencyId,
         clientId,
         name,
-        description,
+        description: description || '', // required in the schema — callers (e.g. AI analysis) may only have a name
         percentageTarget,
         examples: examples ? JSON.stringify(examples) : null,
       },

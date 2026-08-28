@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import {
   Sparkles, Plus, Trash2,
   CheckCircle2, ArrowLeft, Send, Mail, Phone, Globe, Pencil, X, ImagePlus, Loader2,
-  Brain, Shield, BarChart3, Palette, MessageCircle,
+  Brain, Shield, BarChart3, Palette, MessageCircle, User,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { uploadFile } from '@/lib/upload'
@@ -17,9 +17,13 @@ import { Skeleton } from '@/components/ui/Skeleton'
 import { Card } from '@/components/ui/Card'
 import { UploadableAvatar } from '@/components/ui/UploadableAvatar'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select'
+import { toast } from '@/lib/toast'
+import { confirmDialog } from '@/lib/confirm'
+import { getErrorMessage } from '@/lib/errors'
 
 const TABS = [
   { id: 'brand', label: 'Perfil & Identidade', icon: Brain },
+  { id: 'personas', label: 'Personas', icon: User },
   { id: 'rules', label: 'Regras da Marca (DO / DONT)', icon: Shield },
   { id: 'pillars', label: 'Pilares de Conteúdo', icon: BarChart3 },
   { id: 'colors', label: 'Cores, Estilo & Referências', icon: Palette },
@@ -40,6 +44,7 @@ export function ClientDetailPage() {
   const [referenceImages, setReferenceImages] = useState<any[]>([])
   const [uploadingReferenceImage, setUploadingReferenceImage] = useState(false)
   const [pillars, setPillars] = useState<any[]>([])
+  const [personas, setPersonas] = useState<any[]>([])
   const [feedbackList, setFeedbackList] = useState<any[]>([])
 
   // AI Generation State
@@ -55,18 +60,20 @@ export function ClientDetailPage() {
   const [newRule, setNewRule] = useState({ ruleType: 'DO', ruleText: '', importance: 8 })
   const [newColor, setNewColor] = useState({ name: '', hex: '#00A76F', usageNotes: 'Destaque / Accent' })
   const [newPillar, setNewPillar] = useState({ name: '', description: '', percentageTarget: 25 })
+  const [newPersona, setNewPersona] = useState({ name: '', ageRange: '', description: '' })
   const [newFeedback, setNewFeedback] = useState({ feedbackText: '', isGlobalRule: true })
   const [editingFeedbackId, setEditingFeedbackId] = useState<string | null>(null)
   const [editingFeedbackText, setEditingFeedbackText] = useState('')
 
   const loadData = async () => {
     try {
-      const [cRes, profRes, rulesRes, colorsRes, pillarsRes, fbRes, refImgRes] = await Promise.all([
+      const [cRes, profRes, rulesRes, colorsRes, pillarsRes, personasRes, fbRes, refImgRes] = await Promise.all([
         api.get(`/clients/${id}`),
         api.get(`/brand/clients/${id}/profile`),
         api.get(`/brand/clients/${id}/rules`),
         api.get(`/brand/clients/${id}/colors`),
         api.get(`/brand/clients/${id}/pillars`),
+        api.get(`/brand/clients/${id}/personas`),
         api.get(`/brand/clients/${id}/feedback`),
         api.get(`/brand/clients/${id}/reference-images`),
       ])
@@ -76,6 +83,7 @@ export function ClientDetailPage() {
       setRules(rulesRes.data || [])
       setColors(colorsRes.data || [])
       setPillars(pillarsRes.data || [])
+      setPersonas(personasRes.data || [])
       setFeedbackList(fbRes.data || [])
       setReferenceImages(refImgRes.data || [])
     } catch (err) {
@@ -97,7 +105,7 @@ export function ClientDetailPage() {
       setClient(data)
       setEditingContact(false)
     } catch (err) {
-      alert('Erro ao salvar os dados de contato.')
+      toast.error('Erro ao salvar os dados de contato', getErrorMessage(err))
     } finally {
       setSavingContact(false)
     }
@@ -107,9 +115,9 @@ export function ClientDetailPage() {
     e.preventDefault()
     try {
       await api.patch(`/brand/clients/${id}/profile`, profile)
-      alert('Perfil de marca salvo!')
+      toast.success('Perfil de marca salvo!')
     } catch (err) {
-      alert('Erro ao atualizar perfil.')
+      toast.error('Erro ao atualizar perfil', getErrorMessage(err))
     }
   }
 
@@ -123,19 +131,19 @@ export function ClientDetailPage() {
       })
       setReferenceImages([data, ...referenceImages])
     } catch (err) {
-      alert('Erro ao enviar a imagem de referência.')
+      toast.error('Erro ao enviar a imagem de referência', getErrorMessage(err))
     } finally {
       setUploadingReferenceImage(false)
     }
   }
 
   const handleDeleteReferenceImage = async (imageId: string) => {
-    if (!confirm('Remover esta imagem de referência?')) return
+    if (!(await confirmDialog({ title: 'Remover imagem de referência?', variant: 'destructive', confirmLabel: 'Remover' }))) return
     try {
       await api.delete(`/brand/clients/${id}/reference-images/${imageId}`)
       setReferenceImages(referenceImages.filter((r) => r.id !== imageId))
     } catch (err) {
-      alert('Erro ao remover a imagem.')
+      toast.error('Erro ao remover a imagem', getErrorMessage(err))
     }
   }
 
@@ -147,7 +155,7 @@ export function ClientDetailPage() {
       setRules([...rules, data])
       setNewRule({ ruleType: 'DO', ruleText: '', importance: 8 })
     } catch (err) {
-      alert('Erro ao adicionar regra.')
+      toast.error('Erro ao adicionar regra', getErrorMessage(err))
     }
   }
 
@@ -156,7 +164,7 @@ export function ClientDetailPage() {
       await api.delete(`/brand/clients/${id}/rules/${ruleId}`)
       setRules(rules.filter((r) => r.id !== ruleId))
     } catch (err) {
-      alert('Erro ao excluir regra.')
+      toast.error('Erro ao excluir regra', getErrorMessage(err))
     }
   }
 
@@ -168,7 +176,7 @@ export function ClientDetailPage() {
       setColors([...colors, data])
       setNewColor({ name: '', hex: '#00A76F', usageNotes: 'Destaque / Accent' })
     } catch (err) {
-      alert('Erro ao adicionar cor.')
+      toast.error('Erro ao adicionar cor', getErrorMessage(err))
     }
   }
 
@@ -177,7 +185,7 @@ export function ClientDetailPage() {
       await api.delete(`/brand/clients/${id}/colors/${colorId}`)
       setColors(colors.filter((c) => c.id !== colorId))
     } catch (err) {
-      alert('Erro ao excluir cor.')
+      toast.error('Erro ao excluir cor', getErrorMessage(err))
     }
   }
 
@@ -189,7 +197,29 @@ export function ClientDetailPage() {
       setPillars([...pillars, data])
       setNewPillar({ name: '', description: '', percentageTarget: 25 })
     } catch (err) {
-      alert('Erro ao adicionar pilar.')
+      toast.error('Erro ao adicionar pilar', getErrorMessage(err))
+    }
+  }
+
+  const handleAddPersona = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newPersona.name) return
+    try {
+      const { data } = await api.post(`/brand/clients/${id}/personas`, newPersona)
+      setPersonas([...personas, data])
+      setNewPersona({ name: '', ageRange: '', description: '' })
+    } catch (err) {
+      toast.error('Erro ao adicionar persona', getErrorMessage(err))
+    }
+  }
+
+  const handleDeletePersona = async (personaId: string) => {
+    if (!(await confirmDialog({ title: 'Remover esta persona?', variant: 'destructive', confirmLabel: 'Remover' }))) return
+    try {
+      await api.delete(`/brand/clients/${id}/personas/${personaId}`)
+      setPersonas(personas.filter((p) => p.id !== personaId))
+    } catch (err) {
+      toast.error('Erro ao remover persona', getErrorMessage(err))
     }
   }
 
@@ -206,7 +236,7 @@ export function ClientDetailPage() {
       setNewFeedback({ feedbackText: '', isGlobalRule: true })
       loadData()
     } catch (err) {
-      alert('Erro ao registrar feedback.')
+      toast.error('Erro ao registrar feedback', getErrorMessage(err))
     }
   }
 
@@ -222,17 +252,17 @@ export function ClientDetailPage() {
       setFeedbackList(feedbackList.map((fb) => (fb.id === feedbackId ? data : fb)))
       setEditingFeedbackId(null)
     } catch (err) {
-      alert('Erro ao salvar o feedback.')
+      toast.error('Erro ao salvar o feedback', getErrorMessage(err))
     }
   }
 
   const handleDeleteFeedback = async (feedbackId: string) => {
-    if (!confirm('Apagar este feedback da memória?')) return
+    if (!(await confirmDialog({ title: 'Apagar este feedback da memória?', variant: 'destructive', confirmLabel: 'Apagar' }))) return
     try {
       await api.delete(`/brand/clients/${id}/feedback/${feedbackId}`)
       setFeedbackList(feedbackList.filter((fb) => fb.id !== feedbackId))
     } catch (err) {
-      alert('Erro ao apagar o feedback.')
+      toast.error('Erro ao apagar o feedback', getErrorMessage(err))
     }
   }
 
@@ -241,8 +271,8 @@ export function ClientDetailPage() {
       const { publicUrl } = await uploadFile(file, { clientId: id! })
       const { data } = await api.patch(`/clients/${id}`, { logoUrl: publicUrl })
       setClient({ ...client, logoUrl: data.logoUrl })
-    } catch {
-      alert('Erro ao enviar o logotipo do cliente.')
+    } catch (err) {
+      toast.error('Erro ao enviar o logotipo do cliente', getErrorMessage(err))
     }
   }
 
@@ -251,15 +281,43 @@ export function ClientDetailPage() {
     try {
       const { data } = await api.post('/ai/analyze-brand', { clientId: id })
       setAiResult(data)
-      setProfile({
+
+      // The AI returns a full brand profile in one shot — persist all of it, not just show it
+      // locally: profile fields, personas, content pillars and DO/DONT rules. Re-running the
+      // analysis appends new personas/pillars/rules rather than replacing existing ones, same
+      // as adding them manually would.
+      const updatedProfile = {
         ...profile,
         brandSummary: data.brandSummary || profile.brandSummary,
         positioning: data.positioning || profile.positioning,
         targetAudience: data.targetAudience || profile.targetAudience,
         toneOfVoice: data.toneOfVoice || profile.toneOfVoice,
-      })
+        brandPersonality: data.brandPersonality || profile.brandPersonality,
+        defaultCta: profile.defaultCta || data.recommendedCtas?.[0],
+      }
+      await api.patch(`/brand/clients/${id}/profile`, updatedProfile)
+
+      const pillarCount = data.contentPillars?.length || 0
+      const evenSplit = pillarCount ? Math.round(100 / pillarCount) : 0
+      await Promise.all([
+        ...(data.personas || []).map((p: any) => api.post(`/brand/clients/${id}/personas`, {
+          name: p.name, ageRange: p.ageRange, description: p.description, painPoints: p.painPoints, goals: p.goals,
+        })),
+        ...(data.contentPillars || []).map((name: string) => api.post(`/brand/clients/${id}/pillars`, {
+          name, description: '', percentageTarget: evenSplit,
+        })),
+        ...(data.brandRules || []).map((r: any) => api.post(`/brand/clients/${id}/rules`, {
+          ruleType: r.ruleType, ruleText: r.ruleText, source: 'AI_ANALYSIS', importance: 7,
+        })),
+      ])
+
+      await loadData()
+      toast.success(
+        'Análise de marca aplicada!',
+        `${data.personas?.length || 0} personas, ${pillarCount} pilares e ${data.brandRules?.length || 0} regras adicionadas — confira nas outras abas.`
+      )
     } catch (err) {
-      alert('Erro ao rodar análise de IA.')
+      toast.error('Erro ao rodar análise de IA', getErrorMessage(err))
     } finally {
       setAnalyzingBrand(false)
     }
@@ -436,7 +494,8 @@ export function ClientDetailPage() {
               <Label htmlFor="brandSummary">Resumo da Marca (Brand Summary)</Label>
               <Textarea
                 id="brandSummary"
-                rows={3}
+                rows={5}
+                className="resize-y min-h-[6rem]"
                 value={profile.brandSummary || ''}
                 onChange={(e) => setProfile({ ...profile, brandSummary: e.target.value })}
                 placeholder="Ex: Bella Moda é uma marca de moda feminina premium focada em peças atemporais..."
@@ -445,9 +504,10 @@ export function ClientDetailPage() {
 
             <div>
               <Label htmlFor="toneOfVoice">Tom de Voz</Label>
-              <Input
+              <Textarea
                 id="toneOfVoice"
-                type="text"
+                rows={2}
+                className="resize-y"
                 value={profile.toneOfVoice || ''}
                 onChange={(e) => setProfile({ ...profile, toneOfVoice: e.target.value })}
                 placeholder="Ex: Elegante, próximo, inspirador, empoderador"
@@ -456,9 +516,10 @@ export function ClientDetailPage() {
 
             <div>
               <Label htmlFor="positioning">Posicionamento</Label>
-              <Input
+              <Textarea
                 id="positioning"
-                type="text"
+                rows={2}
+                className="resize-y"
                 value={profile.positioning || ''}
                 onChange={(e) => setProfile({ ...profile, positioning: e.target.value })}
                 placeholder="Ex: Premium acessível para mulheres modernas"
@@ -467,9 +528,10 @@ export function ClientDetailPage() {
 
             <div className="md:col-span-2">
               <Label htmlFor="targetAudience">Público-Alvo</Label>
-              <Input
+              <Textarea
                 id="targetAudience"
-                type="text"
+                rows={2}
+                className="resize-y"
                 value={profile.targetAudience || ''}
                 onChange={(e) => setProfile({ ...profile, targetAudience: e.target.value })}
                 placeholder="Ex: Mulheres de 28 a 45 anos, classe A/B que valorizam qualidade e sofisticação"
@@ -499,6 +561,67 @@ export function ClientDetailPage() {
             </div>
           </div>
         </form>
+      )}
+
+      {/* TAB: Personas */}
+      {activeTab === 'personas' && (
+        <div className="space-y-6">
+          <div className="card-minimals p-6">
+            <h2 className="text-base font-bold text-foreground mb-1">Personas do Público</h2>
+            <p className="text-xs text-muted-foreground font-medium mb-4">
+              Perfis de cliente ideal usados pela IA para escrever com a linguagem certa pra cada público.
+            </p>
+
+            <form onSubmit={handleAddPersona} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Input
+                type="text"
+                required
+                placeholder="Nome (Ex: Ana — A Profissional)"
+                value={newPersona.name}
+                onChange={(e) => setNewPersona({ ...newPersona, name: e.target.value })}
+              />
+              <Input
+                type="text"
+                placeholder="Faixa etária (Ex: 28-38)"
+                value={newPersona.ageRange}
+                onChange={(e) => setNewPersona({ ...newPersona, ageRange: e.target.value })}
+              />
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="Descrição curta"
+                  value={newPersona.description}
+                  onChange={(e) => setNewPersona({ ...newPersona, description: e.target.value })}
+                  className="flex-1"
+                />
+                <Button type="submit" className="shrink-0 gap-1.5">
+                  <Plus size={16} />
+                  <span>Adicionar</span>
+                </Button>
+              </div>
+            </form>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {personas.map((persona) => (
+              <div key={persona.id} className="card-minimals-hover p-5 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h3 className="font-bold text-xs text-grey-800">{persona.name}</h3>
+                    {persona.ageRange && <p className="text-[11px] text-grey-500 font-medium">{persona.ageRange}</p>}
+                  </div>
+                  <button
+                    onClick={() => handleDeletePersona(persona.id)}
+                    className="p-1 text-muted-foreground hover:text-error rounded-md transition-colors shrink-0"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                {persona.description && <p className="text-xs text-grey-600 font-medium">{persona.description}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* TAB 2: Rules */}

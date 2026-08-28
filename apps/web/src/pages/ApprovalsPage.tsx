@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
-import { CheckSquare, ExternalLink, MessageSquareWarning } from 'lucide-react'
+import { CheckSquare, ExternalLink, MessageSquareWarning, Trash2 } from 'lucide-react'
 import api from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Button } from '@/components/ui/Button'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { toast } from '@/lib/toast'
+import { confirmDialog } from '@/lib/confirm'
+import { getErrorMessage } from '@/lib/errors'
 
 export function ApprovalsPage() {
   const [approvals, setApprovals] = useState<any[]>([])
@@ -23,6 +26,24 @@ export function ApprovalsPage() {
     }
     load()
   }, [])
+
+  const handleDelete = async (id: string, title: string) => {
+    const ok = await confirmDialog({
+      title: 'Excluir este link de aprovação?',
+      description: `O histórico do link enviado para "${title}" será removido. O conteúdo em si não é afetado.`,
+      variant: 'destructive',
+      confirmLabel: 'Excluir',
+    })
+    if (!ok) return
+    const prev = approvals
+    setApprovals((as) => as.filter((a) => a.id !== id))
+    try {
+      await api.delete(`/approvals/${id}`)
+    } catch (err) {
+      setApprovals(prev)
+      toast.error('Erro ao excluir link de aprovação', getErrorMessage(err))
+    }
+  }
 
   return (
     <div className="p-4 sm:p-8 space-y-6">
@@ -70,6 +91,15 @@ export function ApprovalsPage() {
                         <span>Ver Portal do Cliente</span>
                       </a>
                     </Button>
+
+                    <button
+                      type="button"
+                      title="Excluir link de aprovação"
+                      onClick={() => handleDelete(appr.id, appr.content?.title || '')}
+                      className="p-2 rounded-xl text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   </div>
                 </div>
 

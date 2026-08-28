@@ -1,4 +1,4 @@
-import { Image as ImageIcon, Layers, Video, Clapperboard, FileText } from 'lucide-react'
+import { Image as ImageIcon, Layers, Video, Clapperboard, FileText, Trash2 } from 'lucide-react'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { getPrimaryImage, getSlideCount } from './plannerUtils'
 import { PlatformIcon } from './PlatformIcon'
@@ -16,9 +16,10 @@ const TYPE_ICON: Record<string, typeof ImageIcon> = {
 interface ContentGridTileProps {
   content: any
   onClick: () => void
+  onDelete?: () => void
 }
 
-export function ContentGridTile({ content, onClick }: ContentGridTileProps) {
+export function ContentGridTile({ content, onClick, onDelete }: ContentGridTileProps) {
   const image = getPrimaryImage(content)
   const TypeIcon = TYPE_ICON[content.contentType] || FileText
   const time = content.scheduledAt
@@ -58,8 +59,18 @@ export function ContentGridTile({ content, onClick }: ContentGridTileProps) {
       )}
 
       {/* Status, top-right */}
-      <div className="absolute top-2 right-2">
+      <div className="absolute top-2 right-2 flex items-center gap-1.5">
         <StatusBadge status={content.status} className="text-[9px] px-1.5 py-0.5 shadow-z4" />
+        {onDelete && (
+          <button
+            type="button"
+            title="Excluir conteúdo"
+            onClick={(e) => { e.stopPropagation(); onDelete() }}
+            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-full bg-[#000]/60 backdrop-blur-sm text-[#fff]/80 hover:text-[#fff] hover:bg-error/80 transition-all shrink-0"
+          >
+            <Trash2 size={12} />
+          </button>
+        )}
       </div>
 
       {/* Caption overlay, bottom — fixed dark scrim regardless of app theme (photo caption, not chrome) */}

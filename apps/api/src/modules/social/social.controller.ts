@@ -3,9 +3,7 @@ import { AuthRequest } from '../../common/middleware/auth';
 import { prisma } from '../../database/prisma';
 import { NotFoundError, ValidationError } from '../../common/middleware/errorHandler';
 import { encrypt, decrypt, maskSecret } from '../../common/crypto';
-
-const GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v19.0';
-const GRAPH_URL = `https://graph.facebook.com/${GRAPH_VERSION}`;
+import { GRAPH_URL, GRAPH_VERSION, buildMetaRedirectUri, getAgencyMetaCredentials, exchangeCodeForLongLivedToken } from '../../integrations/meta/metaClient';
 
 // Derived from APP_URL (already required for CORS/portal links) instead of its own env var —
 // every agency on this deployment shares the same physical callback endpoint (the App
@@ -15,7 +13,7 @@ const GRAPH_URL = `https://graph.facebook.com/${GRAPH_VERSION}`;
 // Meta App, via window.location.origin on the frontend — the two only ever match if APP_URL is
 // set correctly, which is already a hard requirement for the rest of the app to work at all.
 function getMetaRedirectUri() {
-  return `${process.env.APP_URL || 'http://localhost:5173'}/api/v1/social/meta/callback`;
+  return buildMetaRedirectUri('/api/v1/social/meta/callback');
 }
 
 // ─── META APP SETTINGS (bring-your-own Meta App, per agency) ──────────────────
@@ -56,12 +54,6 @@ export async function deleteMetaSettings(req: AuthRequest, res: Response, next: 
     await prisma.agencySocialSettings.deleteMany({ where: { agencyId: req.user!.agencyId } });
     res.json({ configured: false });
   } catch (err) { next(err); }
-}
-
-async function getAgencyMetaCredentials(agencyId: string) {
-  const settings = await prisma.agencySocialSettings.findUnique({ where: { agencyId } });
-  if (!settings?.metaAppId || !settings.metaAppSecretEncrypted) return null;
-  return { appId: settings.metaAppId, appSecret: decrypt(settings.metaAppSecretEncrypted) };
 }
 
 function serializeConnection(c: any) {
@@ -198,23 +190,7 @@ export async function metaCallback(req: Request, res: Response, next: NextFuncti
     if (!credentials) throw new Error('Meta App credentials not configured for this agency');
 
     // Exchange code for a short-lived user token, then extend it to long-lived.
-    const tokenRes = await fetch(`${GRAPH_URL}/oauth/access_token?` + new URLSearchParams({
-      client_id: credentials.appId,
-      client_secret: credentials.appSecret,
-      redirect_uri: getMetaRedirectUri(),
-      code: String(code),
-    }));
-    const tokenData = await tokenRes.json() as any;
-    if (!tokenRes.ok) throw new Error(tokenData.error?.message || 'Failed to exchange Meta code');
-
-    const longLivedRes = await fetch(`${GRAPH_URL}/oauth/access_token?` + new URLSearchParams({
-      grant_type: 'fb_exchange_token',
-      client_id: credentials.appId,
-      client_secret: credentials.appSecret,
-      fb_exchange_token: tokenData.access_token,
-    }));
-    const longLivedData = await longLivedRes.json() as any;
-    const userAccessToken = longLivedData.access_token || tokenData.access_token;
+    const userAccessToken = await exchangeCodeForLongLivedToken(credentials, String(code), getMetaRedirectUri());
 
     // Fetch the Pages this user manages, and any linked Instagram Business Account.
     const pagesRes = await fetch(`${GRAPH_URL}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${userAccessToken}`);

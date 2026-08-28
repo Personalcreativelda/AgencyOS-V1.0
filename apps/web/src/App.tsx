@@ -15,7 +15,10 @@ import { ApprovalPortalPage } from '@/pages/ApprovalPortalPage'
 import { ReportPublicPage } from '@/pages/ReportPublicPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { SocialConnectionsPage } from '@/pages/SocialConnectionsPage'
+import { AdsPage } from '@/pages/AdsPage'
 import { ReportsPage } from '@/pages/ReportsPage'
+import { Toaster } from '@/components/ui/Toaster'
+import { ConfirmDialogHost } from '@/components/ui/ConfirmDialogHost'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuthStore()
@@ -54,6 +57,7 @@ export default function App() {
           <Route path="approvals" element={<ApprovalsPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="social" element={<SocialConnectionsPage />} />
+          <Route path="ads" element={<AdsPage />} />
           <Route path="settings/*" element={<SettingsPage />} />
         </Route>
 
@@ -61,6 +65,9 @@ export default function App() {
         <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
       </Routes>
+
+      <Toaster />
+      <ConfirmDialogHost />
     </BrowserRouter>
   )
 }

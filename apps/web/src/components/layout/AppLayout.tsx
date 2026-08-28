@@ -3,13 +3,15 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Calendar, FileText, CheckSquare,
   BarChart2, Settings, LogOut, Zap, Bell, Search, Sun, Moon, Menu, X, CheckCheck, Inbox, Camera,
-  List, CalendarDays, Kanban, Share2,
+  List, CalendarDays, Kanban, Share2, Megaphone,
 } from 'lucide-react'
 import { useThemeStore } from '@/stores/themeStore'
 import { useAuthStore } from '@/stores/authStore'
 import { cn, getInitials, timeAgo } from '@/lib/utils'
 import api from '@/lib/api'
 import { uploadFile } from '@/lib/upload'
+import { toast } from '@/lib/toast'
+import { getErrorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
@@ -41,6 +43,7 @@ const navSections = [
           { label: 'Kanban', href: '/app/content/board', icon: Kanban },
         ],
       },
+      { label: 'Meta Ads', href: '/app/ads', icon: Megaphone },
       { label: 'Aprovações do Cliente', href: '/app/approvals', icon: CheckSquare },
       { label: 'Relatórios Mensais', href: '/app/reports', icon: BarChart2 },
       { label: 'Redes Sociais', href: '/app/social', icon: Share2 },
@@ -102,8 +105,8 @@ export function AppLayout() {
       const { publicUrl } = await uploadFile(file)
       await api.patch('/auth/me', { avatarUrl: publicUrl })
       updateUser({ avatarUrl: publicUrl })
-    } catch {
-      alert('Erro ao enviar foto de perfil.')
+    } catch (err) {
+      toast.error('Erro ao enviar foto de perfil', getErrorMessage(err))
     } finally {
       if (avatarInputRef.current) avatarInputRef.current.value = ''
     }
