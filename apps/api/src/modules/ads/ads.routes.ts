@@ -4,9 +4,10 @@ import { authenticate } from '../../common/middleware/auth';
 
 const router = Router();
 
-// OAuth callback is hit by Meta's redirect (no auth header) — everything else is agency-side.
+// No /meta/callback route here — the OAuth redirect lands on social.controller.ts's shared
+// callback (already whitelisted on the agency's Meta App), which dispatches into
+// ads.controller.ts's handleAdsMetaAuth() when state.flow === 'ads'. See adsConnect below.
 router.get('/meta/connect', authenticate, ctrl.adsConnect);
-router.get('/meta/callback', ctrl.adsMetaCallback);
 router.get('/meta/pending/:token', authenticate, ctrl.getPendingAdAccountSelection);
 router.post('/meta/pending/:token/confirm', authenticate, ctrl.confirmAdAccountSelection);
 

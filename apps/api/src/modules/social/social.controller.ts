@@ -4,6 +4,7 @@ import { prisma } from '../../database/prisma';
 import { NotFoundError, ValidationError } from '../../common/middleware/errorHandler';
 import { encrypt, decrypt, maskSecret } from '../../common/crypto';
 import { GRAPH_URL, GRAPH_VERSION, buildMetaRedirectUri, getAgencyMetaCredentials, exchangeCodeForLongLivedToken } from '../../integrations/meta/metaClient';
+import { handleAdsMetaAuth } from '../ads/ads.controller';
 
 // Derived from APP_URL (already required for CORS/portal links) instead of its own env var —
 // every agency on this deployment shares the same physical callback endpoint (the App
@@ -184,13 +185,21 @@ export async function metaCallback(req: Request, res: Response, next: NextFuncti
       return res.redirect(`${appUrl}/app/social?social_error=1`);
     }
 
-    const { clientId, agencyId, userId } = JSON.parse(Buffer.from(String(state), 'base64url').toString());
+    const { clientId, agencyId, userId, flow } = JSON.parse(Buffer.from(String(state), 'base64url').toString());
 
     const credentials = await getAgencyMetaCredentials(agencyId);
     if (!credentials) throw new Error('Meta App credentials not configured for this agency');
 
     // Exchange code for a short-lived user token, then extend it to long-lived.
     const userAccessToken = await exchangeCodeForLongLivedToken(credentials, String(code), getMetaRedirectUri());
+
+    // The Ads module (Meta Ad Accounts) reuses this exact callback instead of registering its
+    // own redirect_uri — see the comment on adsConnect in ads.controller.ts for why. Dispatch
+    // there and stop before the Pages-specific logic below, which doesn't apply to this flow.
+    if (flow === 'ads') {
+      const query = await handleAdsMetaAuth({ agencyId, clientId, userId, accessToken: userAccessToken });
+      return res.redirect(`${appUrl}/app/ads?${query}`);
+    }
 
     // Fetch the Pages this user manages, and any linked Instagram Business Account.
     const pagesRes = await fetch(`${GRAPH_URL}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${userAccessToken}`);

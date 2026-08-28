@@ -1,11 +1,10 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../../common/middleware/auth';
 import { prisma } from '../../database/prisma';
 import { NotFoundError, ValidationError } from '../../common/middleware/errorHandler';
 import { encrypt, decrypt } from '../../common/crypto';
 import {
-  GRAPH_URL, GRAPH_VERSION, buildMetaRedirectUri, getAgencyMetaCredentials,
-  exchangeCodeForLongLivedToken, metaApiError,
+  GRAPH_URL, GRAPH_VERSION, buildMetaRedirectUri, getAgencyMetaCredentials, metaApiError,
 } from '../../integrations/meta/metaClient';
 import { resolveAgencyAIProvider } from '../../integrations/ai/ai.provider';
 
@@ -14,10 +13,6 @@ import { resolveAgencyAIProvider } from '../../integrations/ai/ai.provider';
 // know about them yet — drop this alias (and call `prisma.adInsightDaily`/`prisma.adRecommendation`
 // directly) once `prisma generate` runs with network access.
 const db = prisma as any;
-
-function getAdsRedirectUri() {
-  return buildMetaRedirectUri('/api/v1/ads/meta/callback');
-}
 
 // ─── CONNECT (Meta Ad Accounts) ────────────────────────────────────────────────
 
@@ -33,7 +28,11 @@ export async function adsConnect(req: AuthRequest, res: Response, next: NextFunc
     const client = await prisma.client.findFirst({ where: { id: String(clientId), agencyId: req.user!.agencyId } });
     if (!client) throw new NotFoundError('Client not found');
 
-    const state = Buffer.from(JSON.stringify({ clientId, agencyId: req.user!.agencyId, userId: req.user!.id })).toString('base64url');
+    // `flow: 'ads'` is how the shared callback in social.controller.ts (see its `metaCallback`)
+    // knows to dispatch here instead of running its own Pages logic — this reuses that single
+    // callback URL (already whitelisted on the agency's Meta App for Redes Sociais) instead of
+    // requiring a second redirect_uri to be registered just for this module.
+    const state = Buffer.from(JSON.stringify({ clientId, agencyId: req.user!.agencyId, userId: req.user!.id, flow: 'ads' })).toString('base64url');
     // ads_management is what lets "Aplicar" actually pause a campaign or change a budget —
     // it requires Meta App Review (Advanced Access) on the agency's own Meta App before it
     // works for real; ads_read alone still gets metrics + AI suggestions flowing.
@@ -41,7 +40,7 @@ export async function adsConnect(req: AuthRequest, res: Response, next: NextFunc
 
     const authUrl = `https://www.facebook.com/${GRAPH_VERSION}/dialog/oauth?` + new URLSearchParams({
       client_id: credentials.appId,
-      redirect_uri: getAdsRedirectUri(),
+      redirect_uri: buildMetaRedirectUri('/api/v1/social/meta/callback'),
       state,
       scope: scopes,
       response_type: 'code',
@@ -85,38 +84,33 @@ function cleanupExpiredAdPendingSelections() {
   }
 }
 
-export async function adsMetaCallback(req: Request, res: Response, next: NextFunction) {
-  const appUrl = process.env.APP_URL || 'http://localhost:5173';
-  try {
-    const { code, state, error: metaError } = req.query;
-    if (metaError || !code || !state) return res.redirect(`${appUrl}/app/ads?ads_error=1`);
+// Called from social.controller.ts's shared Meta callback (see the `flow === 'ads'` branch
+// there) instead of registering a second OAuth redirect_uri — Meta only allows a request to
+// redirect to a URI that's been explicitly whitelisted on the App, and asking every agency to
+// add a second URL just for this module (on top of the one they already added for Redes
+// Sociais) is exactly the kind of setup friction the guided wizard exists to avoid. The code
+// exchange already happened by the time this runs; this just does the ad-accounts-specific part
+// (as opposed to the Pages-specific part social.controller.ts handles for its own flow) and
+// returns the query string to redirect the browser to.
+export async function handleAdsMetaAuth(params: { agencyId: string; clientId: string; userId: string; accessToken: string }): Promise<string> {
+  const { agencyId, clientId, userId, accessToken } = params;
 
-    const { clientId, agencyId, userId } = JSON.parse(Buffer.from(String(state), 'base64url').toString());
-    const credentials = await getAgencyMetaCredentials(agencyId);
-    if (!credentials) throw new Error('Meta App credentials not configured for this agency');
+  const accountsRes = await fetch(`${GRAPH_URL}/me/adaccounts?fields=id,name,currency&access_token=${accessToken}`);
+  const accountsData = await accountsRes.json() as any;
+  if (!accountsRes.ok) throw new Error(accountsData.error?.message || 'Failed to list ad accounts');
 
-    const accessToken = await exchangeCodeForLongLivedToken(credentials, String(code), getAdsRedirectUri());
+  const accounts = accountsData.data || [];
+  if (accounts.length === 0) return 'ads_error=1&reason=no_accounts';
 
-    const accountsRes = await fetch(`${GRAPH_URL}/me/adaccounts?fields=id,name,currency&access_token=${accessToken}`);
-    const accountsData = await accountsRes.json() as any;
-    if (!accountsRes.ok) throw new Error(accountsData.error?.message || 'Failed to list ad accounts');
-
-    const accounts = accountsData.data || [];
-    if (accounts.length === 0) return res.redirect(`${appUrl}/app/ads?ads_error=1&reason=no_accounts`);
-
-    if (accounts.length > 1) {
-      cleanupExpiredAdPendingSelections();
-      const token = Buffer.from(`${Date.now()}-${Math.random().toString(36).slice(2)}`).toString('base64url');
-      pendingAdAccountSelections.set(token, { agencyId, clientId, userId, expiresAt: Date.now() + ADS_PENDING_TTL_MS, accessToken, accounts });
-      return res.redirect(`${appUrl}/app/ads?ads_select_account=1&token=${token}&clientId=${clientId}`);
-    }
-
-    await connectAdAccountToClient({ agencyId, clientId, userId }, accounts[0], accessToken);
-    res.redirect(`${appUrl}/app/ads?ads_connected=1&clientId=${clientId}`);
-  } catch (err) {
-    console.error('Meta Ads OAuth callback failed:', err);
-    res.redirect(`${appUrl}/app/ads?ads_error=1`);
+  if (accounts.length > 1) {
+    cleanupExpiredAdPendingSelections();
+    const token = Buffer.from(`${Date.now()}-${Math.random().toString(36).slice(2)}`).toString('base64url');
+    pendingAdAccountSelections.set(token, { agencyId, clientId, userId, expiresAt: Date.now() + ADS_PENDING_TTL_MS, accessToken, accounts });
+    return `ads_select_account=1&token=${token}&clientId=${clientId}`;
   }
+
+  await connectAdAccountToClient({ agencyId, clientId, userId }, accounts[0], accessToken);
+  return `ads_connected=1&clientId=${clientId}`;
 }
 
 export async function getPendingAdAccountSelection(req: AuthRequest, res: Response, next: NextFunction) {
