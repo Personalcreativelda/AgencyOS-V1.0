@@ -23,9 +23,12 @@ export async function requestApproval(req: AuthRequest, res: Response, next: Nex
     });
     if (!content) throw new NotFoundError('Content not found');
 
-    // Expire old pending requests
+    // Expire every still-open old request for this content, not just PENDING ones — a request
+    // the client already opened (VIEWED) but never acted on was being left behind forever,
+    // which is what let the same content pile up multiple "aguardando aprovação" alerts on the
+    // dashboard every time the agency regenerated the link.
     await prisma.approvalRequest.updateMany({
-      where: { contentId, status: 'PENDING' },
+      where: { contentId, status: { in: ['PENDING', 'VIEWED'] } },
       data: { status: 'EXPIRED' },
     });
 

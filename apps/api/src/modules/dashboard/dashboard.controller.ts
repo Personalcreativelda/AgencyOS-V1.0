@@ -76,13 +76,23 @@ export async function attention(req: AuthRequest, res: Response, next: NextFunct
       message: `"${c.title}" está atrasado (prazo: ${c.dueAt?.toLocaleDateString('pt-BR')})`,
     }));
 
-    // Long pending approvals
+    // Long pending approvals — `distinct: ['contentId']` so a content that's had its approval
+    // link regenerated several times (each regeneration leaves the earlier request rows behind
+    // as history) only ever surfaces once here, as its single latest still-open request.
+    // `content: { deletedAt: null }` — an approval request for a content that's since been
+    // deleted (soft-delete, the row itself stays around) was never filtered out, so a deleted
+    // post's stale "aguardando aprovação" alert stuck around on the dashboard forever.
     const longPending = await prisma.approvalRequest.findMany({
-      where: { agencyId, status: { in: ['PENDING', 'VIEWED'] }, sentAt: { lt: threeDaysAgo } },
+      where: {
+        agencyId, status: { in: ['PENDING', 'VIEWED'] }, sentAt: { lt: threeDaysAgo },
+        content: { deletedAt: null },
+      },
       include: {
         client: { select: { id: true, name: true, logoUrl: true } },
         content: { select: { id: true, title: true } },
       },
+      distinct: ['contentId'],
+      orderBy: { sentAt: 'desc' },
       take: 10,
     });
     longPending.forEach(a => items.push({

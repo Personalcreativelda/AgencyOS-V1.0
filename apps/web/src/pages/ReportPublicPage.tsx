@@ -1,10 +1,21 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { XCircle, Zap, Download, TrendingUp, Image as ImageIcon, CheckCircle2 } from 'lucide-react'
+import { XCircle, Zap, Download, TrendingUp, TrendingDown, Image as ImageIcon, CheckCircle2, Target, Megaphone } from 'lucide-react'
 import api from '@/lib/api'
 import { CONTENT_TYPE_LABELS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+
+function GrowthBadge({ pct }: { pct: number | null | undefined }) {
+  if (pct == null) return null
+  const positive = pct >= 0
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${positive ? 'text-success-dark' : 'text-error-dark'}`}>
+      {positive ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+      {positive ? '+' : ''}{pct.toFixed(1)}%
+    </span>
+  )
+}
 
 export function ReportPublicPage() {
   const { token } = useParams<{ token: string }>()
@@ -85,6 +96,17 @@ export function ReportPublicPage() {
             <Badge variant="success">Publicado</Badge>
           </div>
 
+          {/* Goal */}
+          {snapshot.goal && (
+            <div className="flex items-start gap-2.5 p-4 bg-primary/5 border border-primary/20 rounded-xl">
+              <Target size={16} className="text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[11px] font-bold text-primary uppercase tracking-wider">Meta Definida</p>
+                <p className="text-sm text-slate-700 font-medium mt-0.5">{snapshot.goal}</p>
+              </div>
+            </div>
+          )}
+
           {/* KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="p-4 bg-slate-100/70 rounded-xl text-center">
@@ -104,6 +126,52 @@ export function ReportPublicPage() {
               <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1">Ajustes Pedidos</p>
             </div>
           </div>
+
+          {/* Ads (Meta Ads) — only shown when this client has a connected ad account */}
+          {snapshot.ads && (
+            <div className="space-y-3">
+              <h2 className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-2">
+                <Megaphone size={14} className="text-primary" /> Anúncios Pagos (Meta Ads)
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="p-4 bg-slate-100/70 rounded-xl text-center">
+                  <p className="text-lg font-extrabold text-slate-800">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(snapshot.ads.spend)}
+                  </p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1">Investimento</p>
+                  <GrowthBadge pct={snapshot.adsGrowth?.spendPct} />
+                </div>
+                <div className="p-4 bg-slate-100/70 rounded-xl text-center">
+                  <p className="text-lg font-extrabold text-slate-800">{snapshot.ads.results}</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1">Resultados</p>
+                  <GrowthBadge pct={snapshot.adsGrowth?.resultsPct} />
+                </div>
+                <div className="p-4 bg-slate-100/70 rounded-xl text-center">
+                  <p className="text-lg font-extrabold text-slate-800">{snapshot.ads.ctr.toFixed(2)}%</p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1">CTR</p>
+                </div>
+                <div className="p-4 bg-slate-100/70 rounded-xl text-center">
+                  <p className="text-lg font-extrabold text-slate-800">
+                    {snapshot.ads.costPerResult != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(snapshot.ads.costPerResult) : '—'}
+                  </p>
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1">Custo/Resultado</p>
+                  <GrowthBadge pct={snapshot.adsGrowth?.costPerResultPct} />
+                </div>
+              </div>
+              {snapshot.ads.campaigns?.length > 0 && (
+                <div className="space-y-1.5">
+                  {snapshot.ads.campaigns.map((c: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between gap-2 p-3 bg-slate-100/70 rounded-xl text-xs">
+                      <span className="font-bold text-slate-800 truncate min-w-0">{c.campaignName}</span>
+                      <span className="text-slate-500 shrink-0">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(c.spend)} · {c.results} resultados
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Summary */}
           {report.summary && (

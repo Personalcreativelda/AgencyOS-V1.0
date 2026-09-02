@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { CONTENT_TYPE_LABELS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { DateTimeField } from '@/components/ui/DateTimeField'
 import { Label } from '@/components/ui/Label'
 import { Textarea } from '@/components/ui/Textarea'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -451,11 +452,10 @@ export function CalendarPage() {
 
             <div>
               <Label htmlFor="manualScheduledAt">Data e Hora Agendada (Opcional)</Label>
-              <Input
+              <DateTimeField
                 id="manualScheduledAt"
-                type="datetime-local"
                 value={manualContent.scheduledAt}
-                onChange={(e) => setManualContent({ ...manualContent, scheduledAt: e.target.value })}
+                onChange={(v) => setManualContent({ ...manualContent, scheduledAt: v })}
               />
             </div>
 

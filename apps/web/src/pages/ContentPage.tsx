@@ -1,18 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent,
+  DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core'
 import { format, addMonths, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
-  Plus, FileText, ChevronRight, ChevronLeft, AlertCircle, List, LayoutGrid, Trash2,
+  Plus, FileText, ChevronRight, ChevronLeft, AlertCircle, List, LayoutGrid, Trash2, Settings2,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { cn, CONTENT_TYPE_LABELS, PLATFORM_LABELS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { DateTimeField } from '@/components/ui/DateTimeField'
 import { Label } from '@/components/ui/Label'
 import { Textarea } from '@/components/ui/Textarea'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -21,10 +22,14 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/Dialog'
 import { CalendarMonthView } from '@/components/planner/CalendarMonthView'
 import { BoardView } from '@/components/planner/BoardView'
+import { BoardColumnsModal } from '@/components/planner/BoardColumnsModal'
 import { PlatformIcon } from '@/components/planner/PlatformIcon'
 import { PlatformPicker } from '@/components/planner/PlatformPicker'
 import { ContentGridTile } from '@/components/planner/ContentGridTile'
-import { getPrimaryImage, getMonthGridRange, dateKey, capitalize } from '@/components/planner/plannerUtils'
+import {
+  getPrimaryImage, getMonthGridRange, dateKey, capitalize, parseKanbanColumns, getBoardColumns, getVisibleBoardColumns,
+  type KanbanColumnConfig,
+} from '@/components/planner/plannerUtils'
 import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
 import { getErrorMessage } from '@/lib/errors'
@@ -67,6 +72,8 @@ export function ContentPage({ view }: ContentPageProps) {
   const [listDisplay, setListDisplay] = useState<ListDisplay>(
     () => (localStorage.getItem(LIST_DISPLAY_KEY) as ListDisplay) || 'rows'
   )
+  const [agency, setAgency] = useState<any>(null)
+  const [showColumnsModal, setShowColumnsModal] = useState(false)
 
   // New Content Modal
   const [showModal, setShowModal] = useState(false)
@@ -79,7 +86,13 @@ export function ContentPage({ view }: ContentPageProps) {
     platforms: ['INSTAGRAM'] as string[],
   })
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  )
+
+  const kanbanOverrides = useMemo(() => parseKanbanColumns(agency?.kanbanColumns), [agency])
+  const boardColumns = useMemo(() => getVisibleBoardColumns(kanbanOverrides), [kanbanOverrides])
 
   useEffect(() => {
     async function loadClients() {
@@ -95,6 +108,22 @@ export function ContentPage({ view }: ContentPageProps) {
     }
     loadClients()
   }, [])
+
+  useEffect(() => {
+    if (view !== 'board' || agency) return
+    api.get('/agencies/current').then(({ data }) => setAgency(data)).catch((err) => console.error(err))
+  }, [view, agency])
+
+  const handleSaveColumns = async (overrides: KanbanColumnConfig[]) => {
+    try {
+      const { data } = await api.patch('/agencies/current', { kanbanColumns: overrides })
+      setAgency(data)
+      setShowColumnsModal(false)
+      toast.success('Colunas do quadro atualizadas.')
+    } catch (err) {
+      toast.error('Erro ao salvar colunas', getErrorMessage(err))
+    }
+  }
 
   const loadContents = async () => {
     setLoading(true)
@@ -274,6 +303,18 @@ export function ContentPage({ view }: ContentPageProps) {
           </div>
         )}
 
+        {view === 'board' && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowColumnsModal(true)}
+            className="self-start lg:self-auto lg:mr-auto gap-1.5"
+          >
+            <Settings2 size={14} />
+            <span>Personalizar Colunas</span>
+          </Button>
+        )}
+
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[140px] sm:w-44 sm:flex-none">
             <Select value={selectedClient || ALL_CLIENTS} onValueChange={(v) => setSelectedClient(v === ALL_CLIENTS ? '' : v)}>
@@ -428,10 +469,17 @@ export function ContentPage({ view }: ContentPageProps) {
           )}
 
           {view === 'board' && (
-            <BoardView contents={contents} onOpenContent={(id) => navigate(`/app/content/${id}`)} />
+            <BoardView contents={contents} columns={boardColumns} onOpenContent={(id) => navigate(`/app/content/${id}`)} />
           )}
         </DndContext>
       )}
+
+      <BoardColumnsModal
+        open={showColumnsModal}
+        onOpenChange={setShowColumnsModal}
+        initialColumns={getBoardColumns(kanbanOverrides)}
+        onSave={handleSaveColumns}
+      />
 
       {/* New Content Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
@@ -493,11 +541,10 @@ export function ContentPage({ view }: ContentPageProps) {
 
             <div>
               <Label htmlFor="newContentScheduledAt">Data e Hora Agendada (Opcional)</Label>
-              <Input
+              <DateTimeField
                 id="newContentScheduledAt"
-                type="datetime-local"
                 value={newContent.scheduledAt}
-                onChange={(e) => setNewContent({ ...newContent, scheduledAt: e.target.value })}
+                onChange={(v) => setNewContent({ ...newContent, scheduledAt: v })}
               />
             </div>
 

@@ -15,10 +15,24 @@ export async function getCurrent(req: AuthRequest, res: Response, next: NextFunc
 
 export async function updateCurrent(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const { name, logoUrl, country, timezone, locale } = req.body;
+    const { name, logoUrl, country, timezone, locale, kanbanColumns } = req.body;
+
+    if (kanbanColumns !== undefined && kanbanColumns !== null) {
+      const valid = Array.isArray(kanbanColumns) && kanbanColumns.every(
+        (c) => c && typeof c.key === 'string' && typeof c.label === 'string' && c.label.trim()
+          && typeof c.order === 'number' && typeof c.hidden === 'boolean'
+      );
+      if (!valid) return res.status(400).json({ error: 'kanbanColumns must be an array of { key, label, order, hidden }' });
+    }
+
     const agency = await prisma.agency.update({
       where: { id: req.user!.agencyId },
-      data: { name, logoUrl, country, timezone, locale },
+      data: {
+        name, logoUrl, country, timezone, locale,
+        ...(kanbanColumns !== undefined && {
+          kanbanColumns: kanbanColumns === null ? null : JSON.stringify(kanbanColumns),
+        }),
+      },
     });
     res.json(agency);
   } catch (err) { next(err); }

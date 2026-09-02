@@ -3,9 +3,20 @@ import multer from 'multer';
 import { authenticate } from '../../common/middleware/auth';
 import { AuthRequest } from '../../common/middleware/auth';
 import { prisma } from '../../database/prisma';
-import { NotFoundError } from '../../common/middleware/errorHandler';
+import { NotFoundError, ValidationError } from '../../common/middleware/errorHandler';
 import { getStorageProvider } from '../../common/storage';
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
+
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  // video/quicktime (.mov) matters a lot in practice — it's the default export format on
+  // iPhone, so rejecting it silently sent every iPhone-recorded video down the same broken
+  // path: fileFilter errors out, but the browser keeps pushing the (often large) file over the
+  // wire regardless, so the request just looked hung until the upload finished and only then
+  // surfaced the error.
+  'video/mp4', 'video/quicktime', 'video/webm',
+  'application/pdf',
+];
 
 // Files are buffered in memory, then handed to the configured storage provider
 // (local disk or S3/MinIO — see common/storage.ts). Keeps this route provider-agnostic.
@@ -13,11 +24,26 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 100 * 1024 * 1024 }, // 100MB — short marketing videos (Reels/Stories) need more room than images
   fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'application/pdf'];
-    if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('File type not allowed'));
+    if (ALLOWED_MIME_TYPES.includes(file.mimetype)) cb(null, true);
+    else cb(new ValidationError(`Tipo de arquivo não suportado (${file.mimetype}). Use JPG, PNG, WEBP, GIF, MP4, MOV, WEBM ou PDF.`));
   },
 });
+
+// Multer (and the fileFilter rejection above) reports failures by calling `next(err)` from
+// inside `upload.single('file')` — without this handler right after it in the chain, that error
+// still reached the generic app-level errorHandler eventually, but only after the response had
+// already stalled from the frontend's point of view. Catching it here, right where it's thrown,
+// keeps the failure fast and its message specific (file too large vs wrong type) instead of a
+// generic "Internal server error".
+function handleUploadError(err: unknown, _req: Request, res: Response, next: NextFunction) {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'Arquivo muito grande — o limite é 100MB.', statusCode: 400 });
+    }
+    return res.status(400).json({ error: `Erro no upload: ${err.message}`, statusCode: 400 });
+  }
+  next(err);
+}
 
 const router = Router();
 router.use(authenticate);
@@ -38,7 +64,7 @@ router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
-router.post('/upload', upload.single('file'), async (req: AuthRequest, res: Response, next: NextFunction) => {
+router.post('/upload', upload.single('file'), handleUploadError, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 

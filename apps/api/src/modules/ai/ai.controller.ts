@@ -180,21 +180,57 @@ export async function generateCaption(req: AuthRequest, res: Response, next: Nex
   try {
     const { clientId, contentId, brief, contentType, platform, pillar, tone } = req.body;
     const ctx = clientId ? await getBrandContext(clientId, req.user!.agencyId) : null;
-    const ai = await resolveAgencyAIProvider(req.user!.agencyId);
+    const ai = await resolveAgencyAIProvider(req.user!.agencyId, 'text');
 
-    const result = await ai.generateJSON<any>({
-      systemPrompt: `Você é um copywriter sênior especialista em social media.
-Crie uma legenda otimizada para a plataforma indicada.
-Retorne JSON: { "caption": string, "hook": string, "cta": string, "hashtags": [string] }`,
-      userPrompt: `Plataforma: ${platform || 'Instagram'}
+    // When this content already has a creative (uploaded or AI-generated), ground the caption
+    // in what's actually visible in it — otherwise the copy can drift from the image (praising
+    // an offer/product that isn't the one shown, describing a layout that doesn't exist), which
+    // is exactly the "fora de contexto" problem this is meant to prevent. Picks the same "most
+    // recent image asset" the workspace preview itself shows (see ContentDetailPage.tsx).
+    let creativeImage: { buffer: Buffer; mimeType: string } | null = null;
+    if (contentId) {
+      const primaryAsset = await prisma.contentAsset.findFirst({
+        where: { contentId, agencyId: req.user!.agencyId, asset: { mimeType: { startsWith: 'image/' } } },
+        include: { asset: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (primaryAsset?.asset?.publicUrl) {
+        try {
+          const imgRes = await fetch(primaryAsset.asset.publicUrl);
+          if (imgRes.ok) {
+            creativeImage = { buffer: Buffer.from(await imgRes.arrayBuffer()), mimeType: primaryAsset.asset.mimeType };
+          }
+        } catch {
+          // Image unreachable — fall through to text-only generation below rather than fail.
+        }
+      }
+    }
+
+    const systemPrompt = `Você é um copywriter sênior especialista em social media.
+Crie uma legenda otimizada para a plataforma indicada.${creativeImage ? ' A imagem do criativo já pronto está anexada a esta mensagem — a legenda TEM que corresponder exatamente ao que está nela (produto, oferta, preço, texto visível na peça). Nunca escreva sobre algo diferente do que a imagem mostra.' : ''}
+Retorne SOMENTE JSON, sem markdown, sem texto fora do JSON: { "caption": string, "hook": string, "cta": string, "hashtags": [string] }`;
+    const userPrompt = `Plataforma: ${platform || 'Instagram'}
 Tipo: ${contentType || 'IMAGE'}
 Pilar: ${pillar || 'ENGAGEMENT'}
 Tom desejado: ${tone || 'Profissional e próximo'}
 Brief: ${brief || 'Post de engajamento'}
 Marca: ${ctx?.profile?.brandSummary || 'Marca geral'}
 Tom de voz da marca: ${ctx?.profile?.toneOfVoice || 'Profissional'}
-Regras: ${ctx?.rules.slice(0, 5).map(r => r.ruleText).join('; ') || 'Nenhuma'}`,
-    });
+Regras: ${ctx?.rules.slice(0, 5).map(r => r.ruleText).join('; ') || 'Nenhuma'}`;
+
+    let result: any;
+    if (creativeImage) {
+      try {
+        const raw = await ai.analyzeImages([creativeImage], `${systemPrompt}\n\n${userPrompt}`);
+        result = JSON.parse(raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+      } catch {
+        // Vision call failed or didn't return clean JSON — fall back to the normal text-only
+        // path rather than failing the whole request.
+        result = await ai.generateJSON<any>({ systemPrompt, userPrompt });
+      }
+    } else {
+      result = await ai.generateJSON<any>({ systemPrompt, userPrompt });
+    }
 
     await logGeneration({
       agencyId: req.user!.agencyId, clientId, contentId, userId: req.user!.id, ai,

@@ -150,7 +150,7 @@
 
   /* Minimals Nav Item */
   .nav-item-minimals {
-    @apply flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer text-grey-600 hover:bg-grey-200/60 hover:text-grey-800 dark:text-grey-400 dark:hover:bg-grey-800 dark:hover:text-grey-100;
+    @apply flex items-center gap-3.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer text-grey-600 hover:bg-grey-200/60 hover:text-grey-800 dark:text-grey-700 dark:hover:bg-grey-800 dark:hover:text-grey-100;
   }
   .nav-item-minimals.active {
     @apply bg-primary/10 text-primary font-bold hover:bg-primary/15 hover:text-primary dark:bg-primary/20;

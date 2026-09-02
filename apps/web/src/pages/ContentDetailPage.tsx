@@ -9,6 +9,8 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { CONTENT_TYPE_LABELS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { DateTimeField, toDateTimeLocalValue } from '@/components/ui/DateTimeField'
+import { PlatformPicker } from '@/components/planner/PlatformPicker'
 import { Label } from '@/components/ui/Label'
 import { Textarea } from '@/components/ui/Textarea'
 import { Badge } from '@/components/ui/Badge'
@@ -36,6 +38,7 @@ export function ContentDetailPage() {
   const [aiHooks, setAiHooks] = useState<string[]>([])
   const [generatingImage, setGeneratingImage] = useState(false)
   const [uploadingCreative, setUploadingCreative] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [previewPlatform, setPreviewPlatform] = useState<SocialPlatform>('INSTAGRAM')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -179,6 +182,28 @@ export function ContentDetailPage() {
     }
   }
 
+  // Platform selection used to only exist at content-creation time — once inside the
+  // Workspace there was no way to see or change which network(s) a post targets. Reuses the
+  // same PlatformPicker from creation; each toggle hits the dedicated platform endpoints
+  // immediately (add/remove), matching how they already work (see content.routes.ts), then
+  // re-syncs from the server rather than hand-merging optimistic state.
+  const handleTogglePlatforms = async (nextPlatforms: string[]) => {
+    const current: any[] = content.platforms || []
+    const currentValues = current.map((p) => p.platform)
+    const toAdd = nextPlatforms.filter((p) => !currentValues.includes(p))
+    const toRemove = current.filter((p) => !nextPlatforms.includes(p.platform))
+    try {
+      await Promise.all([
+        ...toAdd.map((platform) => api.post(`/contents/${content.id}/platforms`, { platform })),
+        ...toRemove.map((p) => api.delete(`/contents/${content.id}/platforms/${p.id}`)),
+      ])
+    } catch (err) {
+      toast.error('Erro ao atualizar redes sociais', getErrorMessage(err))
+    } finally {
+      await loadContent()
+    }
+  }
+
   const handleGenerateCaption = async () => {
     setGeneratingCaption(true)
     try {
@@ -239,17 +264,25 @@ export function ContentDetailPage() {
     const file = e.target.files?.[0]
     if (!file) return
     setUploadingCreative(true)
+    setUploadProgress(0)
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('clientId', content.clientId)
       formData.append('contentId', content.id)
-      await api.post('/assets/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      await api.post('/assets/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (evt) => {
+          if (evt.total) setUploadProgress(Math.round((evt.loaded / evt.total) * 100))
+        },
+      })
       await loadContent()
+      toast.success('Criativo enviado com sucesso!')
     } catch (err) {
       toast.error('Erro ao enviar o criativo', getErrorMessage(err))
     } finally {
       setUploadingCreative(false)
+      setUploadProgress(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
@@ -412,6 +445,7 @@ export function ContentDetailPage() {
               cta={content.cta}
               image={primaryImage}
               generating={generatingImage}
+              uploadProgress={uploadProgress}
               value={previewPlatform}
               onChange={setPreviewPlatform}
               dark={mode === 'dark'}
@@ -427,13 +461,13 @@ export function ContentDetailPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingCreative}
+                loading={uploadingCreative}
                 className="gap-1.5"
               >
-                <Upload size={13} />
-                <span>{uploadingCreative ? 'Enviando...' : 'Enviar Criativo'}</span>
+                {!uploadingCreative && <Upload size={13} />}
+                <span>{uploadingCreative ? `Enviando... ${uploadProgress ?? 0}%` : 'Enviar Criativo'}</span>
               </Button>
-              <input ref={fileInputRef} type="file" accept="image/*,video/mp4" className="hidden" onChange={handleUploadCreative} />
+              <input ref={fileInputRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm" className="hidden" onChange={handleUploadCreative} />
 
               {(previewPlatform === 'FACEBOOK' || previewPlatform === 'INSTAGRAM' || previewPlatform === 'STORY') && (() => {
                 const targetPlatform = previewPlatform === 'STORY' ? 'INSTAGRAM_STORY' : previewPlatform
@@ -611,14 +645,20 @@ export function ContentDetailPage() {
 
               <div>
                 <Label htmlFor="contentScheduledAt">Data e Hora Agendada</Label>
-                <Input
+                <DateTimeField
                   id="contentScheduledAt"
-                  type="datetime-local"
-                  value={content.scheduledAt ? new Date(content.scheduledAt).toISOString().slice(0, 16) : ''}
-                  onChange={(e) => setContent({ ...content, scheduledAt: e.target.value })}
-                  className="py-2"
+                  value={content.scheduledAt ? toDateTimeLocalValue(content.scheduledAt) : ''}
+                  onChange={(v) => setContent({ ...content, scheduledAt: v ? new Date(v).toISOString() : null })}
                 />
               </div>
+            </div>
+
+            <div>
+              <Label>Redes Sociais</Label>
+              <PlatformPicker
+                value={(content.platforms || []).map((p: any) => p.platform)}
+                onChange={handleTogglePlatforms}
+              />
             </div>
 
             <div>

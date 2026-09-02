@@ -13,6 +13,7 @@ router.get('/', ctrl.list);
 router.post('/', ctrl.create);
 router.get('/:id', ctrl.getOne);
 router.patch('/:id', ctrl.update);
+router.delete('/:id', ctrl.remove);
 router.post('/:id/publish', ctrl.publish);
 
 export default router;

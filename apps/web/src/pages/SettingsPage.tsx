@@ -49,6 +49,37 @@ const TEXT_MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]
   ],
 }
 
+// Countries/timezones this product's userbase actually needs (Portuguese-speaking markets +
+// a couple of generic anchors) — picking a country auto-fills a sensible default timezone,
+// but the timezone stays independently editable right after in case that default is wrong.
+const COUNTRY_OPTIONS = [
+  { value: 'Brasil (BR)', label: 'Brasil', timezone: 'America/Sao_Paulo' },
+  { value: 'Moçambique (MZ)', label: 'Moçambique', timezone: 'Africa/Maputo' },
+  { value: 'Portugal (PT)', label: 'Portugal', timezone: 'Europe/Lisbon' },
+  { value: 'Angola (AO)', label: 'Angola', timezone: 'Africa/Luanda' },
+  { value: 'Cabo Verde (CV)', label: 'Cabo Verde', timezone: 'Atlantic/Cape_Verde' },
+  { value: 'Guiné-Bissau (GW)', label: 'Guiné-Bissau', timezone: 'Africa/Bissau' },
+  { value: 'São Tomé e Príncipe (ST)', label: 'São Tomé e Príncipe', timezone: 'Africa/Sao_Tome' },
+  { value: 'Timor-Leste (TL)', label: 'Timor-Leste', timezone: 'Asia/Dili' },
+]
+
+const TIMEZONE_OPTIONS = [
+  { value: 'America/Sao_Paulo', label: 'América/São Paulo — Brasil (UTC-3)' },
+  { value: 'Africa/Maputo', label: 'África/Maputo — Moçambique (UTC+2)' },
+  { value: 'Europe/Lisbon', label: 'Europa/Lisboa — Portugal (UTC+0/+1)' },
+  { value: 'Africa/Luanda', label: 'África/Luanda — Angola (UTC+1)' },
+  { value: 'Atlantic/Cape_Verde', label: 'Atlântico/Cabo Verde (UTC-1)' },
+  { value: 'Africa/Bissau', label: 'África/Bissau — Guiné-Bissau (UTC+0)' },
+  { value: 'Africa/Sao_Tome', label: 'África/São Tomé (UTC+0)' },
+  { value: 'Asia/Dili', label: 'Ásia/Dili — Timor-Leste (UTC+9)' },
+]
+
+const LOCALE_OPTIONS = [
+  { value: 'pt-BR', label: 'Português (Brasil)' },
+  { value: 'pt-PT', label: 'Português (Portugal/África)' },
+  { value: 'en-US', label: 'English' },
+]
+
 const IMAGE_MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
   openai: [
     { value: 'gpt-image-1', label: 'GPT Image 1 (modelo atual da OpenAI)' },
@@ -66,6 +97,16 @@ export function SettingsPage() {
   const [agency, setAgency] = useState<any>(null)
   const [members, setMembers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Agency region/timezone modal — country, timezone and locale used to have no edit path at
+  // all (only ever displayed, with a hardcoded "Brasil (BR)" fallback that lied for every
+  // agency outside Brazil), which is exactly what let a Mozambique agency's timezone silently
+  // default to America/Sao_Paulo.
+  const [showAgencyModal, setShowAgencyModal] = useState(false)
+  const [agencyCountry, setAgencyCountry] = useState('')
+  const [agencyTimezone, setAgencyTimezone] = useState('America/Sao_Paulo')
+  const [agencyLocale, setAgencyLocale] = useState('pt-BR')
+  const [savingAgency, setSavingAgency] = useState(false)
 
   // Invite modal
   const [showInviteModal, setShowInviteModal] = useState(false)
@@ -209,6 +250,38 @@ export function SettingsPage() {
     }
   }
 
+  const openAgencyModal = () => {
+    setAgencyCountry(agency?.country || '')
+    setAgencyTimezone(agency?.timezone || 'America/Sao_Paulo')
+    setAgencyLocale(agency?.locale || 'pt-BR')
+    setShowAgencyModal(true)
+  }
+
+  const handleChangeAgencyCountry = (value: string) => {
+    setAgencyCountry(value)
+    const match = COUNTRY_OPTIONS.find((c) => c.value === value)
+    if (match) setAgencyTimezone(match.timezone)
+  }
+
+  const handleSaveAgency = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSavingAgency(true)
+    try {
+      const { data } = await api.patch('/agencies/current', {
+        country: agencyCountry,
+        timezone: agencyTimezone,
+        locale: agencyLocale,
+      })
+      setAgency(data)
+      setShowAgencyModal(false)
+      toast.success('Dados da agência atualizados!')
+    } catch (err) {
+      toast.error('Erro ao salvar os dados da agência', getErrorMessage(err))
+    } finally {
+      setSavingAgency(false)
+    }
+  }
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
@@ -273,20 +346,73 @@ export function SettingsPage() {
               <CardDescription>Slug: {agency?.slug} • Fuso: {agency?.timezone}</CardDescription>
             </div>
           </div>
+
+          <Button size="sm" variant="outline" onClick={openAgencyModal}>Editar</Button>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div className="p-4 bg-muted rounded-xl border border-border">
               <span className="text-muted-foreground block mb-1 font-bold uppercase tracking-wider text-[11px]">País / Região:</span>
-              <span className="text-foreground font-extrabold">{agency?.country || 'Brasil (BR)'}</span>
+              <span className="text-foreground font-extrabold">{agency?.country || 'Não configurado'}</span>
             </div>
             <div className="p-4 bg-muted rounded-xl border border-border">
               <span className="text-muted-foreground block mb-1 font-bold uppercase tracking-wider text-[11px]">Idioma Padrão:</span>
-              <span className="text-foreground font-extrabold">{agency?.locale || 'Português (pt-BR)'}</span>
+              <span className="text-foreground font-extrabold">{LOCALE_OPTIONS.find((l) => l.value === agency?.locale)?.label || agency?.locale || 'Não configurado'}</span>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Agency Region/Timezone Modal */}
+      <Dialog open={showAgencyModal} onOpenChange={setShowAgencyModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Região da Agência</DialogTitle>
+            <DialogDescription>
+              O fuso horário é usado para exibir e agendar publicações — configure certo para evitar posts saindo na hora errada.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSaveAgency} className="space-y-4">
+            <div>
+              <Label htmlFor="agencyCountry">País / Região</Label>
+              <Select value={agencyCountry} onValueChange={handleChangeAgencyCountry}>
+                <SelectTrigger id="agencyCountry"><SelectValue placeholder="Selecione um país" /></SelectTrigger>
+                <SelectContent>
+                  {COUNTRY_OPTIONS.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="agencyTimezone">Fuso Horário</Label>
+              <Select value={agencyTimezone} onValueChange={setAgencyTimezone}>
+                <SelectTrigger id="agencyTimezone"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {TIMEZONE_OPTIONS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="agencyLocale">Idioma Padrão</Label>
+              <Select value={agencyLocale} onValueChange={setAgencyLocale}>
+                <SelectTrigger id="agencyLocale"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {LOCALE_OPTIONS.map((l) => <SelectItem key={l.value} value={l.value}>{l.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setShowAgencyModal(false)}>Cancelar</Button>
+              <Button type="submit" loading={savingAgency}>
+                {!savingAgency && <span>Salvar</span>}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Team Members */}
       <Card>

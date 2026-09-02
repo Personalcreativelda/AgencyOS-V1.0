@@ -1,18 +1,19 @@
 import { useDroppable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
 import { ContentCard } from './ContentCard'
-import { BOARD_COLUMNS } from './plannerUtils'
+import { EffectiveBoardColumn } from './plannerUtils'
 
 interface BoardViewProps {
   contents: any[]
+  columns: EffectiveBoardColumn[]
   onOpenContent: (id: string) => void
 }
 
-function BoardColumn({ column, items, onOpenContent }: { column: typeof BOARD_COLUMNS[number]; items: any[]; onOpenContent: (id: string) => void }) {
+function BoardColumn({ column, items, onOpenContent }: { column: EffectiveBoardColumn; items: any[]; onOpenContent: (id: string) => void }) {
   const { setNodeRef, isOver } = useDroppable({ id: `status:${column.targetStatus}` })
 
   return (
-    <div className="flex flex-col w-72 shrink-0">
+    <div className="flex flex-col w-[85vw] sm:w-72 shrink-0 snap-start">
       <div className="flex items-center justify-between px-1 pb-2">
         <span className="text-xs font-bold text-foreground">{column.label}</span>
         <span className="text-[10px] font-bold text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">{items.length}</span>
@@ -35,10 +36,10 @@ function BoardColumn({ column, items, onOpenContent }: { column: typeof BOARD_CO
   )
 }
 
-export function BoardView({ contents, onOpenContent }: BoardViewProps) {
+export function BoardView({ contents, columns, onOpenContent }: BoardViewProps) {
   return (
-    <div className="flex gap-4 overflow-x-auto pb-2">
-      {BOARD_COLUMNS.map((column) => (
+    <div className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 snap-x snap-mandatory scroll-px-4">
+      {columns.map((column) => (
         <BoardColumn
           key={column.key}
           column={column}

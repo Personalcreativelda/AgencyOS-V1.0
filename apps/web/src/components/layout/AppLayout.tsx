@@ -156,7 +156,7 @@ export function AppLayout() {
             </div>
             <div className="min-w-0">
               <h1 className="text-base font-bold text-foreground tracking-tight leading-tight truncate">AgencyOS</h1>
-              <p className="text-[11px] font-semibold text-primary truncate">Plataforma de Marketing</p>
+              <p className="text-[11px] font-semibold text-primary truncate">Agências de Marketing</p>
             </div>
           </div>
           <button

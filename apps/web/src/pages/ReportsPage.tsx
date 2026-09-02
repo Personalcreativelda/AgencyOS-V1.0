@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Plus, BarChart2, Sparkles, ExternalLink, Copy, Check } from 'lucide-react'
+import { Plus, BarChart2, Sparkles, ExternalLink, Copy, Check, Trash2 } from 'lucide-react'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select'
 import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/Dialog'
 import { toast } from '@/lib/toast'
+import { confirmDialog } from '@/lib/confirm'
 import { getErrorMessage } from '@/lib/errors'
 
 export function ReportsPage() {
@@ -73,6 +74,25 @@ export function ReportsPage() {
     navigator.clipboard.writeText(`${window.location.origin}/report/${token}`)
     setCopiedId(token)
     setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  const handleDeleteReport = async (id: string, title: string) => {
+    const ok = await confirmDialog({
+      title: 'Excluir este relatório?',
+      description: `"${title}" será removido definitivamente. Se o link já foi enviado ao cliente, ele deixa de funcionar.`,
+      variant: 'destructive',
+      confirmLabel: 'Excluir',
+    })
+    if (!ok) return
+    const prev = reports
+    setReports((rs) => rs.filter((r) => r.id !== id))
+    try {
+      await api.delete(`/reports/${id}`)
+      toast.success('Relatório excluído.')
+    } catch (err) {
+      setReports(prev)
+      toast.error('Erro ao excluir relatório', getErrorMessage(err))
+    }
   }
 
   const handleClientChange = (clientId: string) => {
@@ -152,6 +172,15 @@ export function ReportsPage() {
                     </Button>
                   </>
                 )}
+
+                <button
+                  type="button"
+                  title="Excluir relatório"
+                  onClick={() => handleDeleteReport(rep.id, rep.title)}
+                  className="p-2 rounded-xl text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
+                >
+                  <Trash2 size={15} />
+                </button>
               </div>
             </div>
           ))}

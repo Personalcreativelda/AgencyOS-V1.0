@@ -2,6 +2,7 @@ import 'dotenv/config';
 import app from './app';
 import { startScheduledPublisher } from './jobs/scheduledPublisher';
 import { startAdsSync } from './jobs/adsSync';
+import { startAttentionAlerts } from './jobs/attentionAlerts';
 
 const PORT = process.env.PORT || 3001;
 
@@ -14,6 +15,7 @@ app.listen(PORT, () => {
 
   startScheduledPublisher();
   startAdsSync();
+  startAttentionAlerts();
 });
 
 process.on('unhandledRejection', (reason, promise) => {

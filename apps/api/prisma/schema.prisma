@@ -89,6 +89,11 @@ model Agency {
   aiTextProvider  String? @map("ai_text_provider")
   aiImageProvider String? @map("ai_image_provider")
 
+  // Customização visual do Kanban por agência: label/ordem/oculto por coluna fixa.
+  // JSON string: Array<{ key: string; label: string; order: number; hidden: boolean }>.
+  // O mapeamento status→coluna (BOARD_COLUMNS.statuses/targetStatus) continua fixo no código.
+  kanbanColumns String? @map("kanban_columns")
+
   @@map("agencies")
 }
 
