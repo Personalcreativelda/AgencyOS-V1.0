@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import {
   Trash2, Eye, EyeOff, Loader2, CheckCircle2, XCircle,
-  Share2, Facebook, Instagram, MessageCircle, QrCode, Unplug, Copy, Check, Mail, Building2, Contact,
+  Share2, Facebook, Instagram, Linkedin, Youtube, MessageCircle, QrCode, Unplug, Copy, Check, Mail, Building2, Contact,
   ChevronLeft, ChevronRight, ExternalLink,
 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import api from '@/lib/api'
+import { cn, PLATFORM_COLORS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
@@ -29,6 +30,9 @@ import { getErrorMessage } from '@/lib/errors'
 // Built from wherever the app is actually running (works for localhost, staging, prod,
 // Coolify's auto-generated domain, a custom domain — no manual "figure out your API URL" step).
 const META_CALLBACK_URL = `${window.location.origin}/api/v1/social/meta/callback`
+const LINKEDIN_CALLBACK_URL = `${window.location.origin}/api/v1/social/linkedin/callback`
+const TIKTOK_CALLBACK_URL = `${window.location.origin}/api/v1/social/tiktok/callback`
+const YOUTUBE_CALLBACK_URL = `${window.location.origin}/api/v1/social/youtube/callback`
 
 // Guided setup for a first-time Meta App — every step here comes from an actual snag hit while
 // building this integration (rate-limited app creation, "Invalid Scopes" from a missing
@@ -78,6 +82,109 @@ const META_WIZARD_STEPS: { title: string; items: string[] }[] = [
   },
 ]
 
+// Guided setup for a first-time LinkedIn App — mirrors META_WIZARD_STEPS. The LinkedIn-specific
+// snag is step 2: posting to a Company Page needs the "Community Management API" product,
+// which requires LinkedIn's own approval (can take a few days) — flagged explicitly so it
+// isn't mistaken for something broken in the app.
+const LINKEDIN_WIZARD_STEPS: { title: string; items: string[] }[] = [
+  {
+    title: 'Criar o App no LinkedIn',
+    items: [
+      'Acesse linkedin.com/developers/apps e clique em "Create app".',
+      'Vincule o app à Página de Empresa da sua agência (ela precisa já existir no LinkedIn).',
+    ],
+  },
+  {
+    title: 'Solicitar acesso à Community Management API',
+    items: [
+      'Na aba "Products" do app, adicione o produto "Community Management API".',
+      'O LinkedIn precisa aprovar esse acesso antes de liberar a permissão de postar em Páginas de Empresa — isso pode levar alguns dias. Enquanto não for aprovado, a conexão vai falhar com erro de permissão, o que é esperado.',
+    ],
+  },
+  {
+    title: 'Registrar a URL de redirecionamento',
+    items: [
+      'Vá na aba "Auth".',
+      'Cole a URL abaixo em "Authorized redirect URLs for your app".',
+    ],
+  },
+  {
+    title: 'Copiar as credenciais',
+    items: [
+      'Ainda na aba "Auth", copie o "Client ID" e o "Client Secret".',
+      'Cole os dois no próximo passo.',
+    ],
+  },
+]
+
+// Guided setup for a first-time TikTok App — mirrors LINKEDIN_WIZARD_STEPS. The TikTok-specific
+// snag (step 2) is stricter than LinkedIn's: until the app passes TikTok's own audit for the
+// Content Posting API, EVERY post published through it is forced into private/self-only
+// viewing — not a broken connection, just TikTok's own restriction on unaudited apps.
+const TIKTOK_WIZARD_STEPS: { title: string; items: string[] }[] = [
+  {
+    title: 'Criar o App no TikTok',
+    items: [
+      'Acesse developers.tiktok.com/apps e clique em "Create an app" (ou "Manage apps").',
+    ],
+  },
+  {
+    title: 'Adicionar o produto Content Posting API',
+    items: [
+      'Na aba de produtos do app, adicione "Content Posting API" e solicite a permissão video.publish.',
+      'Até o TikTok aprovar a auditoria (pode levar alguns dias), os posts feitos por aqui ficam visíveis só para a própria conta — isso é uma restrição do TikTok, não um erro do sistema.',
+    ],
+  },
+  {
+    title: 'Registrar a URL de redirecionamento',
+    items: [
+      'Na aba "Login Kit" (ou "Auth"), cole a URL abaixo em "Redirect URI".',
+    ],
+  },
+  {
+    title: 'Copiar as credenciais',
+    items: [
+      'Copie a "Client Key" e a "Client Secret".',
+      'Cole os dois no próximo passo.',
+    ],
+  },
+]
+
+// Guided setup for a first-time YouTube (Google Cloud) App — mirrors TIKTOK_WIZARD_STEPS. The
+// Google-specific snag (step 2) is different in kind from TikTok's: it's not about what gets
+// posted, it's about WHO can authorize the app and for how long — apps not verified by Google
+// only let up to 100 manually-added "test users" connect, and their connection expires every 7
+// days until verification is done.
+const YOUTUBE_WIZARD_STEPS: { title: string; items: string[] }[] = [
+  {
+    title: 'Criar o projeto no Google Cloud',
+    items: [
+      'Acesse console.cloud.google.com, crie um projeto e ative a "YouTube Data API v3" (em APIs e Serviços → Biblioteca).',
+    ],
+  },
+  {
+    title: 'Configurar a tela de consentimento OAuth',
+    items: [
+      'Em APIs e Serviços → Tela de consentimento OAuth, adicione uma política de privacidade (pode ser uma página simples no seu domínio).',
+      'Enquanto o projeto não passar pela verificação do Google (necessária pro escopo de upload do YouTube), só até 100 contas Google cadastradas manualmente como "testadoras" conseguem conectar, e a conexão expira a cada 7 dias — normal para testes, mas exige reconectar toda semana até a verificação ser aprovada.',
+    ],
+  },
+  {
+    title: 'Criar credenciais OAuth e registrar a URL',
+    items: [
+      'Em APIs e Serviços → Credenciais, crie uma credencial OAuth do tipo "Aplicativo Web".',
+      'Cole a URL abaixo em "URIs de redirecionamento autorizados".',
+    ],
+  },
+  {
+    title: 'Copiar as credenciais',
+    items: [
+      'Copie o "ID do cliente" e a "Chave secreta do cliente".',
+      'Cole os dois no próximo passo.',
+    ],
+  },
+]
+
 export function SocialConnectionsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
@@ -116,6 +223,58 @@ export function SocialConnectionsPage() {
   const [savingMeta, setSavingMeta] = useState(false)
   const [copiedCallback, setCopiedCallback] = useState(false)
 
+  // LinkedIn App (bring-your-own) settings + connect flow — mirrors the Meta block above
+  const [linkedinSettings, setLinkedinSettings] = useState<any>(null)
+  const [showLinkedinModal, setShowLinkedinModal] = useState(false)
+  const [linkedinWizardStep, setLinkedinWizardStep] = useState(1)
+  const [linkedinClientIdInput, setLinkedinClientIdInput] = useState('')
+  const [linkedinClientSecretInput, setLinkedinClientSecretInput] = useState('')
+  const [showLinkedinSecret, setShowLinkedinSecret] = useState(false)
+  const [savingLinkedin, setSavingLinkedin] = useState(false)
+  const [copiedLinkedinCallback, setCopiedLinkedinCallback] = useState(false)
+  const [connectingLinkedin, setConnectingLinkedin] = useState(false)
+
+  // Organization picker — shown when the LinkedIn member administers more than one Company
+  // Page and we can't tell which one belongs to the client being connected without asking.
+  const [orgPickerToken, setOrgPickerToken] = useState<string | null>(null)
+  const [orgPickerClientId, setOrgPickerClientId] = useState<string | null>(null)
+  const [pendingOrgs, setPendingOrgs] = useState<Array<{ urn: string; name: string }>>([])
+  const [selectedOrgUrns, setSelectedOrgUrns] = useState<string[]>([])
+  const [loadingPendingOrgs, setLoadingPendingOrgs] = useState(false)
+  const [confirmingOrgSelection, setConfirmingOrgSelection] = useState(false)
+
+  // TikTok App (bring-your-own) settings + connect flow — no account picker needed (TikTok
+  // OAuth connects exactly one account per authorization, unlike Meta Pages/LinkedIn Orgs).
+  const [tiktokSettings, setTiktokSettings] = useState<any>(null)
+  const [showTiktokModal, setShowTiktokModal] = useState(false)
+  const [tiktokWizardStep, setTiktokWizardStep] = useState(1)
+  const [tiktokClientKeyInput, setTiktokClientKeyInput] = useState('')
+  const [tiktokClientSecretInput, setTiktokClientSecretInput] = useState('')
+  const [showTiktokSecret, setShowTiktokSecret] = useState(false)
+  const [savingTiktok, setSavingTiktok] = useState(false)
+  const [copiedTiktokCallback, setCopiedTiktokCallback] = useState(false)
+  const [connectingTiktok, setConnectingTiktok] = useState(false)
+
+  // YouTube App (bring-your-own Google Cloud project) settings + connect flow — no channel
+  // picker (same reasoning as TikTok: one account per authorization).
+  const [youtubeSettings, setYoutubeSettings] = useState<any>(null)
+  const [showYoutubeModal, setShowYoutubeModal] = useState(false)
+  const [youtubeWizardStep, setYoutubeWizardStep] = useState(1)
+  const [youtubeClientIdInput, setYoutubeClientIdInput] = useState('')
+  const [youtubeClientSecretInput, setYoutubeClientSecretInput] = useState('')
+  const [showYoutubeSecret, setShowYoutubeSecret] = useState(false)
+  const [savingYoutube, setSavingYoutube] = useState(false)
+  const [copiedYoutubeCallback, setCopiedYoutubeCallback] = useState(false)
+  const [connectingYoutube, setConnectingYoutube] = useState(false)
+
+  // WhatsApp Status (per-client, Evolution API) — no OAuth, no agency-level settings needed:
+  // just the client's already-paired Evolution instance name, reusing the agency's own
+  // Evolution API server (EVOLUTION_API_URL/KEY) that already works for the agency-level
+  // WhatsApp connection below.
+  const [showWhatsappConnectModal, setShowWhatsappConnectModal] = useState(false)
+  const [whatsappInstanceInput, setWhatsappInstanceInput] = useState('')
+  const [connectingClientWhatsapp, setConnectingClientWhatsapp] = useState(false)
+
   // SMTP (bring-your-own email, for approval-request notifications)
   const [smtpSettings, setSmtpSettings] = useState<any>(null)
   const [showSmtpModal, setShowSmtpModal] = useState(false)
@@ -128,15 +287,21 @@ export function SocialConnectionsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [cliRes, metaRes, waRes, smtpRes] = await Promise.all([
+        const [cliRes, metaRes, linkedinRes, tiktokRes, youtubeRes, waRes, smtpRes] = await Promise.all([
           api.get('/clients'),
           api.get('/social/meta/settings'),
+          api.get('/social/linkedin/settings'),
+          api.get('/social/tiktok/settings'),
+          api.get('/social/youtube/settings'),
           api.get('/social/whatsapp/settings'),
           api.get('/email/settings'),
         ])
         setClients(cliRes.data.data || [])
         if (cliRes.data.data?.length > 0) setSocialClientId(cliRes.data.data[0].id)
         setMetaSettings(metaRes.data)
+        setLinkedinSettings(linkedinRes.data)
+        setTiktokSettings(tiktokRes.data)
+        setYoutubeSettings(youtubeRes.data)
         setWaSettings(waRes.data)
         setSmtpSettings(smtpRes.data)
       } catch (err) {
@@ -164,6 +329,12 @@ export function SocialConnectionsPage() {
       const cid = searchParams.get('clientId')
       if (cid) setSocialClientId(cid)
       if (token) loadPendingPages(token)
+      setSearchParams({}, { replace: true })
+    } else if (searchParams.get('social_select_org')) {
+      const token = searchParams.get('token')
+      const cid = searchParams.get('clientId')
+      if (cid) setSocialClientId(cid)
+      if (token) loadPendingOrgs(token)
       setSearchParams({}, { replace: true })
     } else if (searchParams.get('social_error')) {
       toast.error('Não foi possível conectar a conta', 'Tente novamente.')
@@ -202,6 +373,40 @@ export function SocialConnectionsPage() {
       toast.error('Erro ao confirmar a seleção', getErrorMessage(err))
     } finally {
       setConfirmingPageSelection(false)
+    }
+  }
+
+  const loadPendingOrgs = async (token: string) => {
+    setLoadingPendingOrgs(true)
+    try {
+      const { data } = await api.get(`/social/linkedin/pending/${token}`)
+      setPendingOrgs(data.orgs || [])
+      setSelectedOrgUrns([])
+      setOrgPickerClientId(data.clientId)
+      setOrgPickerToken(token)
+    } catch (err: any) {
+      toast.error('Não foi possível carregar as organizações', getErrorMessage(err, 'Tente conectar novamente.'))
+    } finally {
+      setLoadingPendingOrgs(false)
+    }
+  }
+
+  const toggleOrgSelection = (urn: string) => {
+    setSelectedOrgUrns((prev) => prev.includes(urn) ? prev.filter((u) => u !== urn) : [...prev, urn])
+  }
+
+  const handleConfirmOrgSelection = async () => {
+    if (!orgPickerToken || selectedOrgUrns.length === 0) return
+    setConfirmingOrgSelection(true)
+    try {
+      await api.post(`/social/linkedin/pending/${orgPickerToken}/confirm`, { orgUrns: selectedOrgUrns })
+      setOrgPickerToken(null)
+      toast.success('Organização(ões) conectada(s) com sucesso!')
+      if (orgPickerClientId) loadConnections(orgPickerClientId)
+    } catch (err: any) {
+      toast.error('Erro ao confirmar a seleção', getErrorMessage(err))
+    } finally {
+      setConfirmingOrgSelection(false)
     }
   }
 
@@ -278,6 +483,216 @@ export function SocialConnectionsPage() {
     } catch (err: any) {
       toast.error('Erro ao iniciar conexão com a Meta', getErrorMessage(err))
       setConnectingMeta(false)
+    }
+  }
+
+  const openLinkedinModal = () => {
+    setLinkedinClientIdInput('')
+    setLinkedinClientSecretInput('')
+    setLinkedinWizardStep(linkedinSettings?.configured ? LINKEDIN_WIZARD_STEPS.length + 1 : 1)
+    setShowLinkedinModal(true)
+  }
+
+  const handleSaveLinkedinSettings = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!linkedinClientIdInput.trim() || !linkedinClientSecretInput.trim()) return
+    setSavingLinkedin(true)
+    try {
+      const { data } = await api.put('/social/linkedin/settings', {
+        linkedinClientId: linkedinClientIdInput.trim(),
+        linkedinClientSecret: linkedinClientSecretInput.trim(),
+      })
+      setLinkedinSettings(data)
+      setLinkedinClientIdInput('')
+      setLinkedinClientSecretInput('')
+      setShowLinkedinModal(false)
+    } catch (err: any) {
+      toast.error('Erro ao salvar o LinkedIn App', getErrorMessage(err))
+    } finally {
+      setSavingLinkedin(false)
+    }
+  }
+
+  const handleRemoveLinkedinSettings = async () => {
+    const ok = await confirmDialog({
+      title: 'Remover o LinkedIn App?',
+      description: 'Você não vai conseguir conectar novas Páginas de Empresa até reconfigurar.',
+      variant: 'destructive',
+      confirmLabel: 'Remover',
+    })
+    if (!ok) return
+    try {
+      const { data } = await api.delete('/social/linkedin/settings')
+      setLinkedinSettings(data)
+    } catch (err: any) {
+      toast.error('Erro ao remover o LinkedIn App', getErrorMessage(err))
+    }
+  }
+
+  const handleCopyLinkedinCallbackUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(LINKEDIN_CALLBACK_URL)
+      setCopiedLinkedinCallback(true)
+      setTimeout(() => setCopiedLinkedinCallback(false), 2000)
+    } catch {}
+  }
+
+  const handleConnectLinkedin = async () => {
+    if (!socialClientId) return
+    setConnectingLinkedin(true)
+    try {
+      const { data } = await api.get('/social/linkedin/connect', { params: { clientId: socialClientId } })
+      window.location.href = data.authUrl
+    } catch (err: any) {
+      toast.error('Erro ao iniciar conexão com o LinkedIn', getErrorMessage(err))
+      setConnectingLinkedin(false)
+    }
+  }
+
+  const openTiktokModal = () => {
+    setTiktokClientKeyInput('')
+    setTiktokClientSecretInput('')
+    setTiktokWizardStep(tiktokSettings?.configured ? TIKTOK_WIZARD_STEPS.length + 1 : 1)
+    setShowTiktokModal(true)
+  }
+
+  const handleSaveTiktokSettings = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!tiktokClientKeyInput.trim() || !tiktokClientSecretInput.trim()) return
+    setSavingTiktok(true)
+    try {
+      const { data } = await api.put('/social/tiktok/settings', {
+        tiktokClientKey: tiktokClientKeyInput.trim(),
+        tiktokClientSecret: tiktokClientSecretInput.trim(),
+      })
+      setTiktokSettings(data)
+      setTiktokClientKeyInput('')
+      setTiktokClientSecretInput('')
+      setShowTiktokModal(false)
+    } catch (err: any) {
+      toast.error('Erro ao salvar o TikTok App', getErrorMessage(err))
+    } finally {
+      setSavingTiktok(false)
+    }
+  }
+
+  const handleRemoveTiktokSettings = async () => {
+    const ok = await confirmDialog({
+      title: 'Remover o TikTok App?',
+      description: 'Você não vai conseguir conectar novas contas do TikTok até reconfigurar.',
+      variant: 'destructive',
+      confirmLabel: 'Remover',
+    })
+    if (!ok) return
+    try {
+      const { data } = await api.delete('/social/tiktok/settings')
+      setTiktokSettings(data)
+    } catch (err: any) {
+      toast.error('Erro ao remover o TikTok App', getErrorMessage(err))
+    }
+  }
+
+  const handleCopyTiktokCallbackUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(TIKTOK_CALLBACK_URL)
+      setCopiedTiktokCallback(true)
+      setTimeout(() => setCopiedTiktokCallback(false), 2000)
+    } catch {}
+  }
+
+  const handleConnectTiktok = async () => {
+    if (!socialClientId) return
+    setConnectingTiktok(true)
+    try {
+      const { data } = await api.get('/social/tiktok/connect', { params: { clientId: socialClientId } })
+      window.location.href = data.authUrl
+    } catch (err: any) {
+      toast.error('Erro ao iniciar conexão com o TikTok', getErrorMessage(err))
+      setConnectingTiktok(false)
+    }
+  }
+
+  const openYoutubeModal = () => {
+    setYoutubeClientIdInput('')
+    setYoutubeClientSecretInput('')
+    setYoutubeWizardStep(youtubeSettings?.configured ? YOUTUBE_WIZARD_STEPS.length + 1 : 1)
+    setShowYoutubeModal(true)
+  }
+
+  const handleSaveYoutubeSettings = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!youtubeClientIdInput.trim() || !youtubeClientSecretInput.trim()) return
+    setSavingYoutube(true)
+    try {
+      const { data } = await api.put('/social/youtube/settings', {
+        youtubeClientId: youtubeClientIdInput.trim(),
+        youtubeClientSecret: youtubeClientSecretInput.trim(),
+      })
+      setYoutubeSettings(data)
+      setYoutubeClientIdInput('')
+      setYoutubeClientSecretInput('')
+      setShowYoutubeModal(false)
+    } catch (err: any) {
+      toast.error('Erro ao salvar o YouTube App', getErrorMessage(err))
+    } finally {
+      setSavingYoutube(false)
+    }
+  }
+
+  const handleRemoveYoutubeSettings = async () => {
+    const ok = await confirmDialog({
+      title: 'Remover o YouTube App?',
+      description: 'Você não vai conseguir conectar novos canais do YouTube até reconfigurar.',
+      variant: 'destructive',
+      confirmLabel: 'Remover',
+    })
+    if (!ok) return
+    try {
+      const { data } = await api.delete('/social/youtube/settings')
+      setYoutubeSettings(data)
+    } catch (err: any) {
+      toast.error('Erro ao remover o YouTube App', getErrorMessage(err))
+    }
+  }
+
+  const handleCopyYoutubeCallbackUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(YOUTUBE_CALLBACK_URL)
+      setCopiedYoutubeCallback(true)
+      setTimeout(() => setCopiedYoutubeCallback(false), 2000)
+    } catch {}
+  }
+
+  const handleConnectYoutube = async () => {
+    if (!socialClientId) return
+    setConnectingYoutube(true)
+    try {
+      const { data } = await api.get('/social/youtube/connect', { params: { clientId: socialClientId } })
+      window.location.href = data.authUrl
+    } catch (err: any) {
+      toast.error('Erro ao iniciar conexão com o YouTube', getErrorMessage(err))
+      setConnectingYoutube(false)
+    }
+  }
+
+  const openWhatsappConnectModal = () => {
+    setWhatsappInstanceInput('')
+    setShowWhatsappConnectModal(true)
+  }
+
+  const handleConnectClientWhatsapp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!socialClientId || !whatsappInstanceInput.trim()) return
+    setConnectingClientWhatsapp(true)
+    try {
+      await api.post('/social/connections/whatsapp', { clientId: socialClientId, instanceName: whatsappInstanceInput.trim() })
+      setShowWhatsappConnectModal(false)
+      toast.success('WhatsApp conectado com sucesso!')
+      loadConnections(socialClientId)
+    } catch (err: any) {
+      toast.error('Erro ao conectar o WhatsApp', getErrorMessage(err))
+    } finally {
+      setConnectingClientWhatsapp(false)
     }
   }
 
@@ -473,6 +888,99 @@ export function SocialConnectionsPage() {
                 </div>
               </div>
 
+              {/* LinkedIn App row */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-11 h-11 rounded-2xl bg-[#0A66C2]/10 text-[#0A66C2] flex items-center justify-center shrink-0">
+                    <Linkedin size={19} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-extrabold text-foreground truncate">LinkedIn App</p>
+                    <p className="text-[11px] text-muted-foreground font-medium truncate">
+                      {linkedinSettings?.configured ? `Client ID: ${linkedinSettings.linkedinClientId}` : 'Necessário para conectar Páginas de Empresa de clientes'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {linkedinSettings?.configured ? <Badge variant="success">Configurado</Badge> : <Badge variant="default">Não configurado</Badge>}
+                  <Button type="button" variant="outline" size="sm" onClick={openLinkedinModal}>
+                    <span>{linkedinSettings?.configured ? 'Editar' : 'Configurar'}</span>
+                  </Button>
+                  {linkedinSettings?.configured && (
+                    <button
+                      onClick={handleRemoveLinkedinSettings}
+                      className="p-1.5 text-muted-foreground hover:text-error rounded-lg transition-colors"
+                      title="Remover"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* TikTok App row */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div
+                    className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 text-[#fff] font-extrabold text-sm"
+                    style={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}
+                  >
+                    T
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-extrabold text-foreground truncate">TikTok App</p>
+                    <p className="text-[11px] text-muted-foreground font-medium truncate">
+                      {tiktokSettings?.configured ? `Client Key: ${tiktokSettings.tiktokClientKey}` : 'Necessário para conectar contas do TikTok de clientes'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {tiktokSettings?.configured ? <Badge variant="success">Configurado</Badge> : <Badge variant="default">Não configurado</Badge>}
+                  <Button type="button" variant="outline" size="sm" onClick={openTiktokModal}>
+                    <span>{tiktokSettings?.configured ? 'Editar' : 'Configurar'}</span>
+                  </Button>
+                  {tiktokSettings?.configured && (
+                    <button
+                      onClick={handleRemoveTiktokSettings}
+                      className="p-1.5 text-muted-foreground hover:text-error rounded-lg transition-colors"
+                      title="Remover"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* YouTube App row */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-11 h-11 rounded-2xl bg-[#FF0000]/10 text-[#FF0000] flex items-center justify-center shrink-0">
+                    <Youtube size={19} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-extrabold text-foreground truncate">YouTube App</p>
+                    <p className="text-[11px] text-muted-foreground font-medium truncate">
+                      {youtubeSettings?.configured ? `Client ID: ${youtubeSettings.youtubeClientId}` : 'Necessário para conectar canais do YouTube de clientes'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {youtubeSettings?.configured ? <Badge variant="success">Configurado</Badge> : <Badge variant="default">Não configurado</Badge>}
+                  <Button type="button" variant="outline" size="sm" onClick={openYoutubeModal}>
+                    <span>{youtubeSettings?.configured ? 'Editar' : 'Configurar'}</span>
+                  </Button>
+                  {youtubeSettings?.configured && (
+                    <button
+                      onClick={handleRemoveYoutubeSettings}
+                      className="p-1.5 text-muted-foreground hover:text-error rounded-lg transition-colors"
+                      title="Remover"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* WhatsApp row */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
                 <div className="flex items-center gap-3.5 min-w-0">
@@ -569,7 +1077,7 @@ export function SocialConnectionsPage() {
                     </Select>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <Button type="button" variant="outline" onClick={handleConnectMeta} loading={connectingMeta} disabled={!metaSettings?.configured} className="justify-center gap-1.5">
                       {!connectingMeta && (
                         <>
@@ -586,10 +1094,41 @@ export function SocialConnectionsPage() {
                         </>
                       )}
                     </Button>
+                    <Button type="button" variant="outline" onClick={handleConnectLinkedin} loading={connectingLinkedin} disabled={!linkedinSettings?.configured} className="justify-center gap-1.5">
+                      {!connectingLinkedin && (
+                        <>
+                          <Linkedin size={14} className="text-[#0A66C2]" />
+                          <span>Conectar LinkedIn</span>
+                        </>
+                      )}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={handleConnectTiktok} loading={connectingTiktok} disabled={!tiktokSettings?.configured} className="justify-center gap-1.5">
+                      {!connectingTiktok && (
+                        <>
+                          <span className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-[#fff] text-[9px] font-extrabold shrink-0" style={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}>T</span>
+                          <span>Conectar TikTok</span>
+                        </>
+                      )}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={handleConnectYoutube} loading={connectingYoutube} disabled={!youtubeSettings?.configured} className="justify-center gap-1.5">
+                      {!connectingYoutube && (
+                        <>
+                          <Youtube size={14} className="text-[#FF0000]" />
+                          <span>Conectar YouTube</span>
+                        </>
+                      )}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={openWhatsappConnectModal} disabled={!socialClientId} className="justify-center gap-1.5">
+                      <MessageCircle size={14} className="text-[#25D366]" />
+                      <span>Conectar WhatsApp</span>
+                    </Button>
                   </div>
                   <p className="text-[11px] text-muted-foreground font-medium">
                     {!metaSettings?.configured && 'Configure o Meta App da agência na aba Agência para liberar a conexão de Facebook e Instagram. '}
-                    Facebook e Instagram usam o mesmo login da Meta (a página precisa ter uma conta do Instagram profissional vinculada).
+                    {!linkedinSettings?.configured && 'Configure o LinkedIn App da agência na aba Agência para liberar a conexão de LinkedIn. '}
+                    {!tiktokSettings?.configured && 'Configure o TikTok App da agência na aba Agência para liberar a conexão de TikTok. '}
+                    {!youtubeSettings?.configured && 'Configure o YouTube App da agência na aba Agência para liberar a conexão de YouTube. '}
+                    Facebook e Instagram usam o mesmo login da Meta (a página precisa ter uma conta do Instagram profissional vinculada). LinkedIn conecta a uma Página de Empresa. TikTok e YouTube publicam apenas vídeo — TikTok fica em modo privado até o app passar pela auditoria do TikTok, e o YouTube exige reconectar a cada 7 dias até o app passar pela verificação do Google. WhatsApp publica como Status, usando uma instância do Evolution API já pareada ao número do cliente.
                   </p>
 
                   <div className="space-y-2 pt-2 border-t border-border">
@@ -603,6 +1142,12 @@ export function SocialConnectionsPage() {
                           <div className="flex items-center gap-3">
                             {conn.platform === 'FACEBOOK' && <Facebook size={16} className="text-[#1877F2]" />}
                             {conn.platform === 'INSTAGRAM' && <Instagram size={16} className="text-[#E4405F]" />}
+                            {conn.platform === 'LINKEDIN' && <Linkedin size={16} className="text-[#0A66C2]" />}
+                            {conn.platform === 'TIKTOK' && (
+                              <span className="w-4 h-4 rounded-full flex items-center justify-center text-[#fff] text-[9px] font-extrabold shrink-0" style={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}>T</span>
+                            )}
+                            {conn.platform === 'YOUTUBE' && <Youtube size={16} className="text-[#FF0000]" />}
+                            {conn.platform === 'WHATSAPP' && <MessageCircle size={16} className="text-[#25D366]" />}
                             <div>
                               <p className="text-xs font-bold text-foreground">{conn.accountName || conn.platform}</p>
                               <Badge variant={conn.status === 'ACTIVE' ? 'success' : 'warning'} className="mt-0.5">
@@ -751,6 +1296,430 @@ export function SocialConnectionsPage() {
               </form>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* LinkedIn App Modal — guided setup wizard for first-timers, straight to the form for edits */}
+      <Dialog open={showLinkedinModal} onOpenChange={setShowLinkedinModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#0A66C2]/15 text-[#0A66C2] flex items-center justify-center shrink-0">
+                <Linkedin size={20} />
+              </div>
+              <div>
+                <DialogTitle>
+                  {linkedinWizardStep <= LINKEDIN_WIZARD_STEPS.length
+                    ? `Passo ${linkedinWizardStep} de ${LINKEDIN_WIZARD_STEPS.length + 1} — ${LINKEDIN_WIZARD_STEPS[linkedinWizardStep - 1].title}`
+                    : linkedinSettings?.configured ? 'Editar LinkedIn App' : `Passo ${LINKEDIN_WIZARD_STEPS.length + 1} de ${LINKEDIN_WIZARD_STEPS.length + 1} — Salvar credenciais`}
+                </DialogTitle>
+                <DialogDescription>LinkedIn — registrado uma vez, usado para conectar a Página de Empresa de qualquer cliente</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {linkedinWizardStep <= LINKEDIN_WIZARD_STEPS.length ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-1.5">
+                {LINKEDIN_WIZARD_STEPS.map((_, i) => (
+                  <div key={i} className={`h-1.5 flex-1 rounded-full ${i < linkedinWizardStep ? 'bg-[#0A66C2]' : 'bg-muted'}`} />
+                ))}
+              </div>
+
+              <ul className="space-y-2.5">
+                {LINKEDIN_WIZARD_STEPS[linkedinWizardStep - 1].items.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-xs text-foreground/90 font-medium">
+                    <span className="w-4 h-4 rounded-full bg-[#0A66C2]/15 text-[#0A66C2] text-[10px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {linkedinWizardStep === 3 && (
+                <div className="flex items-center gap-2 p-2.5 bg-background rounded-lg border border-border">
+                  <span className="flex-1 min-w-0 truncate text-[11px] font-mono font-bold text-foreground/80">{LINKEDIN_CALLBACK_URL}</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyLinkedinCallbackUrl}
+                    className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    title="Copiar URL"
+                  >
+                    {copiedLinkedinCallback ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                  </button>
+                </div>
+              )}
+
+              {linkedinWizardStep === 1 && (
+                <a href="https://www.linkedin.com/developers/apps" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0A66C2] hover:underline">
+                  Abrir linkedin.com/developers/apps <ExternalLink size={12} />
+                </a>
+              )}
+
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
+                {linkedinWizardStep === 1 ? (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setLinkedinWizardStep(LINKEDIN_WIZARD_STEPS.length + 1)}>
+                    Já sei, ir direto pro formulário
+                  </Button>
+                ) : (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setLinkedinWizardStep((s) => s - 1)} className="gap-1">
+                    <ChevronLeft size={14} /> Voltar
+                  </Button>
+                )}
+                <Button type="button" size="sm" onClick={() => setLinkedinWizardStep((s) => s + 1)} className="gap-1">
+                  Próximo <ChevronRight size={14} />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {linkedinSettings?.configured && (
+                <div className="flex items-center justify-between p-3 bg-muted rounded-xl border border-border text-xs">
+                  <span className="text-muted-foreground">Client ID: <span className="font-mono font-bold text-foreground">{linkedinSettings.linkedinClientId}</span> • Secret: <span className="font-mono">{linkedinSettings.linkedinClientSecretMasked}</span></span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveLinkedinSettings} className="space-y-3" autoComplete="off">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="linkedinClientId">Client ID</Label>
+                    <Input id="linkedinClientId" name="linkedin_client_id" autoComplete="off" placeholder="Client ID" value={linkedinClientIdInput} onChange={(e) => setLinkedinClientIdInput(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="linkedinClientSecret">Client Secret</Label>
+                    <Input
+                      id="linkedinClientSecret"
+                      name="linkedin_client_secret"
+                      autoComplete="new-password"
+                      type={showLinkedinSecret ? 'text' : 'password'}
+                      placeholder="Client Secret"
+                      value={linkedinClientSecretInput}
+                      onChange={(e) => setLinkedinClientSecretInput(e.target.value)}
+                      endAdornment={
+                        <button type="button" onClick={() => setShowLinkedinSecret(!showLinkedinSecret)} className="text-muted-foreground hover:text-foreground p-1">
+                          {showLinkedinSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      }
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-medium italic">
+                  Não é o token de publicação — é só a credencial do seu app no LinkedIn, usada pelo servidor para autenticar o login. O token que de fato autoriza postar na Página é gerado automaticamente, por cliente, quando você clica em "Conectar LinkedIn" na aba Cliente.
+                </p>
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  {!linkedinSettings?.configured && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setLinkedinWizardStep((s) => s - 1)} className="gap-1">
+                      <ChevronLeft size={14} /> Voltar ao guia
+                    </Button>
+                  )}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button type="button" variant="ghost" onClick={() => setShowLinkedinModal(false)}>Cancelar</Button>
+                    <Button type="submit" disabled={!linkedinClientIdInput.trim() || !linkedinClientSecretInput.trim()} loading={savingLinkedin}>
+                      {!savingLinkedin && <span>{linkedinSettings?.configured ? 'Substituir LinkedIn App' : 'Salvar LinkedIn App'}</span>}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* TikTok App Modal — guided setup wizard for first-timers, straight to the form for edits */}
+      <Dialog open={showTiktokModal} onOpenChange={setShowTiktokModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[#fff] font-extrabold"
+                style={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}
+              >
+                T
+              </div>
+              <div>
+                <DialogTitle>
+                  {tiktokWizardStep <= TIKTOK_WIZARD_STEPS.length
+                    ? `Passo ${tiktokWizardStep} de ${TIKTOK_WIZARD_STEPS.length + 1} — ${TIKTOK_WIZARD_STEPS[tiktokWizardStep - 1].title}`
+                    : tiktokSettings?.configured ? 'Editar TikTok App' : `Passo ${TIKTOK_WIZARD_STEPS.length + 1} de ${TIKTOK_WIZARD_STEPS.length + 1} — Salvar credenciais`}
+                </DialogTitle>
+                <DialogDescription>TikTok — registrado uma vez, usado para conectar a conta de qualquer cliente</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {tiktokWizardStep <= TIKTOK_WIZARD_STEPS.length ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-1.5">
+                {TIKTOK_WIZARD_STEPS.map((_, i) => (
+                  <div key={i} className={cn('h-1.5 flex-1 rounded-full', i >= tiktokWizardStep && 'bg-muted')} style={i < tiktokWizardStep ? { backgroundColor: PLATFORM_COLORS.TIKTOK } : undefined} />
+                ))}
+              </div>
+
+              <ul className="space-y-2.5">
+                {TIKTOK_WIZARD_STEPS[tiktokWizardStep - 1].items.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-xs text-foreground/90 font-medium">
+                    <span
+                      className="w-4 h-4 rounded-full text-[10px] font-extrabold flex items-center justify-center shrink-0 mt-0.5 text-[#fff]"
+                      style={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}
+                    >
+                      {i + 1}
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {tiktokWizardStep === 3 && (
+                <div className="flex items-center gap-2 p-2.5 bg-background rounded-lg border border-border">
+                  <span className="flex-1 min-w-0 truncate text-[11px] font-mono font-bold text-foreground/80">{TIKTOK_CALLBACK_URL}</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyTiktokCallbackUrl}
+                    className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    title="Copiar URL"
+                  >
+                    {copiedTiktokCallback ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                  </button>
+                </div>
+              )}
+
+              {tiktokWizardStep === 1 && (
+                <a href="https://developers.tiktok.com/apps" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold hover:underline" style={{ color: PLATFORM_COLORS.TIKTOK }}>
+                  Abrir developers.tiktok.com/apps <ExternalLink size={12} />
+                </a>
+              )}
+
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
+                {tiktokWizardStep === 1 ? (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setTiktokWizardStep(TIKTOK_WIZARD_STEPS.length + 1)}>
+                    Já sei, ir direto pro formulário
+                  </Button>
+                ) : (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setTiktokWizardStep((s) => s - 1)} className="gap-1">
+                    <ChevronLeft size={14} /> Voltar
+                  </Button>
+                )}
+                <Button type="button" size="sm" onClick={() => setTiktokWizardStep((s) => s + 1)} className="gap-1">
+                  Próximo <ChevronRight size={14} />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {tiktokSettings?.configured && (
+                <div className="flex items-center justify-between p-3 bg-muted rounded-xl border border-border text-xs">
+                  <span className="text-muted-foreground">Client Key: <span className="font-mono font-bold text-foreground">{tiktokSettings.tiktokClientKey}</span> • Secret: <span className="font-mono">{tiktokSettings.tiktokClientSecretMasked}</span></span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveTiktokSettings} className="space-y-3" autoComplete="off">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="tiktokClientKey">Client Key</Label>
+                    <Input id="tiktokClientKey" name="tiktok_client_key" autoComplete="off" placeholder="Client Key" value={tiktokClientKeyInput} onChange={(e) => setTiktokClientKeyInput(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="tiktokClientSecret">Client Secret</Label>
+                    <Input
+                      id="tiktokClientSecret"
+                      name="tiktok_client_secret"
+                      autoComplete="new-password"
+                      type={showTiktokSecret ? 'text' : 'password'}
+                      placeholder="Client Secret"
+                      value={tiktokClientSecretInput}
+                      onChange={(e) => setTiktokClientSecretInput(e.target.value)}
+                      endAdornment={
+                        <button type="button" onClick={() => setShowTiktokSecret(!showTiktokSecret)} className="text-muted-foreground hover:text-foreground p-1">
+                          {showTiktokSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      }
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-medium italic">
+                  Não é o token de publicação — é só a credencial do seu app no TikTok, usada pelo servidor para autenticar o login. O token que de fato autoriza postar é gerado automaticamente, por cliente, quando você clica em "Conectar TikTok" na aba Cliente. Lembre-se: até o app passar pela auditoria do TikTok, os posts ficam visíveis só para a própria conta.
+                </p>
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  {!tiktokSettings?.configured && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setTiktokWizardStep((s) => s - 1)} className="gap-1">
+                      <ChevronLeft size={14} /> Voltar ao guia
+                    </Button>
+                  )}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button type="button" variant="ghost" onClick={() => setShowTiktokModal(false)}>Cancelar</Button>
+                    <Button type="submit" disabled={!tiktokClientKeyInput.trim() || !tiktokClientSecretInput.trim()} loading={savingTiktok}>
+                      {!savingTiktok && <span>{tiktokSettings?.configured ? 'Substituir TikTok App' : 'Salvar TikTok App'}</span>}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* YouTube App Modal — guided setup wizard for first-timers, straight to the form for edits */}
+      <Dialog open={showYoutubeModal} onOpenChange={setShowYoutubeModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#FF0000]/15 text-[#FF0000] flex items-center justify-center shrink-0">
+                <Youtube size={20} />
+              </div>
+              <div>
+                <DialogTitle>
+                  {youtubeWizardStep <= YOUTUBE_WIZARD_STEPS.length
+                    ? `Passo ${youtubeWizardStep} de ${YOUTUBE_WIZARD_STEPS.length + 1} — ${YOUTUBE_WIZARD_STEPS[youtubeWizardStep - 1].title}`
+                    : youtubeSettings?.configured ? 'Editar YouTube App' : `Passo ${YOUTUBE_WIZARD_STEPS.length + 1} de ${YOUTUBE_WIZARD_STEPS.length + 1} — Salvar credenciais`}
+                </DialogTitle>
+                <DialogDescription>YouTube (Google) — registrado uma vez, usado para conectar o canal de qualquer cliente</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {youtubeWizardStep <= YOUTUBE_WIZARD_STEPS.length ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-1.5">
+                {YOUTUBE_WIZARD_STEPS.map((_, i) => (
+                  <div key={i} className={cn('h-1.5 flex-1 rounded-full', i < youtubeWizardStep ? 'bg-[#FF0000]' : 'bg-muted')} />
+                ))}
+              </div>
+
+              <ul className="space-y-2.5">
+                {YOUTUBE_WIZARD_STEPS[youtubeWizardStep - 1].items.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-xs text-foreground/90 font-medium">
+                    <span className="w-4 h-4 rounded-full bg-[#FF0000]/15 text-[#FF0000] text-[10px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {youtubeWizardStep === 3 && (
+                <div className="flex items-center gap-2 p-2.5 bg-background rounded-lg border border-border">
+                  <span className="flex-1 min-w-0 truncate text-[11px] font-mono font-bold text-foreground/80">{YOUTUBE_CALLBACK_URL}</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyYoutubeCallbackUrl}
+                    className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    title="Copiar URL"
+                  >
+                    {copiedYoutubeCallback ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                  </button>
+                </div>
+              )}
+
+              {youtubeWizardStep === 1 && (
+                <a href="https://console.cloud.google.com" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#FF0000] hover:underline">
+                  Abrir console.cloud.google.com <ExternalLink size={12} />
+                </a>
+              )}
+
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-border">
+                {youtubeWizardStep === 1 ? (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setYoutubeWizardStep(YOUTUBE_WIZARD_STEPS.length + 1)}>
+                    Já sei, ir direto pro formulário
+                  </Button>
+                ) : (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setYoutubeWizardStep((s) => s - 1)} className="gap-1">
+                    <ChevronLeft size={14} /> Voltar
+                  </Button>
+                )}
+                <Button type="button" size="sm" onClick={() => setYoutubeWizardStep((s) => s + 1)} className="gap-1">
+                  Próximo <ChevronRight size={14} />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {youtubeSettings?.configured && (
+                <div className="flex items-center justify-between p-3 bg-muted rounded-xl border border-border text-xs">
+                  <span className="text-muted-foreground">Client ID: <span className="font-mono font-bold text-foreground">{youtubeSettings.youtubeClientId}</span> • Secret: <span className="font-mono">{youtubeSettings.youtubeClientSecretMasked}</span></span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveYoutubeSettings} className="space-y-3" autoComplete="off">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="youtubeClientId">Client ID</Label>
+                    <Input id="youtubeClientId" name="youtube_client_id" autoComplete="off" placeholder="Client ID" value={youtubeClientIdInput} onChange={(e) => setYoutubeClientIdInput(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="youtubeClientSecret">Client Secret</Label>
+                    <Input
+                      id="youtubeClientSecret"
+                      name="youtube_client_secret"
+                      autoComplete="new-password"
+                      type={showYoutubeSecret ? 'text' : 'password'}
+                      placeholder="Client Secret"
+                      value={youtubeClientSecretInput}
+                      onChange={(e) => setYoutubeClientSecretInput(e.target.value)}
+                      endAdornment={
+                        <button type="button" onClick={() => setShowYoutubeSecret(!showYoutubeSecret)} className="text-muted-foreground hover:text-foreground p-1">
+                          {showYoutubeSecret ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      }
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-medium italic">
+                  Não é o token de publicação — é só a credencial do seu projeto do Google Cloud, usada pelo servidor para autenticar o login. O token que de fato autoriza postar no canal é gerado automaticamente, por cliente, quando você clica em "Conectar YouTube" na aba Cliente. Lembre-se: até o projeto passar pela verificação do Google, a conexão expira a cada 7 dias.
+                </p>
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  {!youtubeSettings?.configured && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setYoutubeWizardStep((s) => s - 1)} className="gap-1">
+                      <ChevronLeft size={14} /> Voltar ao guia
+                    </Button>
+                  )}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button type="button" variant="ghost" onClick={() => setShowYoutubeModal(false)}>Cancelar</Button>
+                    <Button type="submit" disabled={!youtubeClientIdInput.trim() || !youtubeClientSecretInput.trim()} loading={savingYoutube}>
+                      {!savingYoutube && <span>{youtubeSettings?.configured ? 'Substituir YouTube App' : 'Salvar YouTube App'}</span>}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* WhatsApp (client) Connect Modal — no OAuth, no wizard: just the client's already-
+         paired Evolution instance name, reusing the agency's own Evolution API server. */}
+      <Dialog open={showWhatsappConnectModal} onOpenChange={setShowWhatsappConnectModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#25D366]/15 text-[#25D366] flex items-center justify-center shrink-0">
+                <MessageCircle size={20} />
+              </div>
+              <div>
+                <DialogTitle>Conectar WhatsApp do Cliente</DialogTitle>
+                <DialogDescription>Publica como Status no WhatsApp do próprio cliente</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleConnectClientWhatsapp} className="space-y-3" autoComplete="off">
+            <div>
+              <Label htmlFor="whatsappInstance">Nome da Instância</Label>
+              <Input
+                id="whatsappInstance"
+                name="whatsapp_instance"
+                autoComplete="off"
+                placeholder="Ex: cliente-natur-erva"
+                value={whatsappInstanceInput}
+                onChange={(e) => setWhatsappInstanceInput(e.target.value)}
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground font-medium italic">
+              A instância já precisa existir e estar conectada (WhatsApp do cliente pareado) no seu servidor Evolution API — este passo só registra o nome dela aqui.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setShowWhatsappConnectModal(false)}>Cancelar</Button>
+              <Button type="submit" disabled={!whatsappInstanceInput.trim()} loading={connectingClientWhatsapp}>
+                {!connectingClientWhatsapp && <span>Conectar</span>}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -937,6 +1906,59 @@ export function SocialConnectionsPage() {
             </Button>
             <Button onClick={handleConfirmPageSelection} loading={confirmingPageSelection} disabled={selectedPageIds.length === 0}>
               {!confirmingPageSelection && <span>Conectar {selectedPageIds.length > 0 ? `(${selectedPageIds.length})` : ''}</span>}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Organization Picker — the LinkedIn member administers more than one Company Page;
+         pick which one(s) belong to this client before connecting anything. */}
+      <Dialog open={!!orgPickerToken} onOpenChange={(open) => { if (!open) setOrgPickerToken(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#0A66C2]/15 text-[#0A66C2] flex items-center justify-center shrink-0">
+                <Linkedin size={20} />
+              </div>
+              <div>
+                <DialogTitle>Qual Página de Empresa é deste cliente?</DialogTitle>
+                <DialogDescription>
+                  {clients.find((c) => c.id === orgPickerClientId)?.name
+                    ? `Sua conta do LinkedIn administra mais de uma Página de Empresa. Selecione a(s) que pertence(m) a ${clients.find((c) => c.id === orgPickerClientId)?.name}.`
+                    : 'Sua conta do LinkedIn administra mais de uma Página de Empresa. Selecione a(s) que pertence(m) a este cliente.'}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {loadingPendingOrgs ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {pendingOrgs.map((org) => (
+                <label key={org.urn} className="flex items-center gap-3 p-3 bg-muted rounded-xl border border-border cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedOrgUrns.includes(org.urn)}
+                    onChange={() => toggleOrgSelection(org.urn)}
+                    className="rounded border-grey-300 text-primary focus:ring-primary shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-foreground truncate">{org.name}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="ghost" onClick={() => setOrgPickerToken(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmOrgSelection} loading={confirmingOrgSelection} disabled={selectedOrgUrns.length === 0}>
+              {!confirmingOrgSelection && <span>Conectar {selectedOrgUrns.length > 0 ? `(${selectedOrgUrns.length})` : ''}</span>}
             </Button>
           </div>
         </DialogContent>

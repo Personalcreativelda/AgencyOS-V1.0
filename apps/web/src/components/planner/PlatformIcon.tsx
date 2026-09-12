@@ -1,4 +1,4 @@
-import { Instagram, Facebook, Youtube, Linkedin, Twitter } from 'lucide-react'
+import { Instagram, Facebook, Youtube, Linkedin, Twitter, MessageCircle } from 'lucide-react'
 import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/utils'
 
 const ICONS: Record<string, typeof Instagram> = {
@@ -7,6 +7,7 @@ const ICONS: Record<string, typeof Instagram> = {
   YOUTUBE: Youtube,
   LINKEDIN: Linkedin,
   X: Twitter,
+  WHATSAPP: MessageCircle,
 }
 
 interface PlatformIconProps {

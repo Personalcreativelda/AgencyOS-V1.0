@@ -61,6 +61,27 @@ export class MetaApiError extends AppError {
   }
 }
 
+// Same idea as MetaApiError, for the LinkedIn API.
+export class LinkedInApiError extends AppError {
+  constructor(message: string) {
+    super(message, 502);
+  }
+}
+
+// Same idea as MetaApiError, for the TikTok API.
+export class TikTokApiError extends AppError {
+  constructor(message: string) {
+    super(message, 502);
+  }
+}
+
+// Same idea as MetaApiError, for the YouTube Data API.
+export class YouTubeApiError extends AppError {
+  constructor(message: string) {
+    super(message, 502);
+  }
+}
+
 export function errorHandler(
   err: Error,
   req: Request,

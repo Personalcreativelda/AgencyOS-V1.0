@@ -5,6 +5,7 @@ import { AuthRequest } from '../../common/middleware/auth';
 import { prisma } from '../../database/prisma';
 import { NotFoundError, ValidationError } from '../../common/middleware/errorHandler';
 import { getStorageProvider } from '../../common/storage';
+import { setContentPrimaryAssets } from './contentAssets';
 import { Request, Response, NextFunction } from 'express';
 
 const ALLOWED_MIME_TYPES = [
@@ -93,17 +94,87 @@ router.post('/upload', upload.single('file'), handleUploadError, async (req: Aut
     });
 
     // Attach directly to a content piece, when the upload came from the content workspace.
+    // Replaces whatever was attached before (see setContentPrimaryAssets) rather than adding
+    // to it — a single-file upload always means "this is now THE creative", even for content
+    // that previously had a multi-image set from /assets/upload-batch.
     if (contentId) {
       const content = await prisma.content.findFirst({ where: { id: contentId, agencyId: req.user!.agencyId } });
       if (content) {
-        const sortOrder = await prisma.contentAsset.count({ where: { contentId } });
-        await prisma.contentAsset.create({
-          data: { agencyId: req.user!.agencyId, contentId, assetId: asset.id, role: 'PRIMARY', sortOrder },
-        });
+        await setContentPrimaryAssets(req.user!.agencyId, contentId, [asset.id]);
       }
     }
 
     res.status(201).json(asset);
+  } catch (err) { next(err); }
+});
+
+const MAX_CAROUSEL_IMAGES = 10; // matches Instagram's carousel cap, the most restrictive of the networks that support multi-image posts
+
+const uploadBatch = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new ValidationError(`Carrossel aceita apenas imagens (recebido: ${file.mimetype}).`));
+  },
+});
+
+// Sets a content's ENTIRE creative set in one shot (2+ images — a carousel). Requires
+// contentId; unlike /upload, there's no standalone use for this (logos etc. always go through
+// the single-file endpoint above).
+router.post('/upload-batch', uploadBatch.array('files', MAX_CAROUSEL_IMAGES), handleUploadError, async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const files = req.files as Express.Multer.File[] | undefined;
+    if (!files || files.length === 0) return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
+
+    const { contentId } = req.body;
+    if (!contentId) return res.status(400).json({ error: 'contentId is required' });
+    const content = await prisma.content.findFirst({ where: { id: contentId, agencyId: req.user!.agencyId } });
+    if (!content) throw new NotFoundError('Content not found');
+
+    const assetIds: string[] = [];
+    for (const file of files) {
+      const { storageKey, publicUrl } = await getStorageProvider().upload(file.buffer, file.originalname, file.mimetype);
+      const asset = await prisma.asset.create({
+        data: {
+          agencyId: req.user!.agencyId,
+          clientId: content.clientId,
+          uploadedBy: req.user!.id,
+          type: 'IMAGE',
+          name: file.originalname,
+          mimeType: file.mimetype,
+          fileSize: file.size,
+          storageKey,
+          publicUrl,
+        },
+      });
+      assetIds.push(asset.id);
+    }
+
+    await setContentPrimaryAssets(req.user!.agencyId, contentId, assetIds);
+    res.status(201).json({ count: assetIds.length });
+  } catch (err) { next(err); }
+});
+
+// Re-sets a content's PRIMARY asset set from already-uploaded assets, without re-uploading
+// anything — used by the thumbnail strip's remove button (send the remaining ids) and would
+// also support reordering if the UI grows drag-to-reorder later.
+router.put('/content/:contentId/set', async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { contentId } = req.params;
+    const { assetIds } = req.body as { assetIds?: string[] };
+    if (!Array.isArray(assetIds) || assetIds.length === 0) {
+      return res.status(400).json({ error: 'assetIds must be a non-empty array' });
+    }
+    const content = await prisma.content.findFirst({ where: { id: contentId, agencyId: req.user!.agencyId } });
+    if (!content) throw new NotFoundError('Content not found');
+
+    const uniqueIds = Array.from(new Set(assetIds));
+    const owned = await prisma.asset.count({ where: { id: { in: uniqueIds }, agencyId: req.user!.agencyId } });
+    if (owned !== uniqueIds.length) throw new ValidationError('One or more assets were not found');
+
+    await setContentPrimaryAssets(req.user!.agencyId, contentId, uniqueIds);
+    res.status(204).send();
   } catch (err) { next(err); }
 });
 

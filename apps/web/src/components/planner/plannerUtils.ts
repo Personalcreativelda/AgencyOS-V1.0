@@ -4,16 +4,20 @@ import {
 
 export type TemporalState = 'overdue' | 'today' | 'future' | 'failed' | 'none'
 
+// "Primary" here means the current active set (role: 'PRIMARY', set by setContentPrimaryAssets
+// on the backend) — NOT just "most recently created", which used to also catch old regenerated/
+// replaced images. sortOrder 0 is deliberately "slide 1" of the current carousel (or the sole
+// image for non-carousel content), not an artifact of upload timing.
 export function getPrimaryImage(content: any): { publicUrl: string } | null {
   const images = (content.assets || [])
-    .filter((a: any) => a.asset?.mimeType?.startsWith('image/'))
+    .filter((a: any) => a.role === 'PRIMARY' && a.asset?.mimeType?.startsWith('image/'))
     .slice()
-    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
   return images[0]?.asset || null
 }
 
 export function getSlideCount(content: any): number {
-  return (content.assets || []).filter((a: any) => a.asset?.mimeType?.startsWith('image/')).length
+  return (content.assets || []).filter((a: any) => a.role === 'PRIMARY' && a.asset?.mimeType?.startsWith('image/')).length
 }
 
 export function getTemporalState(content: any): TemporalState {

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Sparkles, Send, Copy, ImagePlus, Upload,
-  MessageSquare, Share2, Check, RefreshCw, Mail, MessageCircle, XCircle, Trash2
+  MessageSquare, Share2, Check, RefreshCw, Mail, MessageCircle, XCircle, Trash2, X, Plus
 } from 'lucide-react'
 import api from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -24,6 +24,8 @@ import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
 import { getErrorMessage } from '@/lib/errors'
 
+type PublishablePlatform = 'FACEBOOK' | 'INSTAGRAM' | 'INSTAGRAM_STORY' | 'LINKEDIN' | 'TIKTOK' | 'YOUTUBE' | 'WHATSAPP'
+
 export function ContentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -39,8 +41,21 @@ export function ContentDetailPage() {
   const [generatingImage, setGeneratingImage] = useState(false)
   const [uploadingCreative, setUploadingCreative] = useState(false)
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
+  // Local blob URLs for the files just picked, shown as spinning placeholders in the thumbnail
+  // strip the instant they're selected — before the network round-trip even starts — so the
+  // upload feels immediate the way Facebook's composer does, instead of a blank wait.
+  const [pendingPreviews, setPendingPreviews] = useState<string[]>([])
+  const [addingMore, setAddingMore] = useState(false)
+  // Guards handleRemoveSlide/handleAddMoreImages against overlapping calls — both build their
+  // request off `primaryMediaList` captured at click time, so firing a second one before the
+  // first's loadContent() resolves works off a stale list and can resend an id that's already
+  // been dropped/added, duplicating it in the same PRIMARY batch (confirmed live: this produced
+  // real duplicate ContentAsset rows sharing one assetId — the source of the duplicate React key
+  // warning and the confusing "error, but the image vanished anyway" behavior).
+  const [assetsBusy, setAssetsBusy] = useState(false)
   const [previewPlatform, setPreviewPlatform] = useState<SocialPlatform>('INSTAGRAM')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const addMoreInputRef = useRef<HTMLInputElement>(null)
 
   // Approval Link State — generating the link never sends anything automatically; each channel
   // below is an explicit manual "Enviar" action.
@@ -60,7 +75,7 @@ export function ContentDetailPage() {
 
   // Social publishing
   const [connections, setConnections] = useState<any[]>([])
-  const [publishing, setPublishing] = useState<'FACEBOOK' | 'INSTAGRAM' | 'INSTAGRAM_STORY' | null>(null)
+  const [publishing, setPublishing] = useState<PublishablePlatform | null>(null)
   const [sendingWhatsAppContent, setSendingWhatsAppContent] = useState(false)
 
   const loadContent = async () => {
@@ -84,11 +99,12 @@ export function ContentDetailPage() {
     loadContent()
   }, [id])
 
-  const PLATFORM_PUBLISH_LABEL: Record<'FACEBOOK' | 'INSTAGRAM' | 'INSTAGRAM_STORY', string> = {
+  const PLATFORM_PUBLISH_LABEL: Record<PublishablePlatform, string> = {
     FACEBOOK: 'Facebook', INSTAGRAM: 'Instagram', INSTAGRAM_STORY: 'Stories do Instagram',
+    LINKEDIN: 'LinkedIn', TIKTOK: 'TikTok', YOUTUBE: 'YouTube', WHATSAPP: 'Status do WhatsApp',
   }
 
-  const handlePublish = async (platform: 'FACEBOOK' | 'INSTAGRAM' | 'INSTAGRAM_STORY') => {
+  const handlePublish = async (platform: PublishablePlatform) => {
     const label = PLATFORM_PUBLISH_LABEL[platform]
     const ok = await confirmDialog({
       title: `Publicar no ${label}?`,
@@ -261,29 +277,122 @@ export function ContentDetailPage() {
   }
 
   const handleUploadCreative = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    const previews = files.map((f) => URL.createObjectURL(f))
+    setPendingPreviews(previews)
     setUploadingCreative(true)
     setUploadProgress(0)
     try {
       const formData = new FormData()
-      formData.append('file', file)
-      formData.append('clientId', content.clientId)
-      formData.append('contentId', content.id)
-      await api.post('/assets/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: (evt) => {
-          if (evt.total) setUploadProgress(Math.round((evt.loaded / evt.total) * 100))
-        },
-      })
+      if (files.length > 1) {
+        // Carousel — replaces the whole set with these files, in the order selected. Selecting
+        // more than one file IS the signal that this is now a carousel, regardless of whatever
+        // "Formato" was picked when the content was created — promote it here so the label
+        // (Kanban card, lists) stays accurate instead of silently mismatching what's attached.
+        files.forEach((file) => formData.append('files', file))
+        formData.append('contentId', content.id)
+        await api.post('/assets/upload-batch', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (evt) => {
+            if (evt.total) setUploadProgress(Math.round((evt.loaded / evt.total) * 100))
+          },
+        })
+        if (content.contentType !== 'CAROUSEL') {
+          await api.patch(`/contents/${content.id}`, { contentType: 'CAROUSEL' })
+        }
+        toast.success(`${files.length} imagens enviadas com sucesso!`)
+      } else {
+        formData.append('file', files[0])
+        formData.append('clientId', content.clientId)
+        formData.append('contentId', content.id)
+        await api.post('/assets/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (evt) => {
+            if (evt.total) setUploadProgress(Math.round((evt.loaded / evt.total) * 100))
+          },
+        })
+        toast.success('Criativo enviado com sucesso!')
+      }
       await loadContent()
-      toast.success('Criativo enviado com sucesso!')
     } catch (err) {
       toast.error('Erro ao enviar o criativo', getErrorMessage(err))
     } finally {
       setUploadingCreative(false)
       setUploadProgress(null)
+      previews.forEach((url) => URL.revokeObjectURL(url))
+      setPendingPreviews([])
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  // Removes one image from the current carousel set by re-sending the remaining asset ids —
+  // does not touch the Asset record itself, just which ones are PRIMARY for this content (see
+  // setContentPrimaryAssets on the backend). Dropping to 1 remaining is fine (content just stops
+  // being a carousel); dropping to 0 is blocked — the endpoint requires a non-empty set, and
+  // removing the last image should go through "Enviar Criativo" instead.
+  const handleRemoveSlide = async (assetId: string) => {
+    if (assetsBusy) return
+    const remaining = primaryMediaList.filter((m: any) => m.id !== assetId).map((m: any) => m.id)
+    if (remaining.length === 0) return
+    setAssetsBusy(true)
+    try {
+      await api.put(`/assets/content/${content.id}/set`, { assetIds: remaining })
+      await loadContent()
+    } catch (err) {
+      toast.error('Erro ao remover imagem', getErrorMessage(err))
+    } finally {
+      setAssetsBusy(false)
+    }
+  }
+
+  const MAX_CAROUSEL_IMAGES = 10 // mirrors the backend's cap (assets.routes.ts), itself Instagram's carousel limit
+
+  // "+" tile in the thumbnail strip — appends to the existing set instead of replacing it, unlike
+  // the "Enviar Imagens" button above. Uploads each file standalone (no contentId, so
+  // /assets/upload won't touch this content's set on its own), then combines the existing ids
+  // with the new ones in a single call to the set endpoint.
+  const handleAddMoreImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (assetsBusy) return
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    const room = MAX_CAROUSEL_IMAGES - primaryMediaList.length
+    if (room <= 0) {
+      toast.error('Limite de imagens atingido', `O carrossel aceita no máximo ${MAX_CAROUSEL_IMAGES} imagens.`)
+      if (addMoreInputRef.current) addMoreInputRef.current.value = ''
+      return
+    }
+    const accepted = files.slice(0, room)
+    const previews = accepted.map((f) => URL.createObjectURL(f))
+    setPendingPreviews(previews)
+    setAddingMore(true)
+    setAssetsBusy(true)
+    try {
+      const newIds: string[] = []
+      for (const file of accepted) {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('clientId', content.clientId)
+        const { data } = await api.post('/assets/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        newIds.push(data.id)
+      }
+      const combined = [...primaryMediaList.map((m: any) => m.id), ...newIds]
+      await api.put(`/assets/content/${content.id}/set`, { assetIds: combined })
+      if (content.contentType !== 'CAROUSEL' && combined.length > 1) {
+        await api.patch(`/contents/${content.id}`, { contentType: 'CAROUSEL' })
+      }
+      await loadContent()
+      toast.success(`${accepted.length} imagem${accepted.length > 1 ? 's' : ''} adicionada${accepted.length > 1 ? 's' : ''}!`)
+    } catch (err) {
+      toast.error('Erro ao adicionar imagens', getErrorMessage(err))
+    } finally {
+      setAddingMore(false)
+      setAssetsBusy(false)
+      previews.forEach((url) => URL.revokeObjectURL(url))
+      setPendingPreviews([])
+      if (addMoreInputRef.current) addMoreInputRef.current.value = ''
     }
   }
 
@@ -362,11 +471,16 @@ export function ContentDetailPage() {
     )
   }
 
-  const images = (content.assets || [])
-    .filter((a: any) => a.asset?.mimeType?.startsWith('image/'))
+  // The content's current active set (role: 'PRIMARY', set by setContentPrimaryAssets on the
+  // backend), in carousel order — NOT filtered to images only, since video is required for
+  // TikTok/YouTube and common for Reels; the preview branches on mimeType to render <video> vs
+  // <img>. For CAROUSEL content this can be 2+ images; for everything else it's always 0 or 1.
+  const primaryMediaList = (content.assets || [])
+    .filter((a: any) => a.role === 'PRIMARY')
     .slice()
-    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  const primaryImage = images[0]?.asset || null
+    .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((a: any) => a.asset)
+  const primaryMedia = primaryMediaList[0] || null
 
   return (
     <div className="p-4 sm:p-8 space-y-6">
@@ -413,6 +527,18 @@ export function ContentDetailPage() {
             <span>Link de Aprovação</span>
           </Button>
 
+          {/* Shares the creative with the client's own phone via the agency's connected
+             number — for their records/approval, unrelated to publishing to any network
+             (that's the "Publicar" button inside each preview tab, including WhatsApp Status). */}
+          <Button variant="outline" onClick={handleSendWhatsAppContent} loading={sendingWhatsAppContent} className="gap-1.5">
+            {!sendingWhatsAppContent && (
+              <>
+                <MessageCircle size={14} />
+                <span>Enviar por WhatsApp</span>
+              </>
+            )}
+          </Button>
+
           <Button onClick={handleSave} loading={saving}>
             {!saving && <span>Salvar Alterações</span>}
             {saving && <span>Salvando...</span>}
@@ -443,9 +569,11 @@ export function ContentDetailPage() {
               hook={content.hook}
               caption={content.caption}
               cta={content.cta}
-              image={primaryImage}
+              image={primaryMedia}
+              mediaList={primaryMediaList}
               generating={generatingImage}
               uploadProgress={uploadProgress}
+              selectedPlatforms={(content.platforms || []).map((p: any) => p.platform)}
               value={previewPlatform}
               onChange={setPreviewPlatform}
               dark={mode === 'dark'}
@@ -465,9 +593,20 @@ export function ContentDetailPage() {
                 className="gap-1.5"
               >
                 {!uploadingCreative && <Upload size={13} />}
-                <span>{uploadingCreative ? `Enviando... ${uploadProgress ?? 0}%` : 'Enviar Criativo'}</span>
+                <span>{uploadingCreative ? `Enviando... ${uploadProgress ?? 0}%` : content.contentType === 'CAROUSEL' ? 'Enviar Imagens' : 'Enviar Criativo'}</span>
               </Button>
-              <input ref={fileInputRef} type="file" accept="image/*,video/mp4,video/quicktime,video/webm" className="hidden" onChange={handleUploadCreative} />
+              {/* Always allows picking multiple files — selecting more than one is what makes
+                 this a carousel (see handleUploadCreative), not a separate format toggle the
+                 user has to remember to set first. Single selection still works exactly as
+                 before, video included. */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*,video/mp4,video/quicktime,video/webm"
+                className="hidden"
+                onChange={handleUploadCreative}
+              />
 
               {(previewPlatform === 'FACEBOOK' || previewPlatform === 'INSTAGRAM' || previewPlatform === 'STORY') && (() => {
                 const targetPlatform = previewPlatform === 'STORY' ? 'INSTAGRAM_STORY' : previewPlatform
@@ -479,7 +618,9 @@ export function ContentDetailPage() {
                     loading={publishing === targetPlatform}
                     className="gap-1.5 ml-auto"
                   >
-                    {publishing !== targetPlatform && (
+                    {publishing === targetPlatform ? (
+                      <span>Publicando...</span>
+                    ) : (
                       <>
                         <Send size={13} />
                         <span>Publicar {previewPlatform === 'STORY' ? 'Story no Instagram' : `no ${connectionPlatform === 'FACEBOOK' ? 'Facebook' : 'Instagram'}`}</span>
@@ -493,22 +634,110 @@ export function ContentDetailPage() {
                 )
               })()}
 
-              {previewPlatform === 'WHATSAPP' && (
-                <Button
-                  size="sm"
-                  onClick={handleSendWhatsAppContent}
-                  loading={sendingWhatsAppContent}
-                  className="gap-1.5 ml-auto"
-                >
-                  {!sendingWhatsAppContent && (
+              {(previewPlatform === 'LINKEDIN' || previewPlatform === 'TIKTOK' || previewPlatform === 'YOUTUBE' || previewPlatform === 'WHATSAPP') && (() => {
+                const targetPlatform = previewPlatform as PublishablePlatform
+                const label = PLATFORM_PUBLISH_LABEL[targetPlatform]
+                return connections.some((c) => c.platform === targetPlatform && c.status === 'ACTIVE') ? (
+                  <Button
+                    size="sm"
+                    onClick={() => handlePublish(targetPlatform)}
+                    loading={publishing === targetPlatform}
+                    className="gap-1.5 ml-auto"
+                  >
+                    {publishing === targetPlatform ? (
+                      <span>
+                        {targetPlatform === 'WHATSAPP'
+                          ? primaryMediaList.length > 1
+                            ? `Publicando ${primaryMediaList.length} imagens... pode levar vários minutos`
+                            : 'Publicando... pode levar até 1 minuto'
+                          : 'Publicando...'}
+                      </span>
+                    ) : (
+                      <>
+                        <Send size={13} />
+                        <span>Publicar no {label}</span>
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <span className="text-[11px] text-muted-foreground font-medium ml-auto">
+                    Conecte o {label} em Configurações para publicar direto
+                  </span>
+                )
+              })()}
+            </div>
+
+            {/* Thumbnail strip for the current set. Images only — video content (REEL/VIDEO/
+               STORY) never shows this, since carousels are image-only (see the plan). No
+               drag-to-reorder in v1: remove individual slides with the × below, or replace the
+               whole set via "Enviar Imagens" to reorder from scratch. */}
+            {(() => {
+              const isImageOnlySet = primaryMediaList.every((m: any) => !m.mimeType?.startsWith('video/'))
+              const showStrip = pendingPreviews.length > 0 || (isImageOnlySet && primaryMediaList.length >= 1)
+              if (!showStrip) return null
+              return (
+                <div className="flex items-center gap-2 pt-3 border-t border-border overflow-x-auto">
+                  {uploadingCreative ? (
+                    // Replacing the whole set — show only the incoming files as placeholders,
+                    // since whatever's currently attached is about to be superseded.
+                    pendingPreviews.map((url, i) => (
+                      <div key={i} className="relative w-14 h-14 rounded-lg overflow-hidden border border-border shrink-0 bg-muted">
+                        <img src={url} alt={`Novo ${i + 1}`} className="w-full h-full object-cover opacity-40" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        </div>
+                        <span className="absolute bottom-0.5 right-0.5 bg-[#000]/60 text-[#fff] text-[9px] font-bold px-1 rounded">{i + 1}</span>
+                      </div>
+                    ))
+                  ) : (
                     <>
-                      <MessageCircle size={13} />
-                      <span>Enviar por WhatsApp</span>
+                      {primaryMediaList.map((m: any, i: number) => (
+                        <div key={m.id ?? i} className="relative w-14 h-14 rounded-lg overflow-hidden border border-border shrink-0 group">
+                          <img src={m.publicUrl} alt={`Slide ${i + 1}`} className="w-full h-full object-cover" />
+                          <span className="absolute bottom-0.5 right-0.5 bg-[#000]/60 text-[#fff] text-[9px] font-bold px-1 rounded">{i + 1}</span>
+                          <button
+                            type="button"
+                            title="Remover imagem"
+                            disabled={assetsBusy}
+                            onClick={() => handleRemoveSlide(m.id)}
+                            className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-[#000]/70 text-[#fff] flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity hover:bg-error disabled:opacity-30 disabled:pointer-events-none"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                      {addingMore && pendingPreviews.map((url, i) => (
+                        <div key={`pending-${i}`} className="relative w-14 h-14 rounded-lg overflow-hidden border border-border shrink-0 bg-muted">
+                          <img src={url} alt="" className="w-full h-full object-cover opacity-40" />
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        </div>
+                      ))}
+                      {!addingMore && primaryMediaList.length < MAX_CAROUSEL_IMAGES && (
+                        <button
+                          type="button"
+                          title="Adicionar imagens"
+                          disabled={assetsBusy}
+                          onClick={() => addMoreInputRef.current?.click()}
+                          className="w-14 h-14 rounded-lg border-2 border-dashed border-border shrink-0 flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                        >
+                          <Plus size={18} />
+                        </button>
+                      )}
                     </>
                   )}
-                </Button>
-              )}
-            </div>
+                </div>
+              )
+            })()}
+            <input
+              ref={addMoreInputRef}
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={handleAddMoreImages}
+            />
           </Card>
 
           {/* Comments and History */}

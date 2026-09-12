@@ -84,7 +84,8 @@ deployment, pointed at the right compose file, explicitly:
    `S3_SECRET_KEY`, `S3_BUCKET`, `S3_FORCE_PATH_STYLE`, `S3_PUBLIC_URL`,
    `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`,
    `ENCRYPTION_KEY`, plus optionally `JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`,
-   `AI_MODEL`, `STORAGE_TYPE`, `STORAGE_LOCAL_PATH`, `META_GRAPH_VERSION`
+   `AI_MODEL`, `STORAGE_TYPE`, `STORAGE_LOCAL_PATH`, `META_GRAPH_VERSION`,
+   `LINKEDIN_API_VERSION`
    if you want non-default values) with the same
    values as your `apps/api/.env` — Coolify injects these directly into the
    compose build/up, it does **not** read `apps/api/.env` from the repo

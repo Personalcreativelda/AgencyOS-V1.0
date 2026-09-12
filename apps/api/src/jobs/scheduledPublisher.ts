@@ -1,5 +1,5 @@
 import { prisma } from '../database/prisma';
-import { publishToMeta } from '../modules/social/social.controller';
+import { publishToMeta, publishToLinkedIn, publishToTikTok, publishToYouTube, publishToWhatsAppStatus } from '../modules/social/social.controller';
 import { notify } from '../modules/notifications/notifications.controller';
 
 // Publishes content automatically once it's SCHEDULED and its scheduledAt has arrived.
@@ -9,15 +9,15 @@ import { notify } from '../modules/notifications/notifications.controller';
 // user — either via the status dropdown or by dragging a card onto a day in the Planner —
 // so no additional confirmation happens here; this job just carries out what was scheduled.)
 //
-// For each such content, every enabled FACEBOOK/INSTAGRAM ContentPlatform with status
-// 'PENDING' is attempted via publishToMeta. A platform that fails is marked 'FAILED' by
-// publishToMeta itself, which keeps it out of `PENDING` on the next run — so a broken
-// connection is retried once, not forever. Once no PENDING platforms remain for a content
-// piece, it's finalized: PUBLISHED if at least one platform succeeded, otherwise FAILED.
-// Content with no eligible platforms at all (e.g. WhatsApp-only) is left alone.
+// For each such content, every enabled ContentPlatform with status 'PENDING' is attempted via
+// the matching publishTo* function. A platform that fails is marked 'FAILED' by that function
+// itself, which keeps it out of `PENDING` on the next run — so a broken connection is retried
+// once, not forever. Once no PENDING platforms remain for a content piece, it's finalized:
+// PUBLISHED if at least one platform succeeded, otherwise FAILED. Content with no eligible
+// platforms at all is left alone.
 
 const CHECK_INTERVAL_MS = 60_000;
-const PUBLISHABLE_PLATFORMS = ['FACEBOOK', 'INSTAGRAM'];
+const PUBLISHABLE_PLATFORMS = ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'TIKTOK', 'YOUTUBE', 'WHATSAPP'];
 
 let running = false;
 
@@ -53,19 +53,28 @@ export async function runScheduledPublishes() {
 
     for (const content of due) {
       const attempted = content.platforms.filter((p) => p.enabled && PUBLISHABLE_PLATFORMS.includes(p.platform));
-      if (attempted.length === 0) continue; // nothing publishable attached (e.g. WhatsApp-only) — leave it scheduled
+      if (attempted.length === 0) continue; // nothing publishable attached to this content — leave it scheduled
 
       const pending = attempted.filter((p) => p.status === 'PENDING');
       let anySuccess = attempted.some((p) => p.status === 'PUBLISHED');
 
-      // publishToMeta always resolves a PENDING platform to PUBLISHED or FAILED (never leaves
-      // it PENDING), so after this loop every attempted platform has a terminal status.
+      // Every publishTo* function always resolves a PENDING platform to PUBLISHED or FAILED
+      // (never leaves it PENDING), so after this loop every attempted platform has a terminal
+      // status.
       for (const target of pending) {
-        const result = await publishToMeta({
-          agencyId: content.agencyId,
-          contentId: content.id,
-          platform: target.platform as 'FACEBOOK' | 'INSTAGRAM',
-        });
+        const result = target.platform === 'LINKEDIN'
+          ? await publishToLinkedIn({ agencyId: content.agencyId, contentId: content.id })
+          : target.platform === 'TIKTOK'
+          ? await publishToTikTok({ agencyId: content.agencyId, contentId: content.id })
+          : target.platform === 'YOUTUBE'
+          ? await publishToYouTube({ agencyId: content.agencyId, contentId: content.id })
+          : target.platform === 'WHATSAPP'
+          ? await publishToWhatsAppStatus({ agencyId: content.agencyId, contentId: content.id })
+          : await publishToMeta({
+              agencyId: content.agencyId,
+              contentId: content.id,
+              platform: target.platform as 'FACEBOOK' | 'INSTAGRAM',
+            });
         if (result.success) anySuccess = true;
       }
 

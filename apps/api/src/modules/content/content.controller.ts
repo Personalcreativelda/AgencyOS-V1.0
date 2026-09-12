@@ -140,7 +140,7 @@ export async function update(req: AuthRequest, res: Response, next: NextFunction
     const existing = await prisma.content.findFirst({ where: { id, agencyId: req.user!.agencyId } });
     if (!existing) throw new NotFoundError('Content not found');
 
-    const { title, brief, hook, caption, cta, hashtags, priority, scheduledAt, dueAt, assignedToId, contentPillarId, objective } = req.body;
+    const { title, brief, hook, caption, cta, hashtags, priority, scheduledAt, dueAt, assignedToId, contentPillarId, objective, contentType } = req.body;
 
     // Snapshot before update
     const versionCount = await prisma.contentVersion.count({ where: { contentId: id } });
@@ -161,7 +161,7 @@ export async function update(req: AuthRequest, res: Response, next: NextFunction
     const content = await prisma.content.update({
       where: { id },
       data: {
-        title, brief, hook, caption, cta,
+        title, brief, hook, caption, cta, contentType,
         hashtags: hashtags ? JSON.stringify(hashtags) : undefined,
         priority, assignedToId, contentPillarId, objective,
         scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,

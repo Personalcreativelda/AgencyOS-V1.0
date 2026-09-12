@@ -64,6 +64,7 @@ export const PLATFORM_LABELS: Record<string, string> = {
   TIKTOK: 'TikTok',
   YOUTUBE: 'YouTube',
   X: 'X (Twitter)',
+  WHATSAPP: 'WhatsApp',
 }
 
 export const PLATFORM_COLORS: Record<string, string> = {
@@ -73,6 +74,7 @@ export const PLATFORM_COLORS: Record<string, string> = {
   TIKTOK: '#000000',
   YOUTUBE: '#FF0000',
   X: '#1DA1F2',
+  WHATSAPP: '#25D366',
 }
 
 export const ROLE_LABELS: Record<string, string> = {

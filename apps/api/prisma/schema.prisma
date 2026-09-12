@@ -97,17 +97,25 @@ model Agency {
   @@map("agencies")
 }
 
-// ─── AGENCY SOCIAL SETTINGS (bring-your-own Meta App) ──────────────────────────
-// Each agency registers its own Meta App (developers.facebook.com) so Facebook/Instagram
-// connections aren't tied to one shared app for the whole SaaS. WhatsApp (Evolution API) stays
-// server-configured via env — it's self-hosted infra, not a per-tenant API credential.
+// ─── AGENCY SOCIAL SETTINGS (bring-your-own Meta / LinkedIn / TikTok / Google App) ──
+// Each agency registers its own Meta App (developers.facebook.com), LinkedIn App
+// (linkedin.com/developers), TikTok App (developers.tiktok.com) and Google Cloud project
+// (console.cloud.google.com, for YouTube uploads) so Facebook/Instagram/LinkedIn/TikTok/
+// YouTube connections aren't tied to one shared app for the whole SaaS. WhatsApp (Evolution
+// API) stays server-configured via env — it's self-hosted infra, not a per-tenant credential.
 model AgencySocialSettings {
-  id                      String   @id @default(uuid())
-  agencyId                String   @unique @map("agency_id")
-  metaAppId               String?  @map("meta_app_id")
-  metaAppSecretEncrypted  String?  @map("meta_app_secret_encrypted")
-  createdAt               DateTime @default(now()) @map("created_at")
-  updatedAt               DateTime @updatedAt @map("updated_at")
+  id                             String   @id @default(uuid())
+  agencyId                       String   @unique @map("agency_id")
+  metaAppId                      String?  @map("meta_app_id")
+  metaAppSecretEncrypted         String?  @map("meta_app_secret_encrypted")
+  linkedinClientId               String?  @map("linkedin_client_id")
+  linkedinClientSecretEncrypted  String?  @map("linkedin_client_secret_encrypted")
+  tiktokClientKey                String?  @map("tiktok_client_key")
+  tiktokClientSecretEncrypted    String?  @map("tiktok_client_secret_encrypted")
+  youtubeClientId                String?  @map("youtube_client_id")
+  youtubeClientSecretEncrypted   String?  @map("youtube_client_secret_encrypted")
+  createdAt                      DateTime @default(now()) @map("created_at")
+  updatedAt                      DateTime @updatedAt @map("updated_at")
 
   agency Agency @relation(fields: [agencyId], references: [id], onDelete: Cascade)
 
@@ -596,6 +604,11 @@ model ContentPlatform {
 
   content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
 
+  // Without this, two publish attempts racing (e.g. a manual click landing around the same
+  // time as the scheduled publisher picking up the same due content) can both see "no existing
+  // row" and both insert one — confirmed happening for real with a slow WhatsApp Status publish.
+  // The publishTo* functions upsert on this instead of find-then-create/update.
+  @@unique([contentId, platform])
   @@map("content_platforms")
 }
 

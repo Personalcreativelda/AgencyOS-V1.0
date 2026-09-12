@@ -6,6 +6,7 @@ import { NotFoundError, ValidationError } from '../../common/middleware/errorHan
 import { encrypt, decrypt, maskSecret } from '../../common/crypto';
 import { getStorageProvider } from '../../common/storage';
 import { compositeLogoOntoImage } from '../../integrations/ai/imageCompose';
+import { setContentPrimaryAssets } from '../assets/contentAssets';
 
 async function getBrandContext(clientId: string, agencyId: string) {
   const [profile, rules, products, services, personas, pillars, colors, fonts, referenceImages] = await Promise.all([
@@ -528,14 +529,14 @@ STRICTLY AVOID: the telltale "AI-generated" look — waxy/plastic skin, uncanny-
     });
 
     // Attach directly to the content piece it was generated for, so it shows up in the workspace
-    // preview and the client approval portal, not just as a floating asset in the client's library.
+    // preview and the client approval portal, not just as a floating asset in the client's
+    // library. Replaces whatever was attached before (see setContentPrimaryAssets) — a
+    // regenerated image is meant to replace the previous one, not add to a growing pile that
+    // every consumer used to just silently pick "the latest" out of.
     if (contentId) {
       const content = await prisma.content.findFirst({ where: { id: contentId, agencyId: req.user!.agencyId } });
       if (content) {
-        const sortOrder = await prisma.contentAsset.count({ where: { contentId } });
-        await prisma.contentAsset.create({
-          data: { agencyId: req.user!.agencyId, contentId, assetId: asset.id, role: 'PRIMARY', sortOrder },
-        });
+        await setContentPrimaryAssets(req.user!.agencyId, contentId, [asset.id]);
       }
     }
 

@@ -118,11 +118,14 @@ export function ApprovalPortalPage() {
   }
 
   const content = data.content
-  const images = (content.assets || [])
-    .filter((a: any) => a.asset?.mimeType?.startsWith('image/'))
+  // The content's current active set (role: 'PRIMARY'), in carousel order — see the matching
+  // comment in ContentDetailPage.tsx.
+  const primaryMediaList = (content.assets || [])
+    .filter((a: any) => a.role === 'PRIMARY')
     .slice()
-    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  const primaryImage = images[0]?.asset || null
+    .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((a: any) => a.asset)
+  const primaryMedia = primaryMediaList[0] || null
   const isVertical = content.contentType === 'STORY' || content.contentType === 'REEL'
 
   return (
@@ -201,7 +204,9 @@ export function ApprovalPortalPage() {
               hook={content.hook}
               caption={content.caption}
               cta={content.cta}
-              image={primaryImage}
+              image={primaryMedia}
+              mediaList={primaryMediaList}
+              selectedPlatforms={(content.platforms || []).map((p: any) => p.platform)}
               defaultPlatform={isVertical ? 'STORY' : 'INSTAGRAM'}
               dark={isDark}
             />
