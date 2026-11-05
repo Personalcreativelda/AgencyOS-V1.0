@@ -387,7 +387,7 @@ export function ContentPage({ view }: ContentPageProps) {
               <EmptyState
                 icon={FileText}
                 title="Nenhum conteúdo encontrado"
-                description="Crie posts ou gere um calendário completo utilizando IA."
+                description="Crie posts ou gere um calendário completo utilizando o Brand Brain."
               />
             ) : listDisplay === 'grid' ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">

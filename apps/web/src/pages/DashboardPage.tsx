@@ -94,7 +94,7 @@ export function DashboardPage() {
             <Button asChild variant="ghost" className="px-4 py-2 bg-[#fff]/10 hover:bg-[#fff]/20 text-[#fff] hover:text-[#fff] backdrop-blur-md border border-[#fff]/20">
               <Link to="/app/content">
                 <Sparkles size={16} />
-                <span>Criar Conteúdo com IA</span>
+                <span>Criar Conteúdo com Brand Brain</span>
               </Link>
             </Button>
           </div>
@@ -191,7 +191,7 @@ export function DashboardPage() {
                 <Sparkles className="w-5 h-5 text-[#fff]" />
               </div>
               <div>
-                <h3 className="font-extrabold text-sm text-foreground tracking-tight">Brand Brain IA</h3>
+                <h3 className="font-extrabold text-sm text-foreground tracking-tight">Brand Brain</h3>
                 <p className="text-[11px] text-muted-foreground font-medium">Memória adaptativa de cada cliente</p>
               </div>
             </div>

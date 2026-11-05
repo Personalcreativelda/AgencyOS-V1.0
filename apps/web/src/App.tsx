@@ -16,6 +16,9 @@ import { ReportPublicPage } from '@/pages/ReportPublicPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { SocialConnectionsPage } from '@/pages/SocialConnectionsPage'
 import { AdsPage } from '@/pages/AdsPage'
+import { GooglePerformancePage } from '@/pages/GooglePerformancePage'
+import { PerformancePage } from '@/pages/PerformancePage'
+import { AdPlatformPage } from '@/pages/AdPlatformPage'
 import { ReportsPage } from '@/pages/ReportsPage'
 import { Toaster } from '@/components/ui/Toaster'
 import { ConfirmDialogHost } from '@/components/ui/ConfirmDialogHost'
@@ -58,6 +61,10 @@ export default function App() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="social" element={<SocialConnectionsPage />} />
           <Route path="ads" element={<AdsPage />} />
+          <Route path="google" element={<GooglePerformancePage />} />
+          <Route path="performance" element={<PerformancePage />} />
+          <Route path="tiktok-ads" element={<AdPlatformPage platform="tiktok" />} />
+          <Route path="linkedin-ads" element={<AdPlatformPage platform="linkedin" />} />
           <Route path="settings/*" element={<SettingsPage />} />
         </Route>
 

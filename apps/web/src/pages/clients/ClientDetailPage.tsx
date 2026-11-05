@@ -317,7 +317,7 @@ export function ClientDetailPage() {
         `${data.personas?.length || 0} personas, ${pillarCount} pilares e ${data.brandRules?.length || 0} regras adicionadas — confira nas outras abas.`
       )
     } catch (err) {
-      toast.error('Erro ao rodar análise de IA', getErrorMessage(err))
+      toast.error('Erro ao rodar análise do Brand Brain', getErrorMessage(err))
     } finally {
       setAnalyzingBrand(false)
     }
@@ -364,7 +364,7 @@ export function ClientDetailPage() {
           {!analyzingBrand && (
             <>
               <Sparkles size={16} />
-              <span>Análise de Marca com IA</span>
+              <span>Análise de Marca com Brand Brain</span>
             </>
           )}
           {analyzingBrand && <span>Analisando...</span>}
@@ -433,7 +433,7 @@ export function ClientDetailPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-primary font-bold text-xs">
               <Sparkles size={16} />
-              <span>Insights Gerados pela IA para {client.name}</span>
+              <span>Insights Gerados pelo Brand Brain para {client.name}</span>
             </div>
             <Button
               variant="ghost"
@@ -484,7 +484,7 @@ export function ClientDetailPage() {
           <div className="flex items-center justify-between border-b border-border pb-4">
             <div>
               <h2 className="text-base font-bold text-foreground">Identidade da Marca</h2>
-              <p className="text-xs text-muted-foreground font-medium">Informações mestras que alimentam o gerador de copies e estratégias com IA.</p>
+              <p className="text-xs text-muted-foreground font-medium">Informações mestras que alimentam o gerador de copies e estratégias do Brand Brain.</p>
             </div>
             <Button type="submit">Salvar Alterações</Button>
           </div>
@@ -569,7 +569,7 @@ export function ClientDetailPage() {
           <div className="card-minimals p-6">
             <h2 className="text-base font-bold text-foreground mb-1">Personas do Público</h2>
             <p className="text-xs text-muted-foreground font-medium mb-4">
-              Perfis de cliente ideal usados pela IA para escrever com a linguagem certa pra cada público.
+              Perfis de cliente ideal usados pelo Brand Brain para escrever com a linguagem certa pra cada público.
             </p>
 
             <form onSubmit={handleAddPersona} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -630,7 +630,7 @@ export function ClientDetailPage() {
           <div className="card-minimals p-6">
             <h2 className="text-base font-bold text-foreground mb-1">Regras Obrigatórias da Marca</h2>
             <p className="text-xs text-muted-foreground font-medium mb-4">
-              A IA nunca violará essas regras ao redigir legendas, hooks ou planejar posts.
+              O Brand Brain nunca violará essas regras ao redigir legendas, hooks ou planejar posts.
             </p>
 
             <form onSubmit={handleAddRule} className="flex flex-col sm:flex-row gap-3">
@@ -699,7 +699,7 @@ export function ClientDetailPage() {
           <div className="card-minimals p-6">
             <h2 className="text-base font-bold text-foreground mb-1">Pilares Editoriais de Conteúdo</h2>
             <p className="text-xs text-muted-foreground font-medium mb-4">
-              Distribuição temática para o gerador de calendário com IA.
+              Distribuição temática para o gerador de calendário do Brand Brain.
             </p>
 
             <form onSubmit={handleAddPillar} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -755,7 +755,7 @@ export function ClientDetailPage() {
             <div>
               <h2 className="text-base font-bold text-foreground mb-1">Estilo Visual</h2>
               <p className="text-xs text-muted-foreground font-medium">
-                Descreva em texto livre o estilo que a IA deve seguir ao gerar imagens — mood, composição, iconografia, fundo, etc. Isso é usado diretamente no prompt de geração.
+                Descreva em texto livre o estilo que o Brand Brain deve seguir ao gerar imagens — mood, composição, iconografia, fundo, etc. Isso é usado diretamente no prompt de geração.
               </p>
             </div>
             <Textarea
@@ -890,7 +890,7 @@ export function ClientDetailPage() {
             <div>
               <h2 className="text-base font-bold text-foreground">Aprendizagem por Feedback</h2>
               <p className="text-xs text-muted-foreground font-medium">
-                Feedbacks recebidos nas aprovações viram regras permanentes da IA.
+                Feedbacks recebidos nas aprovações viram regras permanentes do Brand Brain.
               </p>
             </div>
 

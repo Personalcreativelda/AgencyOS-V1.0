@@ -78,7 +78,7 @@ export function ClientsPage() {
         <EmptyState
           icon={Building2}
           title="Nenhum cliente encontrado"
-          description="Adicione o primeiro cliente da sua agência para começar a criar estratégias com IA."
+          description="Adicione o primeiro cliente da sua agência para começar a criar estratégias com o Brand Brain."
           action={
             <Button asChild>
               <Link to="/app/clients/new">

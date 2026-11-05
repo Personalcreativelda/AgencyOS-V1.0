@@ -353,15 +353,28 @@ class GeminiProvider implements AIProvider {
   }
 
   async generateJSON<T>(input: AIRequest): Promise<T> {
-    const response = await this.generateText({
-      ...input,
-      systemPrompt: input.systemPrompt + '\n\nSempre retorne SOMENTE JSON válido, sem markdown, sem texto extra.',
+    const data = await this.callGenerateContent(this.textModel, {
+      systemInstruction: { parts: [{ text: input.systemPrompt + '\n\nRetorne somente JSON válido.' }] },
+      contents: [{ role: 'user', parts: [{ text: input.userPrompt }] }],
+      generationConfig: {
+        temperature: input.temperature ?? 0.3,
+        maxOutputTokens: input.maxTokens ?? 4000,
+        responseMimeType: 'application/json',
+        // Gemini 3 uses part of maxOutputTokens for thinking. A low thinking level leaves
+        // enough room for the JSON answer, especially on longer campaign analyses.
+        ...(this.textModel.startsWith('gemini-3') ? { thinkingConfig: { thinkingLevel: 'low' } } : {}),
+      },
     });
+    const candidate = data.candidates?.[0];
+    const text = candidate?.content?.parts?.map((p: any) => p.text).filter(Boolean).join('') || '';
+    if (!text.trim()) {
+      const reason = candidate?.finishReason || data.promptFeedback?.blockReason || 'sem motivo informado';
+      throw new AIProviderError(`Gemini não retornou texto para análise (motivo: ${reason}).${reason === 'MAX_TOKENS' ? ' O limite de tokens foi atingido; tente analisar uma campanha de cada vez.' : ''}`);
+    }
     try {
-      const cleaned = response.text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      return JSON.parse(cleaned) as T;
+      return JSON.parse(text) as T;
     } catch {
-      throw new AIProviderError(`A IA retornou uma resposta em formato inválido: ${response.text.substring(0, 200)}`);
+      throw new AIProviderError(`Gemini retornou JSON incompleto (motivo: ${candidate?.finishReason || 'sem motivo informado'}). Tente analisar uma campanha de cada vez.`);
     }
   }
 

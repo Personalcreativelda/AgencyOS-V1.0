@@ -100,7 +100,7 @@ export function CalendarPage() {
 
       const calRes = await api.post('/calendars', {
         clientId: aiForm.clientId,
-        name: `Calendário IA — ${aiForm.month}/${aiForm.year}`,
+        name: `Calendário Brand Brain — ${aiForm.month}/${aiForm.year}`,
         month: aiForm.month,
         year: aiForm.year,
       })
@@ -123,7 +123,7 @@ export function CalendarPage() {
 
       setShowAiModal(false)
       loadContents()
-      toast.success('Calendário gerado com sucesso pela IA!')
+      toast.success('Calendário gerado com sucesso pelo Brand Brain!')
     } catch (err: any) {
       toast.error('Erro ao gerar calendário', getErrorMessage(err))
     } finally {
@@ -210,7 +210,7 @@ export function CalendarPage() {
 
           <Button onClick={() => setShowAiModal(true)}>
             <Sparkles size={16} />
-            <span>Gerar Mês com IA</span>
+            <span>Gerar Mês com Brand Brain</span>
           </Button>
         </div>
       </div>
@@ -226,7 +226,7 @@ export function CalendarPage() {
         <EmptyState
           icon={CalendarIcon}
           title="Nenhum conteúdo agendado"
-          description="Use o botão acima para a IA planejar os posts, hooks e datas do mês automaticamente."
+          description="Use o botão acima para o Brand Brain planejar os posts, hooks e datas do mês automaticamente."
         />
       ) : (
         <div className="space-y-3.5">
@@ -299,8 +299,8 @@ export function CalendarPage() {
                 <Sparkles size={22} className="text-[#fff]" />
               </div>
               <div>
-                <DialogTitle>Gerar Calendário Mensal com IA</DialogTitle>
-                <DialogDescription>A IA planejará temas, hooks e formatos alinhados ao Brand Brain</DialogDescription>
+                <DialogTitle>Gerar Calendário Mensal com Brand Brain</DialogTitle>
+                <DialogDescription>O Brand Brain planejará temas, hooks e formatos alinhados à sua marca</DialogDescription>
               </div>
             </div>
           </DialogHeader>

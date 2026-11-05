@@ -149,7 +149,7 @@ function PreviewMedia({
   const uploading = uploadProgress != null
   const overlay = uploading
     ? { title: `Enviando arquivo... ${uploadProgress}%`, subtitle: 'Não feche esta página até o envio terminar.' }
-    : { title: 'Gerando criativo com IA...', subtitle: 'Isso pode levar até 1 minuto — não feche esta página.' }
+    : { title: 'Gerando criativo com Brand Brain...', subtitle: 'Isso pode levar até 1 minuto — não feche esta página.' }
 
   if (image) {
     const isVideo = image.mimeType?.startsWith('video/')

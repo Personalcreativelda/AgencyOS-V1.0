@@ -236,7 +236,7 @@ export function ContentDetailPage() {
         cta: data.cta || content.cta,
       })
     } catch (err) {
-      toast.error('Erro ao gerar legenda com IA', getErrorMessage(err))
+      toast.error('Erro ao gerar legenda com Brand Brain', getErrorMessage(err))
     } finally {
       setGeneratingCaption(false)
     }
@@ -270,7 +270,7 @@ export function ContentDetailPage() {
       })
       await loadContent()
     } catch (err) {
-      toast.error('Erro ao gerar proposta de imagem com IA', getErrorMessage(err))
+      toast.error('Erro ao gerar proposta de imagem com Brand Brain', getErrorMessage(err))
     } finally {
       setGeneratingImage(false)
     }
@@ -583,7 +583,7 @@ export function ContentDetailPage() {
             <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border">
               <Button variant="outline" size="sm" onClick={handleGenerateImage} disabled={generatingImage} className="gap-1.5">
                 <ImagePlus size={13} />
-                <span>{generatingImage ? 'Gerando imagem...' : 'Gerar com IA'}</span>
+                <span>{generatingImage ? 'Gerando imagem...' : 'Gerar com Brand Brain'}</span>
               </Button>
               <Button
                 variant="outline"
@@ -792,7 +792,7 @@ export function ContentDetailPage() {
                 {!generatingCaption && (
                   <>
                     <RefreshCw size={13} />
-                    <span>Gerar Legenda com IA</span>
+                    <span>Gerar Legenda com Brand Brain</span>
                   </>
                 )}
                 {generatingCaption && <span>Escrevendo...</span>}
@@ -852,7 +852,7 @@ export function ContentDetailPage() {
               <Textarea
                 id="contentCaption"
                 rows={8}
-                placeholder="Escreva a legenda completa ou gere com a IA..."
+                placeholder="Escreva a legenda completa ou gere com o Brand Brain..."
                 value={content.caption || ''}
                 onChange={(e) => setContent({ ...content, caption: e.target.value })}
                 className="py-3 leading-relaxed"

@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Calendar, FileText, CheckSquare,
   BarChart2, Settings, LogOut, Zap, Bell, Search, Sun, Moon, Menu, X, CheckCheck, Inbox, Camera,
-  List, CalendarDays, Kanban, Share2, Megaphone,
+  List, CalendarDays, Kanban, Share2, Megaphone, Globe2, Activity, Music2, Linkedin,
 } from 'lucide-react'
 import { useThemeStore } from '@/stores/themeStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -26,12 +26,22 @@ const navSections = [
     subheader: 'Geral',
     items: [
       { label: 'Dashboard', href: '/app/dashboard', icon: LayoutDashboard },
+      { label: 'Performance', href: '/app/performance', icon: Activity },
       { label: 'Clientes', href: '/app/clients', icon: Users },
       { label: 'Conteúdos', href: '/app/calendar', icon: Calendar },
     ],
   },
   {
-    subheader: 'Produção & IA',
+    subheader: 'Anúncios',
+    items: [
+      { label: 'Meta Ads', href: '/app/ads', icon: Megaphone },
+      { label: 'Google Ads', href: '/app/google', icon: Globe2 },
+      { label: 'TikTok Ads', href: '/app/tiktok-ads', icon: Music2 },
+      { label: 'LinkedIn Ads', href: '/app/linkedin-ads', icon: Linkedin },
+    ],
+  },
+  {
+    subheader: 'Produção & Brand Brain',
     items: [
       {
         label: 'Workspace',
@@ -43,7 +53,6 @@ const navSections = [
           { label: 'Kanban', href: '/app/content/board', icon: Kanban },
         ],
       },
-      { label: 'Meta Ads', href: '/app/ads', icon: Megaphone },
       { label: 'Aprovações do Cliente', href: '/app/approvals', icon: CheckSquare },
       { label: 'Relatórios Mensais', href: '/app/reports', icon: BarChart2 },
       { label: 'Redes Sociais', href: '/app/social', icon: Share2 },
@@ -208,6 +217,7 @@ export function AppLayout() {
                   <NavLink
                     key={item.href}
                     to={item.href}
+                    reloadDocument={item.href === '/app/google' || item.href === '/app/performance'}
                     onClick={closeNav}
                     className={({ isActive }) =>
                       cn('nav-item-minimals', isActive && 'active')

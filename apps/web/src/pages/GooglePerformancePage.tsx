@@ -1,0 +1,318 @@
+import { useEffect, useRef, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { BarChart3, ExternalLink, Globe2, MousePointerClick, Pause, Play, Plus, RefreshCw, Sparkles, Trash2, TrendingUp, Users } from 'lucide-react'
+import api from '@/lib/api'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
+import { toast } from '@/lib/toast'
+import { getErrorMessage } from '@/lib/errors'
+import { confirmDialog } from '@/lib/confirm'
+import { useAuthStore } from '@/stores/authStore'
+
+type Kind = 'ads' | 'analytics'
+type Range = 'today' | '7d' | '30d'
+type Connection = { id: string; kind: Kind; name: string; externalId: string; currency?: string | null }
+type Option = { id: string; name: string; currency?: string; loginCustomerId?: string }
+
+const number = (value: number) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value || 0)
+const percent = (value: number) => `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value || 0)}%`
+const money = (value: number, currency: string) => {
+  try { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format(value || 0) }
+  catch { return `${number(value)} ${currency}` }
+}
+
+function Metric({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Users }) {
+  return <Card className="min-h-28 p-4 sm:p-5 flex flex-col justify-between transition-colors hover:border-primary/30">
+    <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><Icon size={14} />{label}</div>
+    <div className="text-xl sm:text-2xl font-bold tracking-tight text-foreground break-words">{value}</div>
+  </Card>
+}
+
+function Breakdown({ title, rows, valueKey }: { title: string; rows: any[]; valueKey: string }) {
+  return <Card className="p-4 sm:p-5 min-w-0">
+    <h3 className="font-bold text-foreground mb-4">{title}</h3>
+    {rows.length ? <div className="space-y-3">{rows.map((row, index) => <div key={`${row.label}-${index}`} className="flex items-center justify-between gap-4 text-sm border-b border-border/70 pb-2 last:border-0 last:pb-0">
+      <span className="min-w-0 truncate text-muted-foreground" title={row.label}>{row.label}</span>
+      <span className="font-semibold text-foreground shrink-0">{number(row[valueKey])}</span>
+    </div>)}</div> : <p className="text-sm text-muted-foreground">Sem dados neste período.</p>}
+  </Card>
+}
+
+export function GooglePerformancePage() {
+  const role = useAuthStore(state => state.user?.role)
+  const canManage = role === 'OWNER' || role === 'ADMIN' || role === 'MANAGER'
+  const [params, setParams] = useSearchParams()
+  const [clients, setClients] = useState<any[]>([])
+  const [clientId, setClientId] = useState('')
+  const [kind, setKind] = useState<Kind>('ads')
+  const [range, setRange] = useState<Range>('7d')
+  const [settings, setSettings] = useState<{ configured: boolean; callbackUrl?: string } | null>(null)
+  const [loadError, setLoadError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
+  const [connections, setConnections] = useState<Connection[]>([])
+  const [connectionId, setConnectionId] = useState('')
+  const [insights, setInsights] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [recommendations, setRecommendations] = useState<any[]>([])
+  const [changingCampaignId, setChangingCampaignId] = useState('')
+  const connectionsRequest = useRef(0)
+  const insightsRequest = useRef(0)
+  const analysisRequest = useRef(0)
+  const selectedConnectionRef = useRef('')
+  selectedConnectionRef.current = connectionId
+  const [connecting, setConnecting] = useState(false)
+  const [pendingToken, setPendingToken] = useState('')
+  const [pendingOptions, setPendingOptions] = useState<Option[]>([])
+  const [pendingKind, setPendingKind] = useState<Kind>('ads')
+  const [selectedOption, setSelectedOption] = useState('')
+  const [confirming, setConfirming] = useState(false)
+  const visibleConnections = connections.filter(connection => connection.kind === kind)
+  const selectedConnection = visibleConnections.find(connection => connection.id === connectionId)
+
+  const loadConnections = async (id: string) => {
+    const request = ++connectionsRequest.current
+    const { data } = await api.get<Connection[]>('/google/connections', { params: { clientId: id } })
+    if (request === connectionsRequest.current) setConnections(data)
+  }
+
+  useEffect(() => {
+    let active = true
+    setLoadError('')
+    Promise.allSettled([api.get('/clients'), api.get('/google/settings')]).then(([clientResult, settingsResult]) => {
+      if (!active) return
+      if (clientResult.status === 'fulfilled') {
+        const list = clientResult.value.data.data || []
+        setClients(list)
+        const preferred = params.get('clientId')
+        setClientId(current => current || list.find((client: any) => client.id === preferred)?.id || list[0]?.id || '')
+      } else setLoadError(getErrorMessage(clientResult.reason))
+      if (settingsResult.status === 'fulfilled') setSettings(settingsResult.value.data)
+      else setLoadError(previous => [previous, `Configuração Google: ${getErrorMessage(settingsResult.reason)}`].filter(Boolean).join(' · '))
+    })
+    return () => { active = false }
+  }, [reloadKey])
+
+  useEffect(() => {
+    if (!clientId) return
+    setConnections([])
+    setConnectionId('')
+    setInsights(null)
+    setRecommendations([])
+    loadConnections(clientId).catch(error => toast.error('Erro ao carregar conexões', getErrorMessage(error)))
+  }, [clientId])
+
+  useEffect(() => {
+    if (!visibleConnections.some(connection => connection.id === connectionId)) {
+      setConnectionId(visibleConnections[0]?.id || '')
+      setInsights(null)
+    }
+  }, [connections, kind, connectionId])
+
+  const refresh = async () => {
+    const request = ++insightsRequest.current
+    if (!connectionId) { setInsights(null); setLoading(false); return }
+    setLoading(true)
+    setInsights(null)
+    try {
+      const { data } = await api.get(`/google/connections/${connectionId}/insights`, { params: { range } })
+      if (request === insightsRequest.current) setInsights(data)
+    } catch (error) { if (request === insightsRequest.current) toast.error('Erro ao carregar métricas Google', getErrorMessage(error)) }
+    finally { if (request === insightsRequest.current) setLoading(false) }
+  }
+
+  useEffect(() => { refresh() }, [connectionId, range])
+  useEffect(() => { ++analysisRequest.current; setAnalyzing(false); setRecommendations([]) }, [connectionId, range])
+
+  useEffect(() => {
+    const token = params.get('google_pending')
+    if (params.get('google_error')) toast.error('Falha ao conectar Google', 'Confira o acesso à API, o URI de redirecionamento e as permissões da conta.')
+    if (!token) {
+      if (params.get('google_error')) setParams(previous => { const next = new URLSearchParams(previous); next.delete('google_error'); return next }, { replace: true })
+      return
+    }
+    api.get(`/google/pending/${token}`).then(({ data }) => {
+      setPendingToken(token)
+      setPendingOptions(data.options)
+      setPendingKind(data.kind)
+      setSelectedOption(data.options[0]?.id || '')
+      setClientId(data.clientId)
+      setKind(data.kind)
+    }).catch(error => toast.error('Seleção Google expirada', getErrorMessage(error)))
+      .finally(() => setParams(previous => { const next = new URLSearchParams(previous); next.delete('google_pending'); next.delete('google_error'); return next }, { replace: true }))
+  }, [])
+
+  const connect = async () => {
+    if (!clientId) return
+    setConnecting(true)
+    try {
+      const { data } = await api.get('/google/connect', { params: { clientId, kind } })
+      window.location.assign(data.authUrl)
+    } catch (error) { toast.error('Erro ao iniciar ligação Google', getErrorMessage(error)); setConnecting(false) }
+  }
+
+  const analyze = async () => {
+    if (!connectionId) return
+    const request = ++analysisRequest.current
+    setAnalyzing(true)
+    try {
+      const { data } = await api.post(`/google/connections/${connectionId}/analyze`, { range })
+      if (request === analysisRequest.current) {
+        setRecommendations(data.recommendations || [])
+        if (!data.recommendations?.length) toast.info('Sem ações recomendadas', 'Os dados deste período não justificam uma mudança específica.')
+      }
+    } catch (error) { if (request === analysisRequest.current) toast.error('Erro ao analisar com Brand Brain', getErrorMessage(error)) }
+    finally { if (request === analysisRequest.current) setAnalyzing(false) }
+  }
+
+  const confirm = async () => {
+    if (!selectedOption) return
+    setConfirming(true)
+    try {
+      const { data } = await api.post(`/google/pending/${pendingToken}/confirm`, { optionId: selectedOption })
+      setPendingToken('')
+      setKind(pendingKind)
+      await loadConnections(clientId)
+      setConnectionId(data.id)
+      toast.success('Conta Google conectada ao cliente')
+    } catch (error) { toast.error('Erro ao ligar conta', getErrorMessage(error)) }
+    finally { setConfirming(false) }
+  }
+
+  const disconnect = async () => {
+    if (!selectedConnection) return
+    if (!await confirmDialog({ title: 'Desconectar conta Google?', description: `Remover ${selectedConnection.name} deste cliente?`, confirmLabel: 'Desconectar', variant: 'destructive' })) return
+    try {
+      await api.delete(`/google/connections/${selectedConnection.id}`)
+      setConnectionId('')
+      setInsights(null)
+      await loadConnections(clientId)
+      toast.success('Conta desconectada')
+    } catch (error) { toast.error('Erro ao desconectar', getErrorMessage(error)) }
+  }
+
+  const changeCampaignStatus = async (campaign: any) => {
+    if (!selectedConnection) return
+    const nextStatus = campaign.status === 'ENABLED' ? 'PAUSED' : 'ENABLED'
+    const label = nextStatus === 'PAUSED' ? 'Pausar' : 'Reativar'
+    if (!await confirmDialog({ title: `${label} campanha?`, description: `${label} “${campaign.name}” no Google Ads?`, confirmLabel: label })) return
+    setChangingCampaignId(campaign.id)
+    try {
+      await api.post(`/google/connections/${selectedConnection.id}/campaigns/${campaign.id}/status`, { status: nextStatus })
+      if (selectedConnectionRef.current === selectedConnection.id) await refresh()
+      toast.success(`Campanha ${nextStatus === 'PAUSED' ? 'pausada' : 'reativada'}`)
+    } catch (error) { toast.error(`Erro ao ${label.toLowerCase()} campanha`, getErrorMessage(error)) }
+    finally { setChangingCampaignId('') }
+  }
+
+  return <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-6">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div><h1 className="text-2xl font-bold tracking-tight text-foreground">Google Ads & Analytics</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Campanhas e desempenho dos websites dos clientes, com dados diretos do Google.</p></div>
+    </div>
+
+    <div className="flex flex-wrap gap-2 border-b border-border pb-3">
+      <Button variant={kind === 'ads' ? 'solid' : 'subtle'} onClick={() => setKind('ads')}><BarChart3 size={16} />Google Ads</Button>
+      <Button variant={kind === 'analytics' ? 'solid' : 'subtle'} onClick={() => setKind('analytics')}><Globe2 size={16} />Analytics (GA4)</Button>
+    </div>
+
+    {loadError && <Card className="p-4 sm:p-5 border-error/30">
+      <p className="text-sm font-semibold text-foreground">Não foi possível carregar todos os dados da página.</p>
+      <p className="mt-1 text-sm text-muted-foreground break-words">{loadError}</p>
+      <Button variant="subtle" className="mt-3" onClick={() => setReloadKey(value => value + 1)}>Tentar novamente</Button>
+    </Card>}
+
+    {settings && <Card className={`p-5 ${settings.configured ? '' : 'border-primary/30'}`}>
+      <h2 className="font-bold text-foreground">{settings.configured ? 'Google Cloud configurado' : 'Configure o Google Cloud da agência'}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{settings.configured ? 'Para conectar Ads ou GA4, confirme que o projeto tem acesso às APIs Google Ads, Analytics Data e Analytics Admin e que este URI está autorizado:' : 'Adicione o Client ID e o Client Secret em Redes Sociais → Agência → YouTube. Ative as APIs Google Ads, Analytics Data e Analytics Admin no mesmo projeto e registe este URI de redirecionamento:'}</p>
+      <code className="mt-3 block rounded-lg bg-muted p-3 text-xs text-foreground break-all">{settings.callbackUrl}</code>
+      <Link to="/app/social" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">Abrir configurações <ExternalLink size={14} /></Link>
+    </Card>}
+
+    <Card className="p-4 sm:p-5">
+      <div className={`grid gap-3 sm:grid-cols-2 lg:items-end ${canManage ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]' : ''}`}>
+        <div className="min-w-0"><label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Cliente</label>
+          <Select value={clientId} onValueChange={setClientId}><SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
+            <SelectContent>{clients.map(client => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}</SelectContent></Select></div>
+        <div className="min-w-0"><label className="mb-1.5 block text-xs font-semibold text-muted-foreground">{kind === 'ads' ? 'Conta Google Ads' : 'Propriedade GA4'}</label>
+          <Select value={connectionId || undefined} onValueChange={setConnectionId} disabled={!visibleConnections.length}><SelectTrigger><SelectValue placeholder={visibleConnections.length ? 'Selecione a conta' : 'Nenhuma conta conectada'} /></SelectTrigger>
+            <SelectContent>{visibleConnections.map(connection => <SelectItem key={connection.id} value={connection.id}>{connection.name}</SelectItem>)}</SelectContent></Select></div>
+        {canManage && <Button onClick={connect} loading={connecting} disabled={!clientId || !settings?.configured} className="w-full lg:w-auto"><Plus size={16} />Conectar {kind === 'ads' ? 'Google Ads' : 'GA4'}</Button>}
+      </div>
+      {selectedConnection && <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4 text-xs text-muted-foreground">
+        <span className="min-w-0 break-all">ID {selectedConnection.externalId} · {selectedConnection.name}</span>
+        {canManage && <button onClick={disconnect} className="inline-flex items-center gap-1 text-muted-foreground hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded"><Trash2 size={14} />Desconectar</button>}
+      </div>}
+    </Card>
+
+    {selectedConnection ? <>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-border bg-card p-1">
+          {([['today', 'Hoje'], ['7d', '7 dias'], ['30d', '30 dias']] as const).map(([value, label]) => <button key={value} onClick={() => setRange(value)} className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${range === value ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>{label}</button>)}
+        </div>
+        <Button variant="subtle" onClick={refresh} loading={loading}><RefreshCw size={15} />Atualizar</Button>
+      </div>
+
+      {loading && !insights ? <Card className="p-8 text-sm text-muted-foreground">A carregar dados do Google...</Card> : insights?.kind === 'ads' ? <>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
+          <Metric label="Investimento" value={money(insights.totals.spend, insights.currency)} icon={TrendingUp} />
+          <Metric label="Impressões" value={number(insights.totals.impressions)} icon={Globe2} />
+          <Metric label="Cliques" value={number(insights.totals.clicks)} icon={MousePointerClick} />
+          <Metric label="CTR" value={percent(insights.totals.ctr)} icon={BarChart3} />
+          <Metric label="CPC" value={money(insights.totals.cpc, insights.currency)} icon={MousePointerClick} />
+          <Metric label="Conversões" value={number(insights.totals.conversions)} icon={Users} />
+          <Metric label="Custo/conversão" value={money(insights.totals.costPerConversion, insights.currency)} icon={TrendingUp} />
+        </div>
+        <Card className="p-4 sm:p-5 min-w-0"><h2 className="font-bold text-foreground mb-4">Campanhas</h2>
+          <div className="overflow-x-auto"><table className="w-full min-w-[780px] text-sm"><thead><tr className="border-b border-border text-left text-xs text-muted-foreground">
+            <th className="pb-3 pr-4">Campanha</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4 text-right">Gasto</th><th className="pb-3 pr-4 text-right">Cliques</th><th className="pb-3 pr-4 text-right">Impressões</th><th className="pb-3 pr-4 text-right">Conversões</th>{canManage && <th className="pb-3 text-right">Ação</th>}
+          </tr></thead><tbody>{insights.campaigns.map((campaign: any) => <tr key={campaign.id} className="border-b border-border/60 last:border-0 text-foreground">
+            <td className="py-3 pr-4 font-semibold">{campaign.name}</td><td className="py-3 pr-4 text-xs text-muted-foreground">{campaign.status}</td><td className="py-3 pr-4 text-right">{money(campaign.spend, insights.currency)}</td><td className="py-3 pr-4 text-right">{number(campaign.clicks)}</td><td className="py-3 pr-4 text-right">{number(campaign.impressions)}</td><td className="py-3 pr-4 text-right">{number(campaign.conversions)}</td>{canManage && <td className="py-3 text-right">
+              {(campaign.status === 'ENABLED' || campaign.status === 'PAUSED') && <button disabled={!!changingCampaignId} onClick={() => changeCampaignStatus(campaign)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                {campaign.status === 'ENABLED' ? <Pause size={12} /> : <Play size={12} />}{changingCampaignId === campaign.id ? 'Aguarde...' : campaign.status === 'ENABLED' ? 'Pausar' : 'Reativar'}
+              </button>}
+            </td>}
+          </tr>)}</tbody></table>{!insights.campaigns.length && <p className="py-6 text-sm text-muted-foreground">Sem campanhas neste período.</p>}</div>
+        </Card>
+      </> : insights?.kind === 'analytics' ? <>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+          <Metric label="Utilizadores" value={number(insights.totals.users)} icon={Users} />
+          <Metric label="Sessões" value={number(insights.totals.sessions)} icon={Globe2} />
+          <Metric label="Visualizações" value={number(insights.totals.views)} icon={BarChart3} />
+          <Metric label="Sessões envolvidas" value={number(insights.totals.engagedSessions)} icon={MousePointerClick} />
+          <Metric label="Taxa de envolvimento" value={percent(insights.totals.engagementRate * 100)} icon={TrendingUp} />
+          <Metric label="Eventos principais" value={number(insights.totals.keyEvents)} icon={BarChart3} />
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3"><Breakdown title="Páginas mais vistas" rows={insights.pages} valueKey="views" />
+          <Breakdown title="Origem do tráfego" rows={insights.channels} valueKey="sessions" />
+          <Breakdown title="Países" rows={insights.countries} valueKey="sessions" /></div>
+      </> : null}
+      {insights && <Card className="p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div><h2 className="font-bold text-foreground">Recomendações do Brand Brain</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Sugestões baseadas nas métricas atuais. Reveja antes de agir.</p></div>
+          {canManage && <Button onClick={analyze} loading={analyzing} className="w-full sm:w-auto"><Sparkles size={15} />Analisar com Brand Brain</Button>}
+        </div>
+        {recommendations.length > 0 && <div className="mt-4 grid gap-3 md:grid-cols-2">{recommendations.map((item, index) => <div key={`${item.targetId}-${index}`} className="rounded-xl border border-border bg-muted/30 p-4 min-w-0">
+          <p className="text-xs font-semibold text-primary break-words">{item.targetName}</p>
+          <h3 className="mt-1 text-sm font-bold text-foreground break-words">{item.action}</h3>
+          <p className="mt-2 text-sm text-muted-foreground break-words">{item.reasoning}</p>
+          <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground break-words">Dados verificados: {item.evidence}</p>
+        </div>)}</div>}
+      </Card>}
+    </> : <Card className="p-8 text-center"><Globe2 className="mx-auto mb-3 text-primary" size={28} />
+      <h2 className="font-bold text-foreground">{kind === 'ads' ? 'Conecte uma conta Google Ads' : 'Conecte uma propriedade GA4'}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Escolha o cliente acima para consultar as métricas desta conta.</p></Card>}
+
+    <Dialog open={!!pendingToken} onOpenChange={open => { if (!open) setPendingToken('') }}>
+      <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Escolher {pendingKind === 'ads' ? 'conta Google Ads' : 'propriedade Analytics'}</DialogTitle>
+        <DialogDescription>Associe ao cliente apenas a conta que lhe pertence.</DialogDescription></DialogHeader>
+        <Select value={selectedOption || undefined} onValueChange={setSelectedOption}><SelectTrigger><SelectValue placeholder="Escolha uma conta" /></SelectTrigger>
+          <SelectContent>{pendingOptions.map(option => <SelectItem key={`${option.id}-${option.loginCustomerId || ''}`} value={option.id}>{option.name} ({option.id})</SelectItem>)}</SelectContent></Select>
+        <DialogFooter><Button onClick={confirm} loading={confirming} disabled={!selectedOption}>Conectar conta</Button></DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </div>
+}

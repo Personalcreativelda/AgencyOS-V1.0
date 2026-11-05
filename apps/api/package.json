@@ -5,6 +5,12 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
+    "pretest:google": "tsc",
+    "test:google": "node test/google.controller.mock.cjs",
+    "test:performance": "node test/performance.controller.mock.cjs",
+    "pretest:performance": "tsc",
+    "pretest:ad-platforms": "tsc",
+    "test:ad-platforms": "node test/adPlatforms.controller.mock.cjs",
     "start": "node dist/index.js",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

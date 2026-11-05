@@ -72,7 +72,7 @@ export function NewClientPage() {
           <div>
             <h1 className="text-xl font-extrabold text-foreground tracking-tight">Cadastrar Novo Cliente</h1>
             <p className="text-xs text-muted-foreground font-medium">
-              Configure a marca para inicializar o Brand Brain com IA. Envie o logotipo para a IA usá-lo (em vez de inventar um) nas propostas de criativo.
+              Configure a marca para inicializar o Brand Brain. Envie o logotipo para o Brand Brain usá-lo (em vez de inventar um) nas propostas de criativo.
             </p>
           </div>
         </div>
@@ -182,7 +182,7 @@ export function NewClientPage() {
                 placeholder="Ex: Av. Paulista, 1000 - Bela Vista, São Paulo - SP"
               />
               <p className="text-[11px] text-muted-foreground font-medium mt-1.5">
-                Se preenchido, a IA pode incluir o endereço em criativos como panfletos ou anúncios de loja, quando fizer sentido.
+                Se preenchido, o Brand Brain pode incluir o endereço em criativos como panfletos ou anúncios de loja, quando fizer sentido.
               </p>
             </div>
 

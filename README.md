@@ -84,6 +84,22 @@ Acesse `http://localhost:5173`, clique em **"Criar uma agência"** e cadastre su
 8. **Relatórios Mensais com IA**:
    - Geração e publicação de relatórios com link público.
 
+9. **Google Ads e Analytics (GA4)**:
+   - Ligações OAuth por cliente, com escolha da conta de anúncios ou propriedade GA4.
+   - Google Ads: campanhas, investimento, cliques, impressões, conversões, CTR e CPC; pausa/reativação manual.
+   - GA4: utilizadores, sessões, visualizações, eventos principais, páginas, canais e países do tráfego web.
+   - Períodos Hoje, 7 e 30 dias e recomendações do Brand Brain baseadas nos dados consultados.
+
+### Configurar Google Ads e GA4
+
+1. No Google Cloud da agência, ative **Google Ads API**, **Google Analytics Data API** e **Google Analytics Admin API**. O projeto precisa de acesso à API Google Ads para contas de produção.
+2. Configure o consentimento OAuth e um **OAuth Client ID do tipo Web application**. Autorize os escopos `https://www.googleapis.com/auth/adwords` e `https://www.googleapis.com/auth/analytics.readonly` conforme o fluxo de verificação do Google.
+3. Adicione `${APP_URL}/api/v1/google/callback` aos URIs de redirecionamento autorizados no Google Cloud. Use exatamente o mesmo domínio configurado em `APP_URL` (em localhost, `http://localhost:5173/api/v1/google/callback`).
+4. Em **Redes Sociais → Agência → YouTube**, guarde o Client ID e o Client Secret deste projeto Google Cloud. A integração Google Ads/GA4 reutiliza estas credenciais, mas guarda uma ligação OAuth separada para cada serviço e cliente.
+5. Em **Google Ads & Analytics**, selecione o cliente, ligue o serviço e escolha a conta/propriedade correta. O utilizador Google deve ter acesso a essa conta. Para contas Google Ads sob um gestor, a aplicação descobre também as contas cliente e envia o respetivo `login-customer-id`.
+
+As recomendações da IA são apenas sugestões; a aplicação não executa mudanças propostas pela IA. O Google Ads permite pausar ou reativar campanhas manualmente, após confirmação.
+
 ---
 
 ## 🌐 Produção

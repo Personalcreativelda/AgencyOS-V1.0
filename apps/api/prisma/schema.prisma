@@ -782,6 +782,7 @@ model AdInsightDaily {
   results            Int?
   costPerResult      Float?   @map("cost_per_result")
   createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@unique([connectionId, campaignExternalId, date])
   @@map("ad_insights_daily")

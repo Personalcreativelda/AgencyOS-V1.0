@@ -110,7 +110,7 @@ export function ReportsPage() {
         <div>
           <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Relatórios Mensais</h1>
           <p className="text-xs text-muted-foreground font-medium mt-1">
-            Relatórios de desempenho e métricas com análises geradas por IA.
+            Relatórios de desempenho e métricas com análises geradas pelo Brand Brain.
           </p>
         </div>
 
@@ -130,7 +130,7 @@ export function ReportsPage() {
         <EmptyState
           icon={BarChart2}
           title="Nenhum relatório gerado"
-          description="Gere relatórios mensais para seus clientes com síntese estratégica via IA."
+          description="Gere relatórios mensais para seus clientes com síntese estratégica via Brand Brain."
         />
       ) : (
         <div className="space-y-3.5">
@@ -190,7 +190,7 @@ export function ReportsPage() {
       {/* New Report Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-md">
-          <DialogTitle>Gerar Relatório com IA</DialogTitle>
+          <DialogTitle>Gerar Relatório com Brand Brain</DialogTitle>
 
           <form onSubmit={handleCreateReport} className="space-y-4">
             <div>
@@ -257,7 +257,7 @@ export function ReportsPage() {
                     <span>Gerar e Publicar</span>
                   </>
                 )}
-                {creating && <span>Analisando com IA...</span>}
+                {creating && <span>Analisando com Brand Brain...</span>}
               </Button>
             </DialogFooter>
           </form>

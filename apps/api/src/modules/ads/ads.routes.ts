@@ -14,7 +14,9 @@ router.post('/meta/pending/:token/confirm', authenticate, ctrl.confirmAdAccountS
 router.get('/accounts', authenticate, ctrl.listAdAccounts);
 router.delete('/accounts/:id', authenticate, ctrl.deleteAdAccount);
 router.post('/accounts/:id/sync', authenticate, ctrl.syncAdAccount);
+router.post('/accounts/:id/campaigns/:campaignId/status', authenticate, ctrl.setCampaignStatus);
 router.get('/accounts/:id/insights', authenticate, ctrl.getAdInsights);
+router.get('/accounts/:id/audience', authenticate, ctrl.getAudienceInsights);
 router.post('/accounts/:id/analyze', authenticate, ctrl.analyzeAdAccount);
 
 router.get('/recommendations', authenticate, ctrl.listRecommendations);

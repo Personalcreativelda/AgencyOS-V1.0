@@ -21,6 +21,9 @@ import notificationRoutes from './modules/notifications/notifications.routes';
 import socialRoutes from './modules/social/social.routes';
 import emailRoutes from './modules/email/email.routes';
 import adsRoutes from './modules/ads/ads.routes';
+import googleRoutes from './modules/google/google.routes';
+import performanceRoutes from './modules/performance/performance.routes';
+import adPlatformsRoutes from './modules/adPlatforms/adPlatforms.routes';
 
 // Middleware
 import { errorHandler } from './common/middleware/errorHandler';
@@ -84,6 +87,9 @@ app.use(`${api}/notifications`, notificationRoutes);
 app.use(`${api}/social`, socialRoutes);
 app.use(`${api}/email`, emailRoutes);
 app.use(`${api}/ads`, adsRoutes);
+app.use(`${api}/google`, googleRoutes);
+app.use(`${api}/performance`, performanceRoutes);
+app.use(`${api}/ad-platforms`, adPlatformsRoutes);
 
 // Error handling
 app.use(notFound);
