@@ -8,7 +8,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Public Sans"', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Segoe UI Variable Text"', '"Segoe UI"', 'system-ui', 'sans-serif'],
       },
       colors: {
         // Minimals Palette
@@ -114,9 +114,9 @@ export default {
         'xs': '4px',
         'sm': '6px',
         'md': '8px',
-        'lg': '12px',
-        'xl': '16px',
-        '2xl': '20px',
+        'lg': '6px',
+        'xl': '8px',
+        '2xl': '12px',
       },
       keyframes: {
         'fade-in': {
@@ -131,13 +131,34 @@ export default {
         // then snaps to centered once the animation ends). This keyframe bakes the centering
         // translate into both the from/to states so it survives the whole animation.
         'dialog-in': {
-          from: { opacity: '0', transform: 'translate(-50%, -50%) translateY(6px)' },
-          to: { opacity: '1', transform: 'translate(-50%, -50%) translateY(0)' },
+          from: { opacity: '0', transform: 'translate(-50%, -50%) translateY(8px) scale(0.97)' },
+          to: { opacity: '1', transform: 'translate(-50%, -50%) translateY(0) scale(1)' },
         },
+        'dialog-out': {
+          from: { opacity: '1', transform: 'translate(-50%, -50%) scale(1)' },
+          to: { opacity: '0', transform: 'translate(-50%, -50%) translateY(4px) scale(0.98)' },
+        },
+        // Mobile bottom sheet
+        'sheet-in': {
+          from: { transform: 'translateY(100%)' },
+          to: { transform: 'translateY(0)' },
+        },
+        'sheet-out': {
+          from: { transform: 'translateY(0)' },
+          to: { transform: 'translateY(100%)' },
+        },
+        'overlay-in': { from: { opacity: '0' }, to: { opacity: '1' } },
+        'overlay-out': { from: { opacity: '1' }, to: { opacity: '0' } },
       },
       animation: {
         'fade-in': 'fade-in 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-        'dialog-in': 'dialog-in 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+        // Enter: decelerate (ease-out-expo-ish). Exit: shorter + accelerate.
+        'dialog-in': 'dialog-in 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
+        'dialog-out': 'dialog-out 0.14s cubic-bezier(0.4, 0, 1, 1) forwards',
+        'sheet-in': 'sheet-in 0.32s cubic-bezier(0.32, 0.72, 0, 1)',
+        'sheet-out': 'sheet-out 0.2s cubic-bezier(0.4, 0, 1, 1) forwards',
+        'overlay-in': 'overlay-in 0.2s ease-out',
+        'overlay-out': 'overlay-out 0.15s ease-in forwards',
       },
     },
   },

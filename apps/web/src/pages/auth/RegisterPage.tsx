@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Zap, ArrowRight, Lock, Mail, User, Building, AlertCircle } from 'lucide-react'
+import { ArrowRight, Lock, Mail, User, Building, AlertCircle } from 'lucide-react'
+import { Logo } from '@/components/brand/Logo'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
+import { ThemeMenu } from '@/components/ui/ThemeMenu'
 
 export function RegisterPage() {
   const navigate = useNavigate()
@@ -36,17 +38,10 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted p-4 font-sans relative">
-      <div className="w-full max-w-md bg-card rounded-3xl p-8 sm:p-10 shadow-dialog border border-border space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center">
-            <Zap className="text-[#fff] w-6 h-6 fill-[#fff]" />
-          </div>
-          <div>
-            <h1 className="text-xl font-extrabold text-foreground tracking-tight">AgencyOS</h1>
-            <p className="text-xs text-primary font-bold">Criar Nova Agência</p>
-          </div>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 pt-16 sm:p-6 font-sans relative">
+      <div className="absolute right-4 top-4"><ThemeMenu /></div>
+      <div className="w-full max-w-md bg-card rounded-3xl p-6 sm:p-10 shadow-dialog border border-border space-y-6">
+        <Logo size={48} tagline="Criar Nova Agência" wordmarkClassName="text-xl" />
 
         <div>
           <h2 className="text-xl font-extrabold text-foreground tracking-tight">Comece seu teste</h2>
@@ -67,7 +62,7 @@ export function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="agencyName">Nome da Agência</Label>
+            <Label htmlFor="agencyName">Nome da agência</Label>
             <Input
               id="agencyName"
               type="text"
@@ -80,7 +75,7 @@ export function RegisterPage() {
           </div>
 
           <div>
-            <Label htmlFor="name">Seu Nome Completo</Label>
+            <Label htmlFor="name">Seu nome completo</Label>
             <Input
               id="name"
               type="text"
@@ -122,7 +117,7 @@ export function RegisterPage() {
           <Button type="submit" variant="dark" size="lg" loading={loading} className="w-full mt-2">
             {!loading && (
               <>
-                <span>Criar Agência & Acessar</span>
+                <span>Criar agência & acessar</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

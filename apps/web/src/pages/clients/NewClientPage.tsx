@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/Label'
 import { UploadableAvatar } from '@/components/ui/UploadableAvatar'
 import { toast } from '@/lib/toast'
 import { getErrorMessage } from '@/lib/errors'
+import { Page } from '@/components/layout/Page'
 
 export function NewClientPage() {
   const navigate = useNavigate()
@@ -51,7 +52,7 @@ export function NewClientPage() {
   }
 
   return (
-    <div className="p-4 sm:p-8 max-w-3xl mx-auto space-y-6">
+    <Page narrow>
       <Link
         to="/app/clients"
         className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
@@ -60,7 +61,7 @@ export function NewClientPage() {
         <span>Voltar para clientes</span>
       </Link>
 
-      <div className="card-minimals p-8 space-y-6">
+      <div className="card-minimals p-5 sm:p-8 space-y-6">
         <div className="flex items-center gap-3.5 border-b border-border pb-5">
           <UploadableAvatar
             src={formData.logoUrl}
@@ -70,7 +71,7 @@ export function NewClientPage() {
             onUpload={handleLogoUpload}
           />
           <div>
-            <h1 className="text-xl font-extrabold text-foreground tracking-tight">Cadastrar Novo Cliente</h1>
+            <h1 className="text-xl font-extrabold text-foreground tracking-tight">Novo cliente</h1>
             <p className="text-xs text-muted-foreground font-medium">
               Configure a marca para inicializar o Brand Brain. Envie o logotipo para o Brand Brain usá-lo (em vez de inventar um) nas propostas de criativo.
             </p>
@@ -80,7 +81,7 @@ export function NewClientPage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <Label htmlFor="name">Nome Comercial da Marca *</Label>
+              <Label htmlFor="name">Nome comercial da marca *</Label>
               <Input
                 id="name"
                 type="text"
@@ -92,7 +93,7 @@ export function NewClientPage() {
             </div>
 
             <div>
-              <Label htmlFor="legalName">Razão Social (Opcional)</Label>
+              <Label htmlFor="legalName">Razão social (opcional)</Label>
               <Input
                 id="legalName"
                 type="text"
@@ -103,7 +104,7 @@ export function NewClientPage() {
             </div>
 
             <div>
-              <Label htmlFor="industry">Segmento / Indústria</Label>
+              <Label htmlFor="industry">Segmento / indústria</Label>
               <Input
                 id="industry"
                 type="text"
@@ -187,7 +188,7 @@ export function NewClientPage() {
             </div>
 
             <div className="md:col-span-2">
-              <Label htmlFor="description">Descrição & Diferenciais do Cliente</Label>
+              <Label htmlFor="description">Descrição & diferenciais do cliente</Label>
               <Textarea
                 id="description"
                 rows={3}
@@ -206,7 +207,7 @@ export function NewClientPage() {
               {!loading && (
                 <>
                   <Sparkles size={16} />
-                  <span>Cadastrar & Ativar Brand Brain</span>
+                  <span>Cadastrar & ativar Brand Brain</span>
                 </>
               )}
               {loading && <span>Salvando...</span>}
@@ -214,6 +215,6 @@ export function NewClientPage() {
           </div>
         </form>
       </div>
-    </div>
+    </Page>
   )
 }

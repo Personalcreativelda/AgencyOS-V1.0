@@ -3,11 +3,13 @@ import { CheckSquare, ExternalLink, MessageSquareWarning, Trash2 } from 'lucide-
 import api from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Button } from '@/components/ui/Button'
-import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
 import { getErrorMessage } from '@/lib/errors'
+import { Page, PageHeader } from '@/components/layout/Page'
+import { ListCard, ListSkeleton, listRowClass, Meta } from '@/components/ui/List'
+import { cn } from '@/lib/utils'
 
 export function ApprovalsPage() {
   const [approvals, setApprovals] = useState<any[]>([])
@@ -46,57 +48,52 @@ export function ApprovalsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Links de Aprovação do Cliente</h1>
-        <p className="text-xs text-muted-foreground font-medium mt-1">
-          Histórico e status dos links públicos de aprovação enviados aos clientes.
-        </p>
-      </div>
+    <Page>
+      <PageHeader
+        title="Aprovações"
+        description="Histórico e status dos links públicos de aprovação enviados aos clientes."
+      />
 
       {loading ? (
-        <div className="space-y-3">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-2xl" />
-          ))}
-        </div>
+        <ListSkeleton rows={4} thumb={false} />
       ) : approvals.length === 0 ? (
         <EmptyState
           icon={CheckSquare}
           title="Nenhuma aprovação solicitada ainda"
-          description='Abra qualquer conteúdo no Workspace e clique em "Link de Aprovação" para enviar ao cliente.'
+          description='Abra qualquer conteúdo no Workspace e clique em "Link de aprovação" para enviar ao cliente.'
         />
       ) : (
-        <div className="space-y-3">
+        <ListCard>
           {approvals.map((appr) => {
             const lastAction = appr.actions?.[0]
             return (
-              <div key={appr.id} className="card-minimals-hover p-5 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <span className="text-xs font-bold text-primary truncate max-w-[200px]">{appr.client?.name}</span>
-                      <span className="text-xs text-muted-foreground/60">•</span>
-                      <span className="text-xs text-muted-foreground font-medium">Enviado em {new Date(appr.sentAt).toLocaleDateString('pt-BR')}</span>
-                    </div>
-                    <h3 className="text-sm font-bold text-foreground">{appr.content?.title}</h3>
+              <div key={appr.id} className={cn(listRowClass(false), 'flex-col items-stretch gap-3 sm:gap-3')}>
+                <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap sm:gap-4">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-semibold text-foreground">{appr.content?.title || 'Conteúdo removido'}</h3>
+                    <Meta
+                      className="mt-1"
+                      items={[
+                        <span className="font-medium text-foreground/80">{appr.client?.name}</span>,
+                        `Enviado em ${new Date(appr.sentAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+                      ]}
+                    />
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3">
-                    <StatusBadge status={appr.status} />
-
-                    <Button asChild variant="subtle" className="gap-1.5">
+                  <div className="flex w-full items-center gap-2 sm:w-auto">
+                    <StatusBadge status={appr.status} className="mr-auto sm:mr-1" />
+                    <Button asChild variant="outline" size="sm">
                       <a href={`/approval/${appr.token}`} target="_blank" rel="noreferrer">
-                        <ExternalLink size={13} />
-                        <span>Ver Portal do Cliente</span>
+                        <ExternalLink size={14} />
+                        <span>Ver portal</span>
                       </a>
                     </Button>
-
                     <button
                       type="button"
                       title="Excluir link de aprovação"
+                      aria-label="Excluir link de aprovação"
                       onClick={() => handleDelete(appr.id, appr.content?.title || '')}
-                      className="p-2 rounded-xl text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
+                      className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-error/10 hover:text-error"
                     >
                       <Trash2 size={15} />
                     </button>
@@ -104,21 +101,19 @@ export function ApprovalsPage() {
                 </div>
 
                 {appr.status === 'CHANGES_REQUESTED' && lastAction?.comment && (
-                  <div className="p-3.5 bg-warning/10 border border-warning/20 rounded-xl flex items-start gap-2.5">
-                    <MessageSquareWarning size={16} className="text-warning-dark shrink-0 mt-0.5" />
-                    <div className="text-xs">
-                      <span className="font-bold text-warning-dark">
-                        {lastAction.actorName || 'Cliente'} pediu ajustes:
-                      </span>
-                      <p className="text-grey-700 mt-0.5 italic">"{lastAction.comment}"</p>
+                  <div className="flex items-start gap-2.5 rounded-xl border border-warning/25 bg-warning/[0.06] px-3.5 py-3">
+                    <MessageSquareWarning size={15} className="mt-0.5 shrink-0 text-warning-dark dark:text-warning" />
+                    <div className="min-w-0 text-[13px]">
+                      <span className="font-semibold text-foreground">{lastAction.actorName || 'Cliente'} pediu ajustes</span>
+                      <p className="mt-0.5 text-foreground/75">“{lastAction.comment}”</p>
                     </div>
                   </div>
                 )}
               </div>
             )
           })}
-        </div>
+        </ListCard>
       )}
-    </div>
+    </Page>
   )
 }

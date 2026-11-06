@@ -2,6 +2,7 @@ import * as React from 'react'
 import * as SelectPrimitive from '@radix-ui/react-select'
 import { Check, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { fieldBase, fieldHeight } from './field'
 
 export const Select = SelectPrimitive.Root
 export const SelectGroup = SelectPrimitive.Group
@@ -14,14 +15,16 @@ export const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      'flex w-full items-center justify-between bg-card border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 transition-colors disabled:opacity-50',
+      fieldBase,
+      fieldHeight,
+      'flex items-center justify-between gap-2 px-3.5 text-left data-[placeholder]:text-muted-foreground data-[state=open]:border-primary data-[state=open]:ring-4 data-[state=open]:ring-primary/15',
       className
     )}
     {...props}
   >
     <span className="truncate min-w-0 flex-1 text-left">{children}</span>
     <SelectPrimitive.Icon asChild>
-      <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+      <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ))
@@ -36,7 +39,7 @@ export const SelectContent = React.forwardRef<
       ref={ref}
       position={position}
       className={cn(
-        'relative z-50 min-w-[8rem] overflow-hidden rounded-xl border border-border bg-card shadow-dropdown p-1 data-[state=open]:animate-fade-in',
+        'relative z-50 min-w-[8rem] overflow-hidden rounded-xl border border-border bg-card shadow-dropdown p-1 data-[state=open]:animate-fade-in data-[state=closed]:animate-overlay-out',
         position === 'popper' && 'w-[var(--radix-select-trigger-width)] mt-1',
         className
       )}
@@ -55,7 +58,7 @@ export const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex w-full cursor-pointer select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm font-semibold text-foreground outline-none data-[highlighted]:bg-primary/10 data-[highlighted]:text-primary data-[state=checked]:text-primary',
+      'relative flex w-full cursor-pointer select-none items-center rounded-lg py-2 pl-8 pr-3 text-sm text-foreground outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-muted data-[state=checked]:font-medium data-[state=checked]:text-primary data-[disabled]:opacity-50',
       className
     )}
     {...props}

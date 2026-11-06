@@ -1,19 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
+import { Link, Outlet, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Users, Calendar, FileText, CheckSquare,
-  BarChart2, Settings, LogOut, Zap, Bell, Search, Sun, Moon, Menu, X, CheckCheck, Inbox, Camera,
-  List, CalendarDays, Kanban, Share2, Megaphone, Globe2, Activity, Music2, Linkedin,
+  LogOut, Bell, Menu, CheckCheck, Inbox, Camera,
 } from 'lucide-react'
-import { useThemeStore } from '@/stores/themeStore'
+import { Sidebar } from '@/components/layout/Sidebar'
+import { LogoMark } from '@/components/brand/Logo'
+import { ThemeMenu } from '@/components/ui/ThemeMenu'
 import { useAuthStore } from '@/stores/authStore'
 import { cn, getInitials, timeAgo } from '@/lib/utils'
 import api from '@/lib/api'
 import { uploadFile } from '@/lib/upload'
 import { toast } from '@/lib/toast'
 import { getErrorMessage } from '@/lib/errors'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 import { Badge } from '@/components/ui/Badge'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/Avatar'
 import {
@@ -21,59 +19,13 @@ import {
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/DropdownMenu'
 
-const navSections = [
-  {
-    subheader: 'Geral',
-    items: [
-      { label: 'Dashboard', href: '/app/dashboard', icon: LayoutDashboard },
-      { label: 'Performance', href: '/app/performance', icon: Activity },
-      { label: 'Clientes', href: '/app/clients', icon: Users },
-      { label: 'Conteúdos', href: '/app/calendar', icon: Calendar },
-    ],
-  },
-  {
-    subheader: 'Anúncios',
-    items: [
-      { label: 'Meta Ads', href: '/app/ads', icon: Megaphone },
-      { label: 'Google Ads', href: '/app/google', icon: Globe2 },
-      { label: 'TikTok Ads', href: '/app/tiktok-ads', icon: Music2 },
-      { label: 'LinkedIn Ads', href: '/app/linkedin-ads', icon: Linkedin },
-    ],
-  },
-  {
-    subheader: 'Produção & Brand Brain',
-    items: [
-      {
-        label: 'Workspace',
-        href: '/app/content',
-        icon: FileText,
-        children: [
-          { label: 'Criativos', href: '/app/content', icon: List, end: true },
-          { label: 'Planner', href: '/app/content/calendar', icon: CalendarDays },
-          { label: 'Kanban', href: '/app/content/board', icon: Kanban },
-        ],
-      },
-      { label: 'Aprovações do Cliente', href: '/app/approvals', icon: CheckSquare },
-      { label: 'Relatórios Mensais', href: '/app/reports', icon: BarChart2 },
-      { label: 'Redes Sociais', href: '/app/social', icon: Share2 },
-    ],
-  },
-]
-
 export function AppLayout() {
   const { user, logout, updateUser } = useAuthStore()
   const avatarInputRef = useRef<HTMLInputElement>(null)
-  const { mode, toggle } = useThemeStore()
   const navigate = useNavigate()
-  const location = useLocation()
-  // The header search only ever drives the Clientes list filter (?q=) — showing it elsewhere
-  // (Redes Sociais, Configurações...) with no real target behind it is just confusing.
-  const showSearch = location.pathname.startsWith('/app/clients')
   const [navOpen, setNavOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
   const loadNotifications = async () => {
     try {
@@ -129,19 +81,11 @@ export function AppLayout() {
     navigate('/login')
   }
 
-  const closeNav = () => setNavOpen(false)
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    const q = searchQuery.trim()
-    if (!q) return
-    navigate(`/app/clients?q=${encodeURIComponent(q)}`)
-    closeNav()
-    setMobileSearchOpen(false)
-  }
+  const closeNav = React.useCallback(() => setNavOpen(false), [])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background font-sans">
+    <div className="flex h-dvh overflow-hidden bg-background font-sans">
+      <a href="#page-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-card focus:p-3 focus:text-foreground">Pular para o conteúdo</a>
       {/* Mobile/Tablet backdrop */}
       {navOpen && (
         <div
@@ -150,152 +94,32 @@ export function AppLayout() {
         />
       )}
 
-      {/* Minimals Sidebar — off-canvas on mobile/tablet, static on desktop */}
-      <aside
-        className={cn(
-          'fixed inset-y-0 left-0 z-40 isolate flex flex-col w-72 shrink-0 bg-sidebar border-r border-sidebar-border overflow-y-auto transition-transform duration-300 will-change-transform lg:static lg:translate-x-0 lg:will-change-auto',
-          navOpen ? 'translate-x-0' : '-translate-x-full'
-        )}
-      >
-        {/* Logo & Agency Header */}
-        <div className="flex items-center justify-between gap-3 px-6 h-20 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shrink-0">
-              <Zap size={20} className="text-[#fff] fill-[#fff]" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-base font-bold text-foreground tracking-tight leading-tight truncate">AgencyOS</h1>
-              <p className="text-[11px] font-semibold text-primary truncate">Agências de Marketing</p>
-            </div>
-          </div>
-          <button
-            onClick={closeNav}
-            className="p-2.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:hidden shrink-0"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Navigation Sections */}
-        <nav className="flex-1 px-4 pt-2 space-y-6">
-          {navSections.map((section, idx) => (
-            <div key={idx} className="space-y-1">
-              <p className="px-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                {section.subheader}
-              </p>
-              {section.items.map((item) => (
-                'children' in item ? (
-                  <div key={item.href} className="space-y-1">
-                    <NavLink
-                      to={item.href}
-                      onClick={closeNav}
-                      className={({ isActive }) =>
-                        cn('nav-item-minimals', isActive && 'active')
-                      }
-                    >
-                      <item.icon size={20} />
-                      <span>{item.label}</span>
-                    </NavLink>
-                    <div className="pl-5 border-l border-border ml-6 space-y-0.5">
-                      {item.children?.map((child) => (
-                        <NavLink
-                          key={child.href}
-                          to={child.href}
-                          end={child.end}
-                          onClick={closeNav}
-                          className={({ isActive }) =>
-                            cn('nav-item-minimals !gap-2.5 !px-3 !py-2', isActive && 'active')
-                          }
-                        >
-                          <child.icon size={15} />
-                          <span>{child.label}</span>
-                        </NavLink>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <NavLink
-                    key={item.href}
-                    to={item.href}
-                    reloadDocument={item.href === '/app/google' || item.href === '/app/performance'}
-                    onClick={closeNav}
-                    className={({ isActive }) =>
-                      cn('nav-item-minimals', isActive && 'active')
-                    }
-                  >
-                    <item.icon size={20} />
-                    <span>{item.label}</span>
-                  </NavLink>
-                )
-              ))}
-            </div>
-          ))}
-        </nav>
-
-        {/* Bottom Settings & User Card */}
-        <div className="p-4 border-t border-border space-y-2 shrink-0">
-          <NavLink
-            to="/app/settings"
-            onClick={closeNav}
-            className={({ isActive }) => cn('nav-item-minimals', isActive && 'active')}
-          >
-            <Settings size={20} />
-            <span>Configurações</span>
-          </NavLink>
-
-          <Button
-            variant="ghost"
-            onClick={handleLogout}
-            className="w-full justify-start gap-3.5 px-4 py-2.5 text-sm font-semibold text-error hover:text-error hover:bg-error/10"
-          >
-            <LogOut size={20} />
-            <span>Sair do Sistema</span>
-          </Button>
-        </div>
-      </aside>
+      <Sidebar mobileOpen={navOpen} onClose={closeNav} />
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Minimals Header */}
         <header className="flex flex-col isolate bg-card border-b border-border shrink-0 z-20">
-          <div className="flex items-center justify-between h-20 px-4 sm:px-8">
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center justify-between h-14 px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-3 min-w-0 lg:hidden">
               <button
                 onClick={() => setNavOpen(true)}
+                aria-label="Abrir menu"
                 className="p-2.5 -ml-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:hidden shrink-0"
               >
                 <Menu size={20} />
               </button>
-              {showSearch && (
-                <form onSubmit={handleSearch} className="hidden sm:block">
-                  <Input
-                    type="text"
-                    placeholder="Pesquisar clientes..."
-                    icon={<Search />}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-40 sm:w-64 bg-muted border-0 text-foreground placeholder:text-muted-foreground focus:ring-primary/40"
-                  />
-                </form>
-              )}
+              <Link to="/app/dashboard" aria-label="AgencyOS — início" className="shrink-0 lg:hidden">
+                <LogoMark size={32} />
+              </Link>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-              {showSearch && (
-                <button
-                  onClick={() => setMobileSearchOpen((v) => !v)}
-                  className="p-2.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:hidden shrink-0"
-                >
-                  <Search size={20} />
-                </button>
-              )}
-              <Button variant="ghost" size="icon" onClick={toggle} className="rounded-full hover:bg-muted text-muted-foreground hover:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-                {mode === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-              </Button>
+            <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
+              <ThemeMenu />
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="relative p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                <button aria-label="Notificações" className="relative p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                   <Bell size={20} />
                   {unreadCount > 0 && (
                     <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-error rounded-full text-[9px] font-bold text-[#fff]">
@@ -304,7 +128,7 @@ export function AppLayout() {
                   )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 p-0">
+              <DropdownMenuContent align="end" className="w-[min(20rem,calc(100vw-2rem))] p-0">
                 <div className="flex items-center justify-between px-3.5 py-3 border-b border-border">
                   <span className="text-xs font-bold text-foreground">Notificações</span>
                   {unreadCount > 0 && (
@@ -350,8 +174,8 @@ export function AppLayout() {
             {/* User Avatar & Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 p-1.5 rounded-full hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-                  <Avatar className="h-10 w-10 ring-2 ring-primary/30">
+                <button aria-label="Menu do usuário" className="flex items-center gap-2 p-1 rounded-full sm:p-1.5 hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                  <Avatar className="h-9 w-9 ring-2 ring-primary/30 sm:h-10 sm:w-10">
                     {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
                     <AvatarFallback className="bg-primary/20 text-primary-dark text-sm">
                       {getInitials(user?.name || 'U')}
@@ -368,11 +192,7 @@ export function AppLayout() {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => avatarInputRef.current?.click()}>
                   <Camera size={15} />
-                  <span>Alterar Foto de Perfil</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => navigate('/app/settings')}>
-                  <Settings size={15} />
-                  <span>Configurações</span>
+                  <span>Alterar foto de perfil</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={handleLogout}
@@ -387,24 +207,11 @@ export function AppLayout() {
             </div>
           </div>
 
-          {showSearch && mobileSearchOpen && (
-            <form onSubmit={handleSearch} className="sm:hidden px-4 pb-3">
-              <Input
-                autoFocus
-                type="text"
-                placeholder="Pesquisar clientes..."
-                icon={<Search />}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-muted border-0 text-foreground placeholder:text-muted-foreground focus:ring-primary/40"
-              />
-            </form>
-          )}
         </header>
 
         {/* Page View */}
         <div className="flex-1 overflow-auto bg-background">
-          <Outlet />
+          <div id="page-content" tabIndex={-1} className="min-w-0 outline-none"><Outlet /></div>
         </div>
       </main>
     </div>

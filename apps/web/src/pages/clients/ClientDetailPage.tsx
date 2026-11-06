@@ -20,6 +20,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
 import { getErrorMessage } from '@/lib/errors'
+import { Page, PageHeader } from '@/components/layout/Page'
 
 const TABS = [
   { id: 'brand', label: 'Perfil & Identidade', icon: Brain },
@@ -138,7 +139,7 @@ export function ClientDetailPage() {
   }
 
   const handleDeleteReferenceImage = async (imageId: string) => {
-    if (!(await confirmDialog({ title: 'Remover imagem de referência?', variant: 'destructive', confirmLabel: 'Remover' }))) return
+    if (!(await confirmDialog({ title: 'Remover imagem de referência?', description: 'O Brand Brain deixa de usar esta imagem como referência visual da marca.', variant: 'destructive', confirmLabel: 'Remover' }))) return
     try {
       await api.delete(`/brand/clients/${id}/reference-images/${imageId}`)
       setReferenceImages(referenceImages.filter((r) => r.id !== imageId))
@@ -214,7 +215,7 @@ export function ClientDetailPage() {
   }
 
   const handleDeletePersona = async (personaId: string) => {
-    if (!(await confirmDialog({ title: 'Remover esta persona?', variant: 'destructive', confirmLabel: 'Remover' }))) return
+    if (!(await confirmDialog({ title: 'Remover esta persona?', description: 'Os próximos conteúdos gerados deixam de considerar este público.', variant: 'destructive', confirmLabel: 'Remover' }))) return
     try {
       await api.delete(`/brand/clients/${id}/personas/${personaId}`)
       setPersonas(personas.filter((p) => p.id !== personaId))
@@ -257,7 +258,7 @@ export function ClientDetailPage() {
   }
 
   const handleDeleteFeedback = async (feedbackId: string) => {
-    if (!(await confirmDialog({ title: 'Apagar este feedback da memória?', variant: 'destructive', confirmLabel: 'Apagar' }))) return
+    if (!(await confirmDialog({ title: 'Apagar este feedback da memória?', description: 'O Brand Brain esquece este aprendizado. Essa ação não pode ser desfeita.', variant: 'destructive', confirmLabel: 'Apagar' }))) return
     try {
       await api.delete(`/brand/clients/${id}/feedback/${feedbackId}`)
       setFeedbackList(feedbackList.filter((fb) => fb.id !== feedbackId))
@@ -325,56 +326,46 @@ export function ClientDetailPage() {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-8 space-y-6">
+      <Page>
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-10 w-2/3 rounded-xl" />
         <Skeleton className="h-64 w-full rounded-2xl" />
-      </div>
+      </Page>
     )
   }
 
   return (
-    <div className="p-4 sm:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button asChild variant="ghost" size="icon">
-            <Link to="/app/clients">
-              <ArrowLeft size={20} />
-            </Link>
-          </Button>
-          <div className="flex items-center gap-3.5">
+    <Page>
+      <PageHeader
+        icon={
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Button asChild variant="ghost" size="icon" className="-ml-2 shrink-0">
+              <Link to="/app/clients" aria-label="Voltar para clientes">
+                <ArrowLeft size={20} />
+              </Link>
+            </Button>
             <UploadableAvatar
               src={client.logoUrl}
               rounded="rounded-2xl"
-              className="w-14 h-14 bg-primary/10"
+              className="size-12 bg-primary/10 sm:size-14"
               fallback={<span className="text-primary-dark font-extrabold text-lg">{getInitials(client.name)}</span>}
               onUpload={handleUploadLogo}
             />
-            <div>
-              <h1 className="text-2xl font-extrabold text-foreground tracking-tight flex items-center gap-2.5">
-                {client.name}
-              </h1>
-              <p className="text-xs text-muted-foreground font-medium">{client.industry || 'Setor não informado'} • Criado em {new Date(client.createdAt).toLocaleDateString('pt-BR')}</p>
-            </div>
           </div>
-        </div>
-
-        <Button onClick={handleAIBrandAnalysis} loading={analyzingBrand} className="self-start">
-          {!analyzingBrand && (
-            <>
-              <Sparkles size={16} />
-              <span>Análise de Marca com Brand Brain</span>
-            </>
-          )}
-          {analyzingBrand && <span>Analisando...</span>}
-        </Button>
-      </div>
+        }
+        title={client.name}
+        description={`${client.industry || 'Setor não informado'} • Cliente desde ${new Date(client.createdAt).toLocaleDateString('pt-BR')}`}
+        actions={
+          <Button onClick={handleAIBrandAnalysis} loading={analyzingBrand}>
+            {analyzingBrand ? <span>Analisando...</span> : <><Sparkles size={16} /><span>Análise de marca com Brand Brain</span></>}
+          </Button>
+        }
+      />
 
       {/* Contact Info — email/phone (WhatsApp) used for approval-request notifications */}
       <Card className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-extrabold text-foreground uppercase tracking-wider">Dados de Contato</h3>
+          <h3 className="text-[15px] font-bold tracking-tight text-foreground">Dados de contato</h3>
           {!editingContact && (
             <Button type="button" variant="ghost" size="sm" onClick={() => setEditingContact(true)}>
               <Pencil size={13} />
@@ -452,7 +443,7 @@ export function ClientDetailPage() {
               <span className="text-foreground/80">{aiResult.targetAudience}</span>
             </div>
             <div className="bg-card p-3.5 rounded-xl border border-border">
-              <span className="font-bold text-primary block mb-1">Tom de Voz:</span>
+              <span className="font-bold text-primary block mb-1">Tom de voz:</span>
               <span className="text-foreground/80">{aiResult.toneOfVoice}</span>
             </div>
           </div>
@@ -480,18 +471,18 @@ export function ClientDetailPage() {
 
       {/* TAB 1: Brand Profile */}
       {activeTab === 'brand' && (
-        <form onSubmit={handleUpdateProfile} className="card-minimals p-8 space-y-6">
+        <form onSubmit={handleUpdateProfile} className="card-minimals p-5 sm:p-8 space-y-6">
           <div className="flex items-center justify-between border-b border-border pb-4">
             <div>
-              <h2 className="text-base font-bold text-foreground">Identidade da Marca</h2>
+              <h2 className="text-base font-bold text-foreground">Identidade da marca</h2>
               <p className="text-xs text-muted-foreground font-medium">Informações mestras que alimentam o gerador de copies e estratégias do Brand Brain.</p>
             </div>
-            <Button type="submit">Salvar Alterações</Button>
+            <Button type="submit">Salvar alterações</Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="md:col-span-2">
-              <Label htmlFor="brandSummary">Resumo da Marca (Brand Summary)</Label>
+              <Label htmlFor="brandSummary">Resumo da marca (Brand summary)</Label>
               <Textarea
                 id="brandSummary"
                 rows={5}
@@ -503,7 +494,7 @@ export function ClientDetailPage() {
             </div>
 
             <div>
-              <Label htmlFor="toneOfVoice">Tom de Voz</Label>
+              <Label htmlFor="toneOfVoice">Tom de voz</Label>
               <Textarea
                 id="toneOfVoice"
                 rows={2}
@@ -539,7 +530,7 @@ export function ClientDetailPage() {
             </div>
 
             <div>
-              <Label htmlFor="defaultCta">CTA Padrão Recomendada</Label>
+              <Label htmlFor="defaultCta">CTA padrão recomendada</Label>
               <Input
                 id="defaultCta"
                 type="text"
@@ -550,7 +541,7 @@ export function ClientDetailPage() {
             </div>
 
             <div>
-              <Label htmlFor="brandPersonality">Personalidade da Marca</Label>
+              <Label htmlFor="brandPersonality">Personalidade da marca</Label>
               <Input
                 id="brandPersonality"
                 type="text"
@@ -567,7 +558,7 @@ export function ClientDetailPage() {
       {activeTab === 'personas' && (
         <div className="space-y-6">
           <div className="card-minimals p-6">
-            <h2 className="text-base font-bold text-foreground mb-1">Personas do Público</h2>
+            <h2 className="text-base font-bold text-foreground mb-1">Personas do público</h2>
             <p className="text-xs text-muted-foreground font-medium mb-4">
               Perfis de cliente ideal usados pelo Brand Brain para escrever com a linguagem certa pra cada público.
             </p>
@@ -628,7 +619,7 @@ export function ClientDetailPage() {
       {activeTab === 'rules' && (
         <div className="space-y-6">
           <div className="card-minimals p-6">
-            <h2 className="text-base font-bold text-foreground mb-1">Regras Obrigatórias da Marca</h2>
+            <h2 className="text-base font-bold text-foreground mb-1">Regras obrigatórias da marca</h2>
             <p className="text-xs text-muted-foreground font-medium mb-4">
               O Brand Brain nunca violará essas regras ao redigir legendas, hooks ou planejar posts.
             </p>
@@ -642,8 +633,8 @@ export function ClientDetailPage() {
                   <SelectContent>
                     <SelectItem value="DO">DO (Sempre Fazer)</SelectItem>
                     <SelectItem value="DONT">DONT (Nunca Fazer)</SelectItem>
-                    <SelectItem value="TONE">Tom de Voz</SelectItem>
-                    <SelectItem value="COPY">Regra de Copy</SelectItem>
+                    <SelectItem value="TONE">Tom de voz</SelectItem>
+                    <SelectItem value="COPY">Regra de copy</SelectItem>
                     <SelectItem value="CTA">Regra de CTA</SelectItem>
                   </SelectContent>
                 </Select>
@@ -660,7 +651,7 @@ export function ClientDetailPage() {
 
               <Button type="submit" className="shrink-0">
                 <Plus size={16} />
-                <span>Adicionar Regra</span>
+                <span>Adicionar regra</span>
               </Button>
             </form>
           </div>
@@ -697,7 +688,7 @@ export function ClientDetailPage() {
       {activeTab === 'pillars' && (
         <div className="space-y-6">
           <div className="card-minimals p-6">
-            <h2 className="text-base font-bold text-foreground mb-1">Pilares Editoriais de Conteúdo</h2>
+            <h2 className="text-base font-bold text-foreground mb-1">Pilares editoriais de conteúdo</h2>
             <p className="text-xs text-muted-foreground font-medium mb-4">
               Distribuição temática para o gerador de calendário do Brand Brain.
             </p>
@@ -753,7 +744,7 @@ export function ClientDetailPage() {
         <div className="space-y-6">
           <form onSubmit={handleUpdateProfile} className="card-minimals p-6 space-y-3">
             <div>
-              <h2 className="text-base font-bold text-foreground mb-1">Estilo Visual</h2>
+              <h2 className="text-base font-bold text-foreground mb-1">Estilo visual</h2>
               <p className="text-xs text-muted-foreground font-medium">
                 Descreva em texto livre o estilo que o Brand Brain deve seguir ao gerar imagens — mood, composição, iconografia, fundo, etc. Isso é usado diretamente no prompt de geração.
               </p>
@@ -764,13 +755,13 @@ export function ClientDetailPage() {
               value={profile.visualStyleDescription || ''}
               onChange={(e) => setProfile({ ...profile, visualStyleDescription: e.target.value })}
             />
-            <Button type="submit" size="sm">Salvar Estilo Visual</Button>
+            <Button type="submit" size="sm">Salvar estilo visual</Button>
           </form>
 
           <div className="card-minimals p-6 space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-bold text-foreground mb-1">Referências Visuais</h2>
+                <h2 className="text-base font-bold text-foreground mb-1">Referências visuais</h2>
                 <p className="text-xs text-muted-foreground font-medium">
                   Exemplos de posts/criativos que representam o estilo desejado — use como mood board.
                 </p>
@@ -788,7 +779,7 @@ export function ClientDetailPage() {
                 onClick={() => referenceFileInputRef.current?.click()}
               >
                 {uploadingReferenceImage ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
-                <span>Adicionar Referência</span>
+                <span>Adicionar referência</span>
               </Button>
             </div>
 
@@ -813,7 +804,7 @@ export function ClientDetailPage() {
           </div>
 
           <div className="card-minimals p-6">
-            <h2 className="text-base font-bold text-foreground mb-1">Paleta de Cores</h2>
+            <h2 className="text-base font-bold text-foreground mb-1">Paleta de cores</h2>
             <p className="text-xs text-muted-foreground font-medium mb-4">Cores oficiais da marca para direção criativa.</p>
 
             <form onSubmit={handleAddColor} className="flex flex-wrap gap-3">
@@ -843,13 +834,13 @@ export function ClientDetailPage() {
                   <SelectContent>
                     <SelectItem value="Fundo">Fundo</SelectItem>
                     <SelectItem value="Texto">Texto</SelectItem>
-                    <SelectItem value="Destaque / Accent">Destaque / Accent</SelectItem>
+                    <SelectItem value="Destaque / Accent">Destaque / accent</SelectItem>
                     <SelectItem value="Botão / CTA">Botão / CTA</SelectItem>
-                    <SelectItem value="Ícones / Bordas">Ícones / Bordas</SelectItem>
+                    <SelectItem value="Ícones / Bordas">Ícones / bordas</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" className="w-full sm:w-auto">Salvar Cor</Button>
+              <Button type="submit" className="w-full sm:w-auto">Salvar cor</Button>
             </form>
           </div>
 
@@ -888,7 +879,7 @@ export function ClientDetailPage() {
         <div className="space-y-6">
           <div className="card-minimals p-6 space-y-4">
             <div>
-              <h2 className="text-base font-bold text-foreground">Aprendizagem por Feedback</h2>
+              <h2 className="text-base font-bold text-foreground">Aprendizagem por feedback</h2>
               <p className="text-xs text-muted-foreground font-medium">
                 Feedbacks recebidos nas aprovações viram regras permanentes do Brand Brain.
               </p>
@@ -910,11 +901,11 @@ export function ClientDetailPage() {
                     onChange={(e) => setNewFeedback({ ...newFeedback, isGlobalRule: e.target.checked })}
                     className="rounded border-grey-300 text-primary focus:ring-primary shrink-0"
                   />
-                  <span>Transformar em Regra Permanente no Brand Brain</span>
+                  <span>Transformar em regra permanente no Brand Brain</span>
                 </label>
                 <Button type="submit" className="w-full sm:w-auto justify-center">
                   <Send size={15} />
-                  <span>Gravar na Memória</span>
+                  <span>Gravar na memória</span>
                 </Button>
               </div>
             </form>
@@ -975,6 +966,6 @@ export function ClientDetailPage() {
           </div>
         </div>
       )}
-    </div>
+    </Page>
   )
 }

@@ -31,20 +31,11 @@ export const STATUS_LABELS: Record<string, string> = {
   PUBLISHED: 'Publicado',
   FAILED: 'Falhou',
   ARCHIVED: 'Arquivado',
-}
-
-export const STATUS_COLORS: Record<string, string> = {
-  IDEA: 'bg-slate-100 text-slate-600',
-  DRAFT: 'bg-gray-100 text-gray-600',
-  IN_PRODUCTION: 'bg-blue-50 text-blue-700',
-  INTERNAL_REVIEW: 'bg-purple-50 text-purple-700',
-  CLIENT_REVIEW: 'bg-amber-50 text-amber-700',
-  CHANGES_REQUESTED: 'bg-orange-50 text-orange-700',
-  APPROVED: 'bg-emerald-50 text-emerald-700',
-  SCHEDULED: 'bg-cyan-50 text-cyan-700',
-  PUBLISHED: 'bg-green-50 text-green-700',
-  FAILED: 'bg-red-50 text-red-700',
-  ARCHIVED: 'bg-slate-50 text-slate-500',
+  // Approval links
+  PENDING: 'Pendente',
+  VIEWED: 'Visualizado',
+  REJECTED: 'Rejeitado',
+  EXPIRED: 'Expirado',
 }
 
 export const CONTENT_TYPE_LABELS: Record<string, string> = {
@@ -68,7 +59,7 @@ export const PLATFORM_LABELS: Record<string, string> = {
 }
 
 export const PLATFORM_COLORS: Record<string, string> = {
-  FACEBOOK: '#1877F2',
+  FACEBOOK: '#0866FF',
   INSTAGRAM: '#E4405F',
   LINKEDIN: '#0A66C2',
   TIKTOK: '#000000',

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { BarChart3, ExternalLink, Eye, Linkedin, MousePointerClick, Music2, Plus, RefreshCw, Trash2, TrendingUp, Users, Wallet } from 'lucide-react'
+import { BarChart3, ExternalLink, Eye, MousePointerClick, Plus, RefreshCw, Trash2, TrendingUp, Users, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { brandIcon } from '@/components/brand/BrandIcon'
 import api from '@/lib/api'
 import { getErrorMessage } from '@/lib/errors'
 import { toast } from '@/lib/toast'
@@ -11,6 +12,11 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
+import { Page, PageHeader, PageIcon } from '@/components/layout/Page'
+import { Stat, StatGroup } from '@/components/ui/Stat'
+
+const TikTokAdsIcon = brandIcon('TIKTOK_ADS')
+const LinkedInAdsIcon = brandIcon('LINKEDIN_ADS')
 
 type Platform = 'tiktok' | 'linkedin'
 type Range = 'today' | '7d' | '30d'
@@ -21,25 +27,22 @@ type Campaign = { id: string; name: string; status: string; spend: number; impre
 type Insights = { range: Range; currency: string | null; totals: { spend: number; impressions: number; clicks: number; conversions: number; ctr: number; cpc: number }; campaigns: Campaign[] }
 type Settings = { configured: boolean; callbackUrl: string; setup: string; requiredAccess: string }
 
-const count = (value: number) => new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 1 }).format(value || 0)
+const count = (value: number) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value || 0)
 const money = (value: number, currency: string | null) => {
   if (!currency) return `${count(value)} · moeda não identificada`
-  try { return new Intl.NumberFormat('pt-PT', { style: 'currency', currency }).format(value || 0) }
+  try { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency }).format(value || 0) }
   catch { return `${count(value)} ${currency}` }
 }
-const percent = (value: number) => `${new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 2 }).format(value || 0)}%`
+const percent = (value: number) => `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value || 0)}%`
 
-function Metric({ label, value, icon: Icon }: { label: string; value: string; icon: LucideIcon }) {
-  return <Card className="flex min-h-28 min-w-0 flex-col justify-between gap-4 p-4 transition-colors hover:border-primary/30 sm:p-5">
-    <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide text-muted-foreground"><Icon size={15} />{label}</div>
-    <div className="break-words text-xl font-bold tracking-tight text-foreground sm:text-2xl">{value}</div>
-  </Card>
+function Metric({ label, value, icon }: { label: string; value: string; icon: LucideIcon }) {
+  return <Stat label={label} value={value} icon={icon} />
 }
 
 export function AdPlatformPage({ platform }: { platform: Platform }) {
   const isTikTok = platform === 'tiktok'
   const name = isTikTok ? 'TikTok Ads' : 'LinkedIn Ads'
-  const Icon = isTikTok ? Music2 : Linkedin
+  const Icon = isTikTok ? TikTokAdsIcon : LinkedInAdsIcon
   const role = useAuthStore(state => state.user?.role)
   const canManage = role === 'OWNER' || role === 'ADMIN' || role === 'MANAGER'
   const [params, setParams] = useSearchParams()
@@ -148,7 +151,7 @@ export function AdPlatformPage({ platform }: { platform: Platform }) {
       await loadConnections(data.clientId)
       setConnectionId(data.id)
       toast.success(`Conta ${name} conectada`)
-    } catch (error) { toast.error('Erro ao ligar conta', getErrorMessage(error)) }
+    } catch (error) { toast.error('Erro ao conectar conta', getErrorMessage(error)) }
     finally { setConfirming(false) }
   }
   const disconnect = async () => {
@@ -162,8 +165,8 @@ export function AdPlatformPage({ platform }: { platform: Platform }) {
     } catch (error) { toast.error('Erro ao desconectar', getErrorMessage(error)) }
   }
 
-  return <div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-    <header className="flex items-center gap-3"><span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon size={22} /></span><div className="min-w-0"><h1 className="text-2xl font-bold tracking-tight text-foreground">{name}</h1><p className="mt-1 text-sm text-muted-foreground">Campanhas e resultados diretos da conta de anúncios de cada cliente.</p></div></header>
+  return <Page>
+    <PageHeader icon={<PageIcon><Icon size={22} /></PageIcon>} title={name} description="Campanhas e resultados diretos da conta de anúncios de cada cliente." />
 
     {initialError && <Card className="border-error/30 p-4 text-sm text-foreground" role="alert">Não foi possível carregar a configuração: {initialError}</Card>}
     {settings && <Card className={`p-4 sm:p-5 ${settings.configured ? '' : 'border-primary/30'}`}><h2 className="font-bold text-foreground">{settings.configured ? 'Aplicação configurada' : `Configure a aplicação ${name}`}</h2><p className="mt-1 text-sm text-muted-foreground">{settings.setup}. A aplicação precisa de {settings.requiredAccess}.</p><p className="mt-3 text-xs font-semibold text-muted-foreground">Callback a registar na aplicação:</p><code className="mt-1 block break-all rounded-lg bg-muted p-3 text-xs text-foreground">{settings.callbackUrl}</code>{!isTikTok && <Link to="/app/social" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">Abrir configurações LinkedIn <ExternalLink size={14} /></Link>}</Card>}
@@ -172,10 +175,10 @@ export function AdPlatformPage({ platform }: { platform: Platform }) {
 
     {selectedConnection ? <><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap items-center gap-1 rounded-xl border border-border bg-card p-1">{([['today', 'Hoje'], ['7d', '7 dias'], ['30d', '30 dias']] as const).map(([value, label]) => <button key={value} onClick={() => setRange(value)} className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${range === value ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}>{label}</button>)}</div><Button variant="subtle" onClick={() => void loadInsights(connectionId, range)} loading={loading}><RefreshCw size={15} />Atualizar</Button></div>
       {loadError && <Card className="border-error/30 p-4" role="alert"><p className="text-sm font-semibold text-foreground">Não foi possível ler esta conta.</p><p className="mt-1 break-words text-sm text-muted-foreground">{loadError}</p></Card>}
-      {loading && !insights ? <Card className="p-8 text-sm text-muted-foreground">A carregar dados de {name}…</Card> : insights && <><div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6"><Metric label="Investimento" value={money(insights.totals.spend, insights.currency)} icon={Wallet} /><Metric label="Impressões" value={count(insights.totals.impressions)} icon={Eye} /><Metric label="Cliques" value={count(insights.totals.clicks)} icon={MousePointerClick} /><Metric label="CTR" value={percent(insights.totals.ctr)} icon={BarChart3} /><Metric label="Conversões" value={count(insights.totals.conversions)} icon={Users} /><Metric label="Custo/conversão" value={insights.totals.conversions ? money(insights.totals.spend / insights.totals.conversions, insights.currency) : '—'} icon={TrendingUp} /></div>
+      {loading && !insights ? <Card className="p-8 text-sm text-muted-foreground">Carregando dados de {name}…</Card> : insights && <><StatGroup className="lg:grid-cols-3 xl:grid-cols-6"><Metric label="Investimento" value={money(insights.totals.spend, insights.currency)} icon={Wallet} /><Metric label="Impressões" value={count(insights.totals.impressions)} icon={Eye} /><Metric label="Cliques" value={count(insights.totals.clicks)} icon={MousePointerClick} /><Metric label="CTR" value={percent(insights.totals.ctr)} icon={BarChart3} /><Metric label="Conversões" value={count(insights.totals.conversions)} icon={Users} /><Metric label="Custo/conversão" value={insights.totals.conversions ? money(insights.totals.spend / insights.totals.conversions, insights.currency) : '—'} icon={TrendingUp} /></StatGroup>
         <Card className="min-w-0 p-4 sm:p-5"><h2 className="mb-4 font-bold text-foreground">Campanhas</h2><div className="overflow-x-auto"><table className="w-full min-w-[720px] text-sm"><thead><tr className="border-b border-border text-left text-xs text-muted-foreground"><th className="pb-3 pr-4">Campanha</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4 text-right">Gasto</th><th className="pb-3 pr-4 text-right">Cliques</th><th className="pb-3 pr-4 text-right">Impressões</th><th className="pb-3 text-right">Conversões</th></tr></thead><tbody>{insights.campaigns.map(campaign => <tr key={campaign.id} className="border-b border-border/60 last:border-0 text-foreground"><td className="py-3 pr-4 font-semibold">{campaign.name}</td><td className="py-3 pr-4 text-xs text-muted-foreground">{campaign.status || '—'}</td><td className="py-3 pr-4 text-right">{money(campaign.spend, insights.currency)}</td><td className="py-3 pr-4 text-right">{count(campaign.clicks)}</td><td className="py-3 pr-4 text-right">{count(campaign.impressions)}</td><td className="py-3 text-right">{count(campaign.conversions)}</td></tr>)}</tbody></table>{!insights.campaigns.length && <p className="py-6 text-sm text-muted-foreground">Sem atividade de campanhas neste período.</p>}</div></Card><p className="text-xs text-muted-foreground">Conversões seguem o evento atribuído pela própria plataforma; podem não representar contactos ou leads.</p></>}
-    </> : <Card className="p-8 text-center"><Icon className="mx-auto mb-3 text-primary" size={28} /><h2 className="font-bold text-foreground">Conecte uma conta {name}</h2><p className="mt-1 text-sm text-muted-foreground">Escolha um cliente e autorize a conta de anúncios para ver dados reais.</p></Card>}
+    </> : <Card className="p-8 text-center"><Icon className="mx-auto mb-3 text-foreground" size={28} /><h2 className="font-bold text-foreground">Conecte uma conta {name}</h2><p className="mt-1 text-sm text-muted-foreground">Escolha um cliente e autorize a conta de anúncios para ver dados reais.</p></Card>}
 
-    <Dialog open={!!pendingToken} onOpenChange={open => { if (!open) setPendingToken('') }}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Escolher conta {name}</DialogTitle><DialogDescription>Associe ao cliente apenas a conta que lhe pertence.</DialogDescription></DialogHeader><Select value={selectedOption || undefined} onValueChange={setSelectedOption}><SelectTrigger><SelectValue placeholder="Escolha uma conta" /></SelectTrigger><SelectContent>{pendingOptions.map(option => <SelectItem key={option.id} value={option.id}>{option.name} ({option.id})</SelectItem>)}</SelectContent></Select><DialogFooter><Button onClick={confirm} loading={confirming} disabled={!selectedOption}>Conectar conta</Button></DialogFooter></DialogContent></Dialog>
-  </div>
+    <Dialog open={!!pendingToken} onOpenChange={open => { if (!open) setPendingToken('') }}><DialogContent size="lg"><DialogHeader><DialogTitle>Escolher conta {name}</DialogTitle><DialogDescription>Associe ao cliente apenas a conta que lhe pertence.</DialogDescription></DialogHeader><Select value={selectedOption || undefined} onValueChange={setSelectedOption}><SelectTrigger><SelectValue placeholder="Escolha uma conta" /></SelectTrigger><SelectContent>{pendingOptions.map(option => <SelectItem key={option.id} value={option.id}>{option.name} ({option.id})</SelectItem>)}</SelectContent></Select><DialogFooter><Button onClick={confirm} loading={confirming} disabled={!selectedOption}>Conectar conta</Button></DialogFooter></DialogContent></Dialog>
+  </Page>
 }

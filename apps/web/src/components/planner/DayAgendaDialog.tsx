@@ -15,7 +15,7 @@ interface DayAgendaDialogProps {
 export function DayAgendaDialog({ date, items, onClose, onOpenContent, onCreateAt }: DayAgendaDialogProps) {
   return (
     <Dialog open={!!date} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm">
+      <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>{date && capitalize(date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }))}</DialogTitle>
         </DialogHeader>
@@ -30,7 +30,7 @@ export function DayAgendaDialog({ date, items, onClose, onOpenContent, onCreateA
 
         <Button variant="outline" className="w-full justify-center gap-1.5" onClick={() => date && onCreateAt(date)}>
           <Plus size={14} />
-          <span>Criar Conteúdo neste dia</span>
+          <span>Criar conteúdo neste dia</span>
         </Button>
       </DialogContent>
     </Dialog>

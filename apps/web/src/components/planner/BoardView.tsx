@@ -13,7 +13,7 @@ function BoardColumn({ column, items, onOpenContent }: { column: EffectiveBoardC
   const { setNodeRef, isOver } = useDroppable({ id: `status:${column.targetStatus}` })
 
   return (
-    <div className="flex flex-col w-[85vw] sm:w-72 shrink-0 snap-start">
+    <div className="flex flex-col w-[min(85vw,288px)] sm:w-72 shrink-0 snap-start">
       <div className="flex items-center justify-between px-1 pb-2">
         <span className="text-xs font-bold text-foreground">{column.label}</span>
         <span className="text-[10px] font-bold text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">{items.length}</span>
@@ -29,7 +29,7 @@ function BoardColumn({ column, items, onOpenContent }: { column: EffectiveBoardC
           <ContentCard key={item.id} content={item} onClick={() => onOpenContent(item.id)} />
         ))}
         {items.length === 0 && (
-          <p className="text-[11px] text-muted-foreground/60 italic text-center py-6">Sem conteúdos</p>
+          <p className="text-[11px] text-muted-foreground italic text-center py-6">Sem conteúdos</p>
         )}
       </div>
     </div>

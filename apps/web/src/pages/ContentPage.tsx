@@ -1,33 +1,32 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core'
 import { format, addMonths, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
-  Plus, FileText, ChevronRight, ChevronLeft, AlertCircle, List, LayoutGrid, Trash2, Settings2,
-} from 'lucide-react'
+  Plus, Sparkles, ChevronRight, ChevronLeft, AlertCircle, Settings2, FilePlus2 } from 'lucide-react'
 import api from '@/lib/api'
-import { StatusBadge } from '@/components/ui/StatusBadge'
-import { cn, CONTENT_TYPE_LABELS, PLATFORM_LABELS } from '@/lib/utils'
+import { PLATFORM_LABELS, STATUS_LABELS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { DateTimeField } from '@/components/ui/DateTimeField'
 import { Label } from '@/components/ui/Label'
 import { Textarea } from '@/components/ui/Textarea'
 import { Skeleton } from '@/components/ui/Skeleton'
-import { EmptyState } from '@/components/ui/EmptyState'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select'
-import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/Dialog'
+import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogHeader, DialogDescription, DialogIcon } from '@/components/ui/Dialog'
 import { CalendarMonthView } from '@/components/planner/CalendarMonthView'
 import { BoardView } from '@/components/planner/BoardView'
 import { BoardColumnsModal } from '@/components/planner/BoardColumnsModal'
 import { PlatformIcon } from '@/components/planner/PlatformIcon'
 import { PlatformPicker } from '@/components/planner/PlatformPicker'
-import { ContentGridTile } from '@/components/planner/ContentGridTile'
+import { ContentLibrary } from '@/components/content/ContentLibrary'
+import { GenerateMonthDialog } from '@/components/planner/GenerateMonthDialog'
+import { Page, PageHeader } from '@/components/layout/Page'
 import {
-  getPrimaryImage, getMonthGridRange, dateKey, capitalize, parseKanbanColumns, getBoardColumns, getVisibleBoardColumns,
+  getMonthGridRange, dateKey, capitalize, parseKanbanColumns, getBoardColumns, getVisibleBoardColumns,
   type KanbanColumnConfig,
 } from '@/components/planner/plannerUtils'
 import { toast } from '@/lib/toast'
@@ -38,6 +37,7 @@ const ALL_CLIENTS = 'ALL'
 const ALL_STATUS = 'ALL'
 const ALL_PLATFORMS = 'ALL'
 const LIST_DISPLAY_KEY = 'agencyos-content-list-display'
+const FILTER_STATUSES = ['IDEA', 'DRAFT', 'IN_PRODUCTION', 'INTERNAL_REVIEW', 'CLIENT_REVIEW', 'CHANGES_REQUESTED', 'APPROVED', 'SCHEDULED', 'PUBLISHED', 'FAILED', 'ARCHIVED']
 
 type ListDisplay = 'rows' | 'grid'
 
@@ -50,7 +50,7 @@ const VIEW_LABELS: Record<ViewMode, string> = {
 }
 
 const VIEW_DESCRIPTIONS: Record<ViewMode, string> = {
-  list: 'Todos os conteúdos em formato de lista, com thumbnail, cliente e status.',
+  list: 'Organize, encontre e reveja as imagens, os vídeos e os carrosséis da agência.',
   calendar: 'Visão mensal — arraste um card para reagendar.',
   board: 'Fluxo de produção em Kanban — arraste entre colunas para mudar o status.',
 }
@@ -61,30 +61,43 @@ interface ContentPageProps {
 
 export function ContentPage({ view }: ContentPageProps) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const entry = location.state as { create?: boolean; clientId?: string; status?: string } | null
   const [currentDate, setCurrentDate] = useState(new Date())
   const [contents, setContents] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
-  const [selectedClient, setSelectedClient] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedClient, setSelectedClient] = useState(entry?.clientId || '')
+  const [selectedStatus, setSelectedStatus] = useState(entry?.status && FILTER_STATUSES.includes(entry.status) ? entry.status : '')
   const [selectedPlatform, setSelectedPlatform] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [listDisplay, setListDisplay] = useState<ListDisplay>(
-    () => (localStorage.getItem(LIST_DISPLAY_KEY) as ListDisplay) || 'rows'
+    () => { try { return localStorage.getItem(LIST_DISPLAY_KEY) === 'grid' ? 'grid' : 'rows' } catch { return 'rows' } }
   )
+  const contentRequest = useRef<AbortController | null>(null)
   const [agency, setAgency] = useState<any>(null)
   const [showColumnsModal, setShowColumnsModal] = useState(false)
+  const [showGenerateModal, setShowGenerateModal] = useState(false)
 
   // New Content Modal
-  const [showModal, setShowModal] = useState(false)
+  const [showModal, setShowModal] = useState(entry?.create === true)
   const [newContent, setNewContent] = useState({
-    clientId: '',
+    clientId: entry?.clientId || '',
     title: '',
     contentType: 'IMAGE',
     brief: '',
     scheduledAt: '',
     platforms: ['INSTAGRAM'] as string[],
   })
+
+  // Consume dashboard shortcuts once. Reuse the existing form and filters without new routes.
+  useEffect(() => {
+    if (!entry) return
+    if (entry.clientId) setSelectedClient(entry.clientId)
+    if (entry.status && FILTER_STATUSES.includes(entry.status)) setSelectedStatus(entry.status)
+    if (entry.create) setShowModal(true)
+    navigate(`${location.pathname}${location.search}`, { replace: true, state: null })
+  }, [location.key])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -126,6 +139,9 @@ export function ContentPage({ view }: ContentPageProps) {
   }
 
   const loadContents = async () => {
+    contentRequest.current?.abort()
+    const request = new AbortController()
+    contentRequest.current = request
     setLoading(true)
     setError('')
     try {
@@ -142,24 +158,37 @@ export function ContentPage({ view }: ContentPageProps) {
       } else if (view === 'board') {
         params.limit = 300
       }
-      const { data } = await api.get('/contents', { params })
-      setContents(data.data || [])
+      if (view === 'list') {
+        // Existing pagination: search and ordering must cover the complete filtered library.
+        const library: any[] = []
+        let page = 1
+        while (true) {
+          const { data } = await api.get('/contents', { params: { ...params, page, limit: 100 }, signal: request.signal })
+          library.push(...(data.data || []))
+          if (!data.data?.length || library.length >= data.total) break
+          page++
+        }
+        if (!request.signal.aborted) setContents(library)
+      } else {
+        const { data } = await api.get('/contents', { params, signal: request.signal })
+        if (!request.signal.aborted) setContents(data.data || [])
+      }
     } catch (err) {
-      console.error(err)
-      setError('Erro ao carregar conteúdos. Tente novamente.')
+      if (!request.signal.aborted) setError('Não foi possível consultar os conteúdos. Verifique a conexão e tente novamente.')
     } finally {
-      setLoading(false)
+      if (!request.signal.aborted) setLoading(false)
     }
   }
 
   useEffect(() => {
     loadContents()
+    return () => contentRequest.current?.abort()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedClient, selectedStatus, selectedPlatform, view, currentDate])
 
   const changeListDisplay = (mode: ListDisplay) => {
     setListDisplay(mode)
-    localStorage.setItem(LIST_DISPLAY_KEY, mode)
+    try { localStorage.setItem(LIST_DISPLAY_KEY, mode) } catch { /* Keep the in-session preference if storage is unavailable. */ }
   }
 
   const openCreateModal = (date?: Date) => {
@@ -258,51 +287,26 @@ export function ContentPage({ view }: ContentPageProps) {
   const dateLabel = capitalize(format(currentDate, 'MMMM yyyy', { locale: ptBR }))
 
   return (
-    <div className="p-4 sm:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">{VIEW_LABELS[view]}</h1>
-          <p className="text-xs text-muted-foreground font-medium mt-1">
-            {VIEW_DESCRIPTIONS[view]}
-          </p>
-        </div>
+    <Page>
+      <PageHeader
+        title={VIEW_LABELS[view]}
+        description={VIEW_DESCRIPTIONS[view]}
+        actions={
+          <>
+            <Button variant="outline" aria-label="Gerar mês com Brand Brain" onClick={() => setShowGenerateModal(true)} disabled={clients.length === 0}>
+              <Sparkles size={16} />
+              <span className="sm:hidden">Gerar mês</span><span className="hidden sm:inline">Gerar mês com Brand Brain</span>
+            </Button>
+            <Button onClick={() => openCreateModal()}>
+              <Plus size={16} />
+              <span>Novo conteúdo</span>
+            </Button>
+          </>
+        }
+      />
 
-        <Button onClick={() => openCreateModal()} className="self-start">
-          <Plus size={16} />
-          <span>Novo Conteúdo</span>
-        </Button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-end gap-3">
-        {view === 'list' && (
-          <div className="flex items-center gap-1 rounded-xl bg-muted p-1 self-start lg:self-auto lg:mr-auto">
-            <button
-              type="button"
-              onClick={() => changeListDisplay('rows')}
-              title="Lista"
-              className={cn(
-                'p-1.5 rounded-lg transition-colors',
-                listDisplay === 'rows' ? 'bg-card text-foreground shadow-z1' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <List size={16} />
-            </button>
-            <button
-              type="button"
-              onClick={() => changeListDisplay('grid')}
-              title="Grelha"
-              className={cn(
-                'p-1.5 rounded-lg transition-colors',
-                listDisplay === 'grid' ? 'bg-card text-foreground shadow-z1' : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <LayoutGrid size={16} />
-            </button>
-          </div>
-        )}
-
+      {/* Shared filters for Planner and Kanban */}
+      {view !== 'list' && <div className="flex flex-col lg:flex-row lg:items-center lg:justify-end gap-3">
         {view === 'board' && (
           <Button
             variant="outline"
@@ -311,16 +315,16 @@ export function ContentPage({ view }: ContentPageProps) {
             className="self-start lg:self-auto lg:mr-auto gap-1.5"
           >
             <Settings2 size={14} />
-            <span>Personalizar Colunas</span>
+            <span>Personalizar colunas</span>
           </Button>
         )}
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[140px] sm:w-44 sm:flex-none">
             <Select value={selectedClient || ALL_CLIENTS} onValueChange={(v) => setSelectedClient(v === ALL_CLIENTS ? '' : v)}>
-              <SelectTrigger className="shadow-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_CLIENTS}>Todos os Clientes</SelectItem>
+                <SelectItem value={ALL_CLIENTS}>Todos os clientes</SelectItem>
                 {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -328,31 +332,25 @@ export function ContentPage({ view }: ContentPageProps) {
 
           <div className="flex-1 min-w-[140px] sm:w-44 sm:flex-none">
             <Select value={selectedStatus || ALL_STATUS} onValueChange={(v) => setSelectedStatus(v === ALL_STATUS ? '' : v)}>
-              <SelectTrigger className="shadow-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_STATUS}>Todos os Estados</SelectItem>
-                <SelectItem value="DRAFT">Rascunho</SelectItem>
-                <SelectItem value="IN_PRODUCTION">Em Produção</SelectItem>
-                <SelectItem value="CLIENT_REVIEW">Aguardando Cliente</SelectItem>
-                <SelectItem value="CHANGES_REQUESTED">Alterações Solicitadas</SelectItem>
-                <SelectItem value="APPROVED">Aprovado</SelectItem>
-                <SelectItem value="SCHEDULED">Agendado</SelectItem>
-                <SelectItem value="PUBLISHED">Publicado</SelectItem>
+                <SelectItem value={ALL_STATUS}>Todos os status</SelectItem>
+                {FILTER_STATUSES.map((status) => <SelectItem key={status} value={status}>{STATUS_LABELS[status]}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
 
           <div className="flex-1 min-w-[140px] sm:w-40 sm:flex-none">
             <Select value={selectedPlatform || ALL_PLATFORMS} onValueChange={(v) => setSelectedPlatform(v === ALL_PLATFORMS ? '' : v)}>
-              <SelectTrigger className="shadow-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_PLATFORMS}>Todas as Redes</SelectItem>
+                <SelectItem value={ALL_PLATFORMS}>Todas as redes</SelectItem>
                 {Object.keys(PLATFORM_LABELS).map((p) => <SelectItem key={p} value={p}>{PLATFORM_LABELS[p]}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Temporal navigation (Planner/Calendar) */}
       {view === 'calendar' && (
@@ -364,101 +362,23 @@ export function ContentPage({ view }: ContentPageProps) {
         </div>
       )}
 
-      {error && (
+      {error && view !== 'list' && (
         <div className="p-3 rounded-xl bg-error/10 border border-error/20 text-error-dark text-xs flex items-center gap-2 font-semibold">
           <AlertCircle size={14} className="shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Views */}
-      {loading ? (
-        view === 'list' ? (
-          <div className="space-y-3">
-            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-20 rounded-2xl" />)}
-          </div>
-        ) : (
-          <Skeleton className="h-[520px] w-full rounded-2xl" />
-        )
-      ) : (
+      {/* The library uses the same content records and existing actions. */}
+      {view === 'list' ? (
+        <ContentLibrary contents={contents} clients={clients} loading={loading} error={error}
+          mode={listDisplay} onModeChange={changeListDisplay}
+          client={selectedClient} status={selectedStatus} platform={selectedPlatform} statuses={FILTER_STATUSES}
+          onClientChange={setSelectedClient} onStatusChange={setSelectedStatus} onPlatformChange={setSelectedPlatform}
+          onRetry={() => void loadContents()} onCreate={() => openCreateModal()}
+          onDelete={(id, title) => void handleDeleteContent(id, title)} />
+      ) : loading ? <Skeleton className="h-[520px] w-full rounded-2xl" /> : (
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-          {view === 'list' && (
-            contents.length === 0 ? (
-              <EmptyState
-                icon={FileText}
-                title="Nenhum conteúdo encontrado"
-                description="Crie posts ou gere um calendário completo utilizando o Brand Brain."
-              />
-            ) : listDisplay === 'grid' ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                {contents.map((item) => (
-                  <ContentGridTile
-                    key={item.id}
-                    content={item}
-                    onClick={() => navigate(`/app/content/${item.id}`)}
-                    onDelete={() => handleDeleteContent(item.id, item.title)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3">
-                {contents.map((item) => {
-                  const image = getPrimaryImage(item)
-                  const time = item.scheduledAt
-                    ? new Date(item.scheduledAt).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-                    : null
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => navigate(`/app/content/${item.id}`)}
-                      className="card-minimals-hover p-4 flex items-center justify-between gap-4 group cursor-pointer"
-                    >
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary-dark flex items-center justify-center font-bold shrink-0 border border-primary/20 overflow-hidden">
-                          {image ? <img src={image.publicUrl} alt="" className="w-full h-full object-cover" /> : <FileText size={20} />}
-                        </div>
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold text-primary">{item.client?.name}</span>
-                            <span className="text-xs text-muted-foreground/60">•</span>
-                            <span className="text-xs text-muted-foreground font-medium">{CONTENT_TYPE_LABELS[item.contentType] || item.contentType}</span>
-                            {(item.platforms || []).length > 0 && (
-                              <span className="flex items-center gap-1">
-                                {item.platforms.map((p: any) => <PlatformIcon key={p.id} platform={p.platform} size={12} />)}
-                              </span>
-                            )}
-                            {time && (
-                              <>
-                                <span className="text-xs text-muted-foreground/60">•</span>
-                                <span className="text-xs text-muted-foreground font-medium">{time}</span>
-                              </>
-                            )}
-                          </div>
-                          <h3 className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
-                            {item.title}
-                          </h3>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 shrink-0">
-                        <StatusBadge status={item.status} />
-                        <button
-                          type="button"
-                          title="Excluir conteúdo"
-                          onClick={(e) => { e.stopPropagation(); handleDeleteContent(item.id, item.title) }}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                        <ChevronRight size={18} className="text-muted-foreground group-hover:text-foreground transition-colors" />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )
-          )}
-
           {view === 'calendar' && (
             <CalendarMonthView
               currentDate={currentDate}
@@ -483,8 +403,11 @@ export function ContentPage({ view }: ContentPageProps) {
 
       {/* New Content Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-md">
-          <DialogTitle>Novo Conteúdo</DialogTitle>
+        <DialogContent>
+          <DialogHeader icon={<DialogIcon><FilePlus2 /></DialogIcon>}>
+            <DialogTitle>Novo conteúdo</DialogTitle>
+            <DialogDescription>Defina o básico agora — o restante você completa no Workspace.</DialogDescription>
+          </DialogHeader>
 
           <form onSubmit={handleCreateContent} className="space-y-4">
             <div>
@@ -504,7 +427,7 @@ export function ContentPage({ view }: ContentPageProps) {
             </div>
 
             <div>
-              <Label htmlFor="newContentTitle">Título do Post *</Label>
+              <Label htmlFor="newContentTitle">Título do post *</Label>
               <Input
                 id="newContentTitle"
                 type="text"
@@ -522,17 +445,17 @@ export function ContentPage({ view }: ContentPageProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="IMAGE">Imagem Estática</SelectItem>
+                  <SelectItem value="IMAGE">Imagem estática</SelectItem>
                   <SelectItem value="CAROUSEL">Carrossel</SelectItem>
-                  <SelectItem value="REEL">Reel / Vídeo Curto</SelectItem>
+                  <SelectItem value="REEL">Reel / vídeo curto</SelectItem>
                   <SelectItem value="STORY">Story</SelectItem>
-                  <SelectItem value="VIDEO">Vídeo Longo</SelectItem>
+                  <SelectItem value="VIDEO">Vídeo longo</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label>Redes Sociais *</Label>
+              <Label>Redes sociais *</Label>
               <PlatformPicker
                 value={newContent.platforms}
                 onChange={(platforms) => setNewContent({ ...newContent, platforms })}
@@ -540,7 +463,7 @@ export function ContentPage({ view }: ContentPageProps) {
             </div>
 
             <div>
-              <Label htmlFor="newContentScheduledAt">Data e Hora Agendada (Opcional)</Label>
+              <Label htmlFor="newContentScheduledAt">Data e hora agendada (opcional)</Label>
               <DateTimeField
                 id="newContentScheduledAt"
                 value={newContent.scheduledAt}
@@ -549,7 +472,7 @@ export function ContentPage({ view }: ContentPageProps) {
             </div>
 
             <div>
-              <Label htmlFor="newContentBrief">Briefing Inicial (Opcional)</Label>
+              <Label htmlFor="newContentBrief">Briefing inicial (opcional)</Label>
               <Textarea
                 id="newContentBrief"
                 rows={2}
@@ -560,7 +483,7 @@ export function ContentPage({ view }: ContentPageProps) {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setShowModal(false)}>
+              <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
                 Cancelar
               </Button>
               <Button type="submit">Abrir Workspace</Button>
@@ -568,6 +491,14 @@ export function ContentPage({ view }: ContentPageProps) {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+
+      <GenerateMonthDialog
+        open={showGenerateModal}
+        onOpenChange={setShowGenerateModal}
+        clients={clients}
+        defaultClientId={selectedClient || undefined}
+        onGenerated={loadContents}
+      />
+    </Page>
   )
 }

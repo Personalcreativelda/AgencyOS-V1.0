@@ -88,7 +88,7 @@ export function ContentCard({ content, onClick, className }: ContentCardProps) {
         <p className="text-xs font-bold text-foreground leading-snug line-clamp-2">{content.title}</p>
         <div className="flex items-center justify-between gap-1.5 pt-0.5">
           <span className="text-[10px] text-primary font-semibold truncate">{content.client?.name}</span>
-          <StatusBadge status={content.status} className="text-[9px] px-1.5 py-0 shrink-0" />
+          <StatusBadge status={content.status} className="gap-1 px-1.5 py-0 text-[9px] leading-4 shrink-0" />
         </div>
       </div>
     </div>

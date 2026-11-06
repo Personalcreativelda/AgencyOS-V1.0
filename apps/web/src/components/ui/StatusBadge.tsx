@@ -15,11 +15,14 @@ const STATUS_VARIANTS: Record<string, BadgeProps['variant']> = {
   CLIENT_REVIEW: 'warning',
   CHANGES_REQUESTED: 'error',
   FAILED: 'error',
+  PENDING: 'warning',
+  VIEWED: 'info',
+  REJECTED: 'error',
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   return (
-    <Badge variant={STATUS_VARIANTS[status] || 'default'} className={className}>
+    <Badge dot variant={STATUS_VARIANTS[status] || 'default'} className={className}>
       {STATUS_LABELS[status] || status}
     </Badge>
   )

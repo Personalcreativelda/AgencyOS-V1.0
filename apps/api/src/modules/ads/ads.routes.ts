@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as ctrl from './ads.controller';
+import { getAdPreview } from './adsPreview.controller';
 import { authenticate } from '../../common/middleware/auth';
 
 const router = Router();
@@ -15,6 +16,8 @@ router.get('/accounts', authenticate, ctrl.listAdAccounts);
 router.delete('/accounts/:id', authenticate, ctrl.deleteAdAccount);
 router.post('/accounts/:id/sync', authenticate, ctrl.syncAdAccount);
 router.post('/accounts/:id/campaigns/:campaignId/status', authenticate, ctrl.setCampaignStatus);
+router.get('/accounts/:id/ads/:adId/preview', authenticate, getAdPreview);
+router.get('/accounts/:id/campaigns/:campaignId/creatives', authenticate, ctrl.getCampaignCreatives);
 router.get('/accounts/:id/insights', authenticate, ctrl.getAdInsights);
 router.get('/accounts/:id/audience', authenticate, ctrl.getAudienceInsights);
 router.post('/accounts/:id/analyze', authenticate, ctrl.analyzeAdAccount);

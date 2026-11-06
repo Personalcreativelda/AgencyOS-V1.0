@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import {
   Trash2, Eye, EyeOff, Loader2, CheckCircle2, XCircle,
-  Share2, Facebook, Instagram, Linkedin, Youtube, MessageCircle, QrCode, Unplug, Copy, Check, Mail, Building2, Contact,
+  QrCode, Unplug, Copy, Check, Mail, Building2, Contact,
   ChevronLeft, ChevronRight, ExternalLink,
 } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
+import { SiFacebook, SiMeta, SiTiktok, SiWhatsapp, SiYoutube } from 'react-icons/si'
+import { FaLinkedin } from 'react-icons/fa6'
+import { BrandIcon } from '@/components/brand/BrandIcon'
 import api from '@/lib/api'
 import { cn, PLATFORM_COLORS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
@@ -17,8 +20,7 @@ import {
   Card, CardHeader, CardTitle, CardDescription, CardContent,
 } from '@/components/ui/Card'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from '@/components/ui/Dialog'
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogIcon } from '@/components/ui/Dialog'
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/Select'
@@ -26,6 +28,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
 import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
 import { getErrorMessage } from '@/lib/errors'
+import { Page, PageHeader } from '@/components/layout/Page'
 
 // Built from wherever the app is actually running (works for localhost, staging, prod,
 // Coolify's auto-generated domain, a custom domain — no manual "figure out your API URL" step).
@@ -745,7 +748,7 @@ export function SocialConnectionsPage() {
   }, [waPolling])
 
   const handleDeleteConnection = async (connId: string) => {
-    if (!(await confirmDialog({ title: 'Desconectar esta conta?', variant: 'destructive', confirmLabel: 'Desconectar' }))) return
+    if (!(await confirmDialog({ title: 'Desconectar esta conta?', description: 'Publicações agendadas para esta conta deixam de ser enviadas até ela ser conectada de novo.', variant: 'destructive', confirmLabel: 'Desconectar' }))) return
     try {
       await api.delete(`/social/connections/${connId}`)
       setConnections(connections.filter((c) => c.id !== connId))
@@ -826,22 +829,20 @@ export function SocialConnectionsPage() {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-8 space-y-8">
+      <Page>
         <Skeleton className="h-8 w-1/4" />
         <Skeleton className="h-10 w-64 rounded-xl" />
         <Skeleton className="h-64 w-full rounded-2xl" />
-      </div>
+      </Page>
     )
   }
 
   return (
-    <div className="p-4 sm:p-8 space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Redes Sociais</h1>
-        <p className="text-xs text-muted-foreground font-medium mt-1">
-          Conecte o Facebook/Instagram de cada cliente e o WhatsApp/Email da agência para publicar conteúdo e enviar aprovações.
-        </p>
-      </div>
+    <Page>
+      <PageHeader
+        title="Redes sociais"
+        description="Conecte as redes de cada cliente e os canais da agência (WhatsApp e email) para publicar conteúdo e enviar aprovações."
+      />
 
       <Tabs defaultValue="agencia">
         <TabsList>
@@ -852,21 +853,23 @@ export function SocialConnectionsPage() {
         {/* ─── AGÊNCIA: contas/credenciais únicas, compartilhadas por toda a agência ─── */}
         <TabsContent value="agencia">
           <Card>
-            <CardHeader>
-              <CardTitle>Contas da Agência</CardTitle>
-              <CardDescription>Credenciais únicas, compartilhadas por toda a agência — configure cada uma uma vez</CardDescription>
+            <CardHeader className="mb-0">
+              <div>
+                <CardTitle>Contas da agência</CardTitle>
+                <CardDescription>Credenciais únicas, compartilhadas por toda a agência — configure cada uma uma vez.</CardDescription>
+              </div>
             </CardHeader>
 
-            <CardContent className="space-y-2.5">
+            <CardContent className="-mx-5 -mb-5 space-y-0 divide-y divide-border">
               {/* Meta App row */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
+              <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center shrink-0">
-                    <Share2 size={19} />
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#0467DF]/10 text-[#0467DF]">
+                    <SiMeta size={19} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-extrabold text-foreground truncate">Meta App (Facebook + Instagram)</p>
-                    <p className="text-[11px] text-muted-foreground font-medium truncate">
+                    <p className="truncate text-sm font-semibold text-foreground">Meta App (Facebook + Instagram)</p>
+                    <p className="truncate text-xs text-muted-foreground">
                       {metaSettings?.configured ? `App ID: ${metaSettings.metaAppId}` : 'Necessário para conectar Facebook/Instagram de clientes'}
                     </p>
                   </div>
@@ -889,14 +892,14 @@ export function SocialConnectionsPage() {
               </div>
 
               {/* LinkedIn App row */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
+              <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 rounded-2xl bg-[#0A66C2]/10 text-[#0A66C2] flex items-center justify-center shrink-0">
-                    <Linkedin size={19} />
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#0A66C2]/10 text-[#0A66C2]">
+                    <FaLinkedin size={19} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-extrabold text-foreground truncate">LinkedIn App</p>
-                    <p className="text-[11px] text-muted-foreground font-medium truncate">
+                    <p className="truncate text-sm font-semibold text-foreground">LinkedIn App</p>
+                    <p className="truncate text-xs text-muted-foreground">
                       {linkedinSettings?.configured ? `Client ID: ${linkedinSettings.linkedinClientId}` : 'Necessário para conectar Páginas de Empresa de clientes'}
                     </p>
                   </div>
@@ -919,17 +922,17 @@ export function SocialConnectionsPage() {
               </div>
 
               {/* TikTok App row */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
+              <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div
-                    className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 text-[#fff] font-extrabold text-sm"
+                    className="flex size-10 shrink-0 items-center justify-center rounded-xl text-[#fff]"
                     style={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}
                   >
-                    T
+                    <SiTiktok size={20} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-extrabold text-foreground truncate">TikTok App</p>
-                    <p className="text-[11px] text-muted-foreground font-medium truncate">
+                    <p className="truncate text-sm font-semibold text-foreground">TikTok App</p>
+                    <p className="truncate text-xs text-muted-foreground">
                       {tiktokSettings?.configured ? `Client Key: ${tiktokSettings.tiktokClientKey}` : 'Necessário para conectar contas do TikTok de clientes'}
                     </p>
                   </div>
@@ -952,14 +955,14 @@ export function SocialConnectionsPage() {
               </div>
 
               {/* YouTube App row */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
+              <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 rounded-2xl bg-[#FF0000]/10 text-[#FF0000] flex items-center justify-center shrink-0">
-                    <Youtube size={19} />
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#FF0000]/10 text-[#FF0000]">
+                    <SiYoutube size={19} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-extrabold text-foreground truncate">YouTube App</p>
-                    <p className="text-[11px] text-muted-foreground font-medium truncate">
+                    <p className="truncate text-sm font-semibold text-foreground">YouTube App</p>
+                    <p className="truncate text-xs text-muted-foreground">
                       {youtubeSettings?.configured ? `Client ID: ${youtubeSettings.youtubeClientId}` : 'Necessário para conectar canais do YouTube de clientes'}
                     </p>
                   </div>
@@ -982,14 +985,14 @@ export function SocialConnectionsPage() {
               </div>
 
               {/* WhatsApp row */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
+              <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 rounded-2xl bg-[#25D366]/10 text-[#25D366] flex items-center justify-center shrink-0">
-                    <MessageCircle size={19} />
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#25D366]/10 text-[#25D366]">
+                    <SiWhatsapp size={19} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-extrabold text-foreground truncate">WhatsApp (envio de aprovações)</p>
-                    <p className="text-[11px] text-muted-foreground font-medium truncate">
+                    <p className="truncate text-sm font-semibold text-foreground">WhatsApp (envio de aprovações)</p>
+                    <p className="truncate text-xs text-muted-foreground">
                       {waSettings?.configured
                         ? (waSettings.connectedNumber ? `Número: ${waSettings.connectedNumber}` : 'Conectado')
                         : 'Um número envia aprovações para qualquer cliente'}
@@ -1015,14 +1018,14 @@ export function SocialConnectionsPage() {
               </div>
 
               {/* Email (SMTP) row */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors">
+              <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div className="w-11 h-11 rounded-2xl bg-info/10 text-info-dark flex items-center justify-center shrink-0">
                     <Mail size={19} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-extrabold text-foreground truncate">Email (SMTP)</p>
-                    <p className="text-[11px] text-muted-foreground font-medium truncate">
+                    <p className="truncate text-sm font-semibold text-foreground">Email (SMTP)</p>
+                    <p className="truncate text-xs text-muted-foreground">
                       {smtpSettings?.configured ? smtpSettings.fromEmail : 'Um servidor envia links de aprovação por email'}
                     </p>
                   </div>
@@ -1052,12 +1055,12 @@ export function SocialConnectionsPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center font-bold">
-                  <Contact size={22} />
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border bg-muted text-foreground/80">
+                  <Contact size={20} />
                 </div>
                 <div>
-                  <CardTitle>Contas do Cliente</CardTitle>
-                  <CardDescription>Facebook e Instagram são conectados individualmente, por cliente</CardDescription>
+                  <CardTitle>Contas do cliente</CardTitle>
+                  <CardDescription>As redes de cada marca são conectadas individualmente, por cliente.</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -1081,7 +1084,7 @@ export function SocialConnectionsPage() {
                     <Button type="button" variant="outline" onClick={handleConnectMeta} loading={connectingMeta} disabled={!metaSettings?.configured} className="justify-center gap-1.5">
                       {!connectingMeta && (
                         <>
-                          <Facebook size={14} className="text-[#1877F2]" />
+                          <SiFacebook size={14} className="text-[#0866FF]" />
                           <span>Conectar Facebook</span>
                         </>
                       )}
@@ -1089,7 +1092,7 @@ export function SocialConnectionsPage() {
                     <Button type="button" variant="outline" onClick={handleConnectMeta} loading={connectingMeta} disabled={!metaSettings?.configured} className="justify-center gap-1.5">
                       {!connectingMeta && (
                         <>
-                          <Instagram size={14} className="text-[#E4405F]" />
+                          <BrandIcon platform="INSTAGRAM" size={14} />
                           <span>Conectar Instagram</span>
                         </>
                       )}
@@ -1097,7 +1100,7 @@ export function SocialConnectionsPage() {
                     <Button type="button" variant="outline" onClick={handleConnectLinkedin} loading={connectingLinkedin} disabled={!linkedinSettings?.configured} className="justify-center gap-1.5">
                       {!connectingLinkedin && (
                         <>
-                          <Linkedin size={14} className="text-[#0A66C2]" />
+                          <FaLinkedin size={14} className="text-[#0A66C2]" />
                           <span>Conectar LinkedIn</span>
                         </>
                       )}
@@ -1105,7 +1108,7 @@ export function SocialConnectionsPage() {
                     <Button type="button" variant="outline" onClick={handleConnectTiktok} loading={connectingTiktok} disabled={!tiktokSettings?.configured} className="justify-center gap-1.5">
                       {!connectingTiktok && (
                         <>
-                          <span className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-[#fff] text-[9px] font-extrabold shrink-0" style={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}>T</span>
+                          <SiTiktok size={14} className="shrink-0 text-foreground" />
                           <span>Conectar TikTok</span>
                         </>
                       )}
@@ -1113,13 +1116,13 @@ export function SocialConnectionsPage() {
                     <Button type="button" variant="outline" onClick={handleConnectYoutube} loading={connectingYoutube} disabled={!youtubeSettings?.configured} className="justify-center gap-1.5">
                       {!connectingYoutube && (
                         <>
-                          <Youtube size={14} className="text-[#FF0000]" />
+                          <SiYoutube size={14} className="text-[#FF0000]" />
                           <span>Conectar YouTube</span>
                         </>
                       )}
                     </Button>
                     <Button type="button" variant="outline" onClick={openWhatsappConnectModal} disabled={!socialClientId} className="justify-center gap-1.5">
-                      <MessageCircle size={14} className="text-[#25D366]" />
+                      <SiWhatsapp size={14} className="text-[#25D366]" />
                       <span>Conectar WhatsApp</span>
                     </Button>
                   </div>
@@ -1140,14 +1143,14 @@ export function SocialConnectionsPage() {
                       connections.map((conn) => (
                         <div key={conn.id} className="flex items-center justify-between p-3.5 bg-muted rounded-xl border border-border">
                           <div className="flex items-center gap-3">
-                            {conn.platform === 'FACEBOOK' && <Facebook size={16} className="text-[#1877F2]" />}
-                            {conn.platform === 'INSTAGRAM' && <Instagram size={16} className="text-[#E4405F]" />}
-                            {conn.platform === 'LINKEDIN' && <Linkedin size={16} className="text-[#0A66C2]" />}
+                            {conn.platform === 'FACEBOOK' && <SiFacebook size={16} className="text-[#0866FF]" />}
+                            {conn.platform === 'INSTAGRAM' && <BrandIcon platform="INSTAGRAM" size={16} />}
+                            {conn.platform === 'LINKEDIN' && <FaLinkedin size={16} className="text-[#0A66C2]" />}
                             {conn.platform === 'TIKTOK' && (
-                              <span className="w-4 h-4 rounded-full flex items-center justify-center text-[#fff] text-[9px] font-extrabold shrink-0" style={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}>T</span>
+                              <SiTiktok size={16} className="shrink-0 text-foreground" />
                             )}
-                            {conn.platform === 'YOUTUBE' && <Youtube size={16} className="text-[#FF0000]" />}
-                            {conn.platform === 'WHATSAPP' && <MessageCircle size={16} className="text-[#25D366]" />}
+                            {conn.platform === 'YOUTUBE' && <SiYoutube size={16} className="text-[#FF0000]" />}
+                            {conn.platform === 'WHATSAPP' && <SiWhatsapp size={16} className="text-[#25D366]" />}
                             <div>
                               <p className="text-xs font-bold text-foreground">{conn.accountName || conn.platform}</p>
                               <Badge variant={conn.status === 'ACTIVE' ? 'success' : 'warning'} className="mt-0.5">
@@ -1174,21 +1177,14 @@ export function SocialConnectionsPage() {
 
       {/* Meta App Modal — guided setup wizard for first-timers, straight to the form for edits */}
       <Dialog open={showMetaModal} onOpenChange={setShowMetaModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-secondary/15 text-secondary flex items-center justify-center shrink-0">
-                <Share2 size={20} />
-              </div>
-              <div>
+        <DialogContent>
+          <DialogHeader icon={<DialogIcon className="border-transparent bg-[#0467DF]/10 text-[#0467DF]"><SiMeta size={20} /></DialogIcon>}>
                 <DialogTitle>
                   {metaWizardStep <= META_WIZARD_STEPS.length
                     ? `Passo ${metaWizardStep} de ${META_WIZARD_STEPS.length + 1} — ${META_WIZARD_STEPS[metaWizardStep - 1].title}`
                     : metaSettings?.configured ? 'Editar Meta App' : `Passo ${META_WIZARD_STEPS.length + 1} de ${META_WIZARD_STEPS.length + 1} — Salvar credenciais`}
                 </DialogTitle>
                 <DialogDescription>Facebook + Instagram — registrado uma vez, usado para conectar a conta de qualquer cliente</DialogDescription>
-              </div>
-            </div>
           </DialogHeader>
 
           {metaWizardStep <= META_WIZARD_STEPS.length ? (
@@ -1253,8 +1249,8 @@ export function SocialConnectionsPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSaveMetaSettings} className="space-y-3" autoComplete="off">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <form onSubmit={handleSaveMetaSettings} className="space-y-4" autoComplete="off">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="metaAppId">App ID</Label>
                     <Input id="metaAppId" name="meta_app_id" autoComplete="off" placeholder="App ID" value={metaAppIdInput} onChange={(e) => setMetaAppIdInput(e.target.value)} />
@@ -1301,21 +1297,14 @@ export function SocialConnectionsPage() {
 
       {/* LinkedIn App Modal — guided setup wizard for first-timers, straight to the form for edits */}
       <Dialog open={showLinkedinModal} onOpenChange={setShowLinkedinModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#0A66C2]/15 text-[#0A66C2] flex items-center justify-center shrink-0">
-                <Linkedin size={20} />
-              </div>
-              <div>
+        <DialogContent>
+          <DialogHeader icon={<DialogIcon className="border-transparent bg-[#0A66C2]/10 text-[#0A66C2]"><FaLinkedin size={20} /></DialogIcon>}>
                 <DialogTitle>
                   {linkedinWizardStep <= LINKEDIN_WIZARD_STEPS.length
                     ? `Passo ${linkedinWizardStep} de ${LINKEDIN_WIZARD_STEPS.length + 1} — ${LINKEDIN_WIZARD_STEPS[linkedinWizardStep - 1].title}`
                     : linkedinSettings?.configured ? 'Editar LinkedIn App' : `Passo ${LINKEDIN_WIZARD_STEPS.length + 1} de ${LINKEDIN_WIZARD_STEPS.length + 1} — Salvar credenciais`}
                 </DialogTitle>
                 <DialogDescription>LinkedIn — registrado uma vez, usado para conectar a Página de Empresa de qualquer cliente</DialogDescription>
-              </div>
-            </div>
           </DialogHeader>
 
           {linkedinWizardStep <= LINKEDIN_WIZARD_STEPS.length ? (
@@ -1378,8 +1367,8 @@ export function SocialConnectionsPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSaveLinkedinSettings} className="space-y-3" autoComplete="off">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <form onSubmit={handleSaveLinkedinSettings} className="space-y-4" autoComplete="off">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="linkedinClientId">Client ID</Label>
                     <Input id="linkedinClientId" name="linkedin_client_id" autoComplete="off" placeholder="Client ID" value={linkedinClientIdInput} onChange={(e) => setLinkedinClientIdInput(e.target.value)} />
@@ -1426,24 +1415,14 @@ export function SocialConnectionsPage() {
 
       {/* TikTok App Modal — guided setup wizard for first-timers, straight to the form for edits */}
       <Dialog open={showTiktokModal} onOpenChange={setShowTiktokModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[#fff] font-extrabold"
-                style={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}
-              >
-                T
-              </div>
-              <div>
+        <DialogContent>
+          <DialogHeader icon={<DialogIcon className="border-transparent text-[#fff]" style={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}><SiTiktok size={20} /></DialogIcon>}>
                 <DialogTitle>
                   {tiktokWizardStep <= TIKTOK_WIZARD_STEPS.length
                     ? `Passo ${tiktokWizardStep} de ${TIKTOK_WIZARD_STEPS.length + 1} — ${TIKTOK_WIZARD_STEPS[tiktokWizardStep - 1].title}`
                     : tiktokSettings?.configured ? 'Editar TikTok App' : `Passo ${TIKTOK_WIZARD_STEPS.length + 1} de ${TIKTOK_WIZARD_STEPS.length + 1} — Salvar credenciais`}
                 </DialogTitle>
                 <DialogDescription>TikTok — registrado uma vez, usado para conectar a conta de qualquer cliente</DialogDescription>
-              </div>
-            </div>
           </DialogHeader>
 
           {tiktokWizardStep <= TIKTOK_WIZARD_STEPS.length ? (
@@ -1511,8 +1490,8 @@ export function SocialConnectionsPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSaveTiktokSettings} className="space-y-3" autoComplete="off">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <form onSubmit={handleSaveTiktokSettings} className="space-y-4" autoComplete="off">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="tiktokClientKey">Client Key</Label>
                     <Input id="tiktokClientKey" name="tiktok_client_key" autoComplete="off" placeholder="Client Key" value={tiktokClientKeyInput} onChange={(e) => setTiktokClientKeyInput(e.target.value)} />
@@ -1559,21 +1538,14 @@ export function SocialConnectionsPage() {
 
       {/* YouTube App Modal — guided setup wizard for first-timers, straight to the form for edits */}
       <Dialog open={showYoutubeModal} onOpenChange={setShowYoutubeModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#FF0000]/15 text-[#FF0000] flex items-center justify-center shrink-0">
-                <Youtube size={20} />
-              </div>
-              <div>
+        <DialogContent>
+          <DialogHeader icon={<DialogIcon className="border-transparent bg-[#FF0000]/10 text-[#FF0000]"><SiYoutube size={20} /></DialogIcon>}>
                 <DialogTitle>
                   {youtubeWizardStep <= YOUTUBE_WIZARD_STEPS.length
                     ? `Passo ${youtubeWizardStep} de ${YOUTUBE_WIZARD_STEPS.length + 1} — ${YOUTUBE_WIZARD_STEPS[youtubeWizardStep - 1].title}`
                     : youtubeSettings?.configured ? 'Editar YouTube App' : `Passo ${YOUTUBE_WIZARD_STEPS.length + 1} de ${YOUTUBE_WIZARD_STEPS.length + 1} — Salvar credenciais`}
                 </DialogTitle>
                 <DialogDescription>YouTube (Google) — registrado uma vez, usado para conectar o canal de qualquer cliente</DialogDescription>
-              </div>
-            </div>
           </DialogHeader>
 
           {youtubeWizardStep <= YOUTUBE_WIZARD_STEPS.length ? (
@@ -1636,8 +1608,8 @@ export function SocialConnectionsPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSaveYoutubeSettings} className="space-y-3" autoComplete="off">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <form onSubmit={handleSaveYoutubeSettings} className="space-y-4" autoComplete="off">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="youtubeClientId">Client ID</Label>
                     <Input id="youtubeClientId" name="youtube_client_id" autoComplete="off" placeholder="Client ID" value={youtubeClientIdInput} onChange={(e) => setYoutubeClientIdInput(e.target.value)} />
@@ -1685,22 +1657,15 @@ export function SocialConnectionsPage() {
       {/* WhatsApp (client) Connect Modal — no OAuth, no wizard: just the client's already-
          paired Evolution instance name, reusing the agency's own Evolution API server. */}
       <Dialog open={showWhatsappConnectModal} onOpenChange={setShowWhatsappConnectModal}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#25D366]/15 text-[#25D366] flex items-center justify-center shrink-0">
-                <MessageCircle size={20} />
-              </div>
-              <div>
-                <DialogTitle>Conectar WhatsApp do Cliente</DialogTitle>
+        <DialogContent size="sm">
+          <DialogHeader icon={<DialogIcon className="border-transparent bg-[#25D366]/10 text-[#25D366]"><SiWhatsapp size={20} /></DialogIcon>}>
+                <DialogTitle>Conectar WhatsApp do cliente</DialogTitle>
                 <DialogDescription>Publica como Status no WhatsApp do próprio cliente</DialogDescription>
-              </div>
-            </div>
           </DialogHeader>
 
-          <form onSubmit={handleConnectClientWhatsapp} className="space-y-3" autoComplete="off">
+          <form onSubmit={handleConnectClientWhatsapp} className="space-y-4" autoComplete="off">
             <div>
-              <Label htmlFor="whatsappInstance">Nome da Instância</Label>
+              <Label htmlFor="whatsappInstance">Nome da instância</Label>
               <Input
                 id="whatsappInstance"
                 name="whatsapp_instance"
@@ -1725,17 +1690,10 @@ export function SocialConnectionsPage() {
 
       {/* SMTP Modal */}
       <Dialog open={showSmtpModal} onOpenChange={setShowSmtpModal}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-info/15 text-info-dark flex items-center justify-center shrink-0">
-                <Mail size={20} />
-              </div>
-              <div>
+        <DialogContent size="lg">
+          <DialogHeader icon={<DialogIcon className="border-transparent bg-info/10 text-info-dark"><Mail size={20} /></DialogIcon>}>
                 <DialogTitle>{smtpSettings?.configured ? 'Editar Email (SMTP)' : 'Configurar Email (SMTP)'}</DialogTitle>
                 <DialogDescription>Servidor único da agência — envia os links de aprovação por email a qualquer cliente</DialogDescription>
-              </div>
-            </div>
           </DialogHeader>
 
           <form onSubmit={handleSaveSmtp} className="space-y-4" autoComplete="off">
@@ -1776,11 +1734,11 @@ export function SocialConnectionsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="smtpFromEmail">Email de Envio *</Label>
+                <Label htmlFor="smtpFromEmail">Email de envio *</Label>
                 <Input id="smtpFromEmail" name="smtp_from_email" autoComplete="off" type="email" placeholder="contato@suaagencia.com" value={smtpForm.fromEmail} onChange={(e) => setSmtpForm({ ...smtpForm, fromEmail: e.target.value })} />
               </div>
               <div>
-                <Label htmlFor="smtpFromName">Nome de Exibição</Label>
+                <Label htmlFor="smtpFromName">Nome de exibição</Label>
                 <Input id="smtpFromName" name="smtp_from_name" autoComplete="off" placeholder="Sua Agência" value={smtpForm.fromName} onChange={(e) => setSmtpForm({ ...smtpForm, fromName: e.target.value })} />
               </div>
             </div>
@@ -1806,12 +1764,12 @@ export function SocialConnectionsPage() {
                 onClick={handleTestSmtp}
               >
                 {testingSmtp ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
-                <span>Testar Conexão</span>
+                <span>Testar conexão</span>
               </Button>
               <div className="flex items-center gap-2">
                 <Button type="button" variant="ghost" onClick={() => setShowSmtpModal(false)}>Cancelar</Button>
                 <Button type="submit" loading={savingSmtp}>
-                  {!savingSmtp && <span>Salvar Email</span>}
+                  {!savingSmtp && <span>Salvar email</span>}
                 </Button>
               </div>
             </div>
@@ -1821,17 +1779,10 @@ export function SocialConnectionsPage() {
 
       {/* WhatsApp QR Modal */}
       <Dialog open={showWaModal} onOpenChange={setShowWaModal}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#25D366]/15 text-[#25D366] flex items-center justify-center shrink-0">
-                <QrCode size={20} />
-              </div>
-              <div>
-                <DialogTitle>Conectar WhatsApp da Agência</DialogTitle>
+        <DialogContent size="sm">
+          <DialogHeader icon={<DialogIcon className="border-transparent bg-[#25D366]/10 text-[#25D366]"><QrCode size={20} /></DialogIcon>}>
+                <DialogTitle>Conectar WhatsApp da agência</DialogTitle>
                 <DialogDescription>Escaneie com o WhatsApp da agência no celular (Aparelhos Conectados)</DialogDescription>
-              </div>
-            </div>
           </DialogHeader>
 
           <div className="flex items-center justify-center py-4">
@@ -1856,21 +1807,14 @@ export function SocialConnectionsPage() {
          Manager Partner Access covering several clients at once); pick which one(s) belong
          to this client before connecting anything. */}
       <Dialog open={!!pagePickerToken} onOpenChange={(open) => { if (!open) setPagePickerToken(null) }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-secondary/15 text-secondary flex items-center justify-center shrink-0">
-                <Facebook size={20} />
-              </div>
-              <div>
+        <DialogContent size="sm">
+          <DialogHeader icon={<DialogIcon className="border-transparent bg-[#0866FF]/10 text-[#0866FF]"><SiFacebook size={20} /></DialogIcon>}>
                 <DialogTitle>Qual página é deste cliente?</DialogTitle>
                 <DialogDescription>
                   {clients.find((c) => c.id === pagePickerClientId)?.name
                     ? `Sua conta do Facebook tem acesso a mais de uma página. Selecione a(s) que pertence(m) a ${clients.find((c) => c.id === pagePickerClientId)?.name}.`
                     : 'Sua conta do Facebook tem acesso a mais de uma página. Selecione a(s) que pertence(m) a este cliente.'}
                 </DialogDescription>
-              </div>
-            </div>
           </DialogHeader>
 
           {loadingPendingPages ? (
@@ -1891,7 +1835,7 @@ export function SocialConnectionsPage() {
                     <p className="text-xs font-bold text-foreground truncate">{page.name}</p>
                     {page.hasInstagram && (
                       <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <Instagram size={11} className="text-[#E4405F]" /> Instagram vinculado
+                        <BrandIcon platform="INSTAGRAM" size={11} /> Instagram vinculado
                       </p>
                     )}
                   </div>
@@ -1914,21 +1858,14 @@ export function SocialConnectionsPage() {
       {/* Organization Picker — the LinkedIn member administers more than one Company Page;
          pick which one(s) belong to this client before connecting anything. */}
       <Dialog open={!!orgPickerToken} onOpenChange={(open) => { if (!open) setOrgPickerToken(null) }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#0A66C2]/15 text-[#0A66C2] flex items-center justify-center shrink-0">
-                <Linkedin size={20} />
-              </div>
-              <div>
-                <DialogTitle>Qual Página de Empresa é deste cliente?</DialogTitle>
+        <DialogContent size="sm">
+          <DialogHeader icon={<DialogIcon className="border-transparent bg-[#0A66C2]/10 text-[#0A66C2]"><FaLinkedin size={20} /></DialogIcon>}>
+                <DialogTitle>Qual página de empresa é deste cliente?</DialogTitle>
                 <DialogDescription>
                   {clients.find((c) => c.id === orgPickerClientId)?.name
                     ? `Sua conta do LinkedIn administra mais de uma Página de Empresa. Selecione a(s) que pertence(m) a ${clients.find((c) => c.id === orgPickerClientId)?.name}.`
                     : 'Sua conta do LinkedIn administra mais de uma Página de Empresa. Selecione a(s) que pertence(m) a este cliente.'}
                 </DialogDescription>
-              </div>
-            </div>
           </DialogHeader>
 
           {loadingPendingOrgs ? (
@@ -1963,6 +1900,6 @@ export function SocialConnectionsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </Page>
   )
 }

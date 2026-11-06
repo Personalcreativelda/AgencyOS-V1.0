@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { BarChart3, ExternalLink, Globe2, MousePointerClick, Pause, Play, Plus, RefreshCw, Sparkles, Trash2, TrendingUp, Users } from 'lucide-react'
+import { BrandIcon } from '@/components/brand/BrandIcon'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
@@ -10,6 +11,8 @@ import { toast } from '@/lib/toast'
 import { getErrorMessage } from '@/lib/errors'
 import { confirmDialog } from '@/lib/confirm'
 import { useAuthStore } from '@/stores/authStore'
+import { Page, PageHeader, PageIcon } from '@/components/layout/Page'
+import { Stat, StatGroup } from '@/components/ui/Stat'
 
 type Kind = 'ads' | 'analytics'
 type Range = 'today' | '7d' | '30d'
@@ -23,11 +26,8 @@ const money = (value: number, currency: string) => {
   catch { return `${number(value)} ${currency}` }
 }
 
-function Metric({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Users }) {
-  return <Card className="min-h-28 p-4 sm:p-5 flex flex-col justify-between transition-colors hover:border-primary/30">
-    <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"><Icon size={14} />{label}</div>
-    <div className="text-xl sm:text-2xl font-bold tracking-tight text-foreground break-words">{value}</div>
-  </Card>
+function Metric({ label, value, icon }: { label: string; value: string; icon: typeof Users }) {
+  return <Stat label={label} value={value} icon={icon} />
 }
 
 function Breakdown({ title, rows, valueKey }: { title: string; rows: any[]; valueKey: string }) {
@@ -177,7 +177,7 @@ export function GooglePerformancePage() {
       await loadConnections(clientId)
       setConnectionId(data.id)
       toast.success('Conta Google conectada ao cliente')
-    } catch (error) { toast.error('Erro ao ligar conta', getErrorMessage(error)) }
+    } catch (error) { toast.error('Erro ao conectar conta', getErrorMessage(error)) }
     finally { setConfirming(false) }
   }
 
@@ -197,7 +197,7 @@ export function GooglePerformancePage() {
     if (!selectedConnection) return
     const nextStatus = campaign.status === 'ENABLED' ? 'PAUSED' : 'ENABLED'
     const label = nextStatus === 'PAUSED' ? 'Pausar' : 'Reativar'
-    if (!await confirmDialog({ title: `${label} campanha?`, description: `${label} “${campaign.name}” no Google Ads?`, confirmLabel: label })) return
+    if (!await confirmDialog({ title: `${label} “${campaign.name}”?`, description: 'Isso muda de verdade o status da campanha no Google Ads.', confirmLabel: label, variant: label === 'Pausar' ? 'destructive' : 'default' })) return
     setChangingCampaignId(campaign.id)
     try {
       await api.post(`/google/connections/${selectedConnection.id}/campaigns/${campaign.id}/status`, { status: nextStatus })
@@ -207,15 +207,12 @@ export function GooglePerformancePage() {
     finally { setChangingCampaignId('') }
   }
 
-  return <div className="mx-auto w-full max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-6">
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-      <div><h1 className="text-2xl font-bold tracking-tight text-foreground">Google Ads & Analytics</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Campanhas e desempenho dos websites dos clientes, com dados diretos do Google.</p></div>
-    </div>
+  return <Page>
+    <PageHeader icon={<PageIcon><BrandIcon platform={kind === 'ads' ? 'GOOGLE_ADS' : 'GOOGLE_ANALYTICS'} size={22} /></PageIcon>} title="Google Ads & Analytics" description="Campanhas e desempenho dos websites dos clientes, com dados diretos do Google." />
 
     <div className="flex flex-wrap gap-2 border-b border-border pb-3">
-      <Button variant={kind === 'ads' ? 'solid' : 'subtle'} onClick={() => setKind('ads')}><BarChart3 size={16} />Google Ads</Button>
-      <Button variant={kind === 'analytics' ? 'solid' : 'subtle'} onClick={() => setKind('analytics')}><Globe2 size={16} />Analytics (GA4)</Button>
+      <Button variant={kind === 'ads' ? 'solid' : 'subtle'} onClick={() => setKind('ads')}><BrandIcon platform="GOOGLE_ADS" colored={kind !== 'ads'} size={16} />Google Ads</Button>
+      <Button variant={kind === 'analytics' ? 'solid' : 'subtle'} onClick={() => setKind('analytics')}><BrandIcon platform="GOOGLE_ANALYTICS" colored={kind !== 'analytics'} size={16} />Analytics (GA4)</Button>
     </div>
 
     {loadError && <Card className="p-4 sm:p-5 border-error/30">
@@ -255,8 +252,8 @@ export function GooglePerformancePage() {
         <Button variant="subtle" onClick={refresh} loading={loading}><RefreshCw size={15} />Atualizar</Button>
       </div>
 
-      {loading && !insights ? <Card className="p-8 text-sm text-muted-foreground">A carregar dados do Google...</Card> : insights?.kind === 'ads' ? <>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-7">
+      {loading && !insights ? <Card className="p-8 text-sm text-muted-foreground">Carregando dados do Google...</Card> : insights?.kind === 'ads' ? <>
+        <StatGroup className="xl:grid-cols-7">
           <Metric label="Investimento" value={money(insights.totals.spend, insights.currency)} icon={TrendingUp} />
           <Metric label="Impressões" value={number(insights.totals.impressions)} icon={Globe2} />
           <Metric label="Cliques" value={number(insights.totals.clicks)} icon={MousePointerClick} />
@@ -264,7 +261,7 @@ export function GooglePerformancePage() {
           <Metric label="CPC" value={money(insights.totals.cpc, insights.currency)} icon={MousePointerClick} />
           <Metric label="Conversões" value={number(insights.totals.conversions)} icon={Users} />
           <Metric label="Custo/conversão" value={money(insights.totals.costPerConversion, insights.currency)} icon={TrendingUp} />
-        </div>
+        </StatGroup>
         <Card className="p-4 sm:p-5 min-w-0"><h2 className="font-bold text-foreground mb-4">Campanhas</h2>
           <div className="overflow-x-auto"><table className="w-full min-w-[780px] text-sm"><thead><tr className="border-b border-border text-left text-xs text-muted-foreground">
             <th className="pb-3 pr-4">Campanha</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4 text-right">Gasto</th><th className="pb-3 pr-4 text-right">Cliques</th><th className="pb-3 pr-4 text-right">Impressões</th><th className="pb-3 pr-4 text-right">Conversões</th>{canManage && <th className="pb-3 text-right">Ação</th>}
@@ -277,14 +274,14 @@ export function GooglePerformancePage() {
           </tr>)}</tbody></table>{!insights.campaigns.length && <p className="py-6 text-sm text-muted-foreground">Sem campanhas neste período.</p>}</div>
         </Card>
       </> : insights?.kind === 'analytics' ? <>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-          <Metric label="Utilizadores" value={number(insights.totals.users)} icon={Users} />
+        <StatGroup className="lg:grid-cols-3 xl:grid-cols-6">
+          <Metric label="Usuários" value={number(insights.totals.users)} icon={Users} />
           <Metric label="Sessões" value={number(insights.totals.sessions)} icon={Globe2} />
           <Metric label="Visualizações" value={number(insights.totals.views)} icon={BarChart3} />
           <Metric label="Sessões envolvidas" value={number(insights.totals.engagedSessions)} icon={MousePointerClick} />
           <Metric label="Taxa de envolvimento" value={percent(insights.totals.engagementRate * 100)} icon={TrendingUp} />
           <Metric label="Eventos principais" value={number(insights.totals.keyEvents)} icon={BarChart3} />
-        </div>
+        </StatGroup>
         <div className="grid gap-4 lg:grid-cols-3"><Breakdown title="Páginas mais vistas" rows={insights.pages} valueKey="views" />
           <Breakdown title="Origem do tráfego" rows={insights.channels} valueKey="sessions" />
           <Breakdown title="Países" rows={insights.countries} valueKey="sessions" /></div>
@@ -302,17 +299,17 @@ export function GooglePerformancePage() {
           <p className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground break-words">Dados verificados: {item.evidence}</p>
         </div>)}</div>}
       </Card>}
-    </> : <Card className="p-8 text-center"><Globe2 className="mx-auto mb-3 text-primary" size={28} />
+    </> : <Card className="p-8 text-center"><BrandIcon platform={kind === 'ads' ? 'GOOGLE_ADS' : 'GOOGLE_ANALYTICS'} className="mx-auto mb-3" size={28} />
       <h2 className="font-bold text-foreground">{kind === 'ads' ? 'Conecte uma conta Google Ads' : 'Conecte uma propriedade GA4'}</h2>
       <p className="mt-1 text-sm text-muted-foreground">Escolha o cliente acima para consultar as métricas desta conta.</p></Card>}
 
     <Dialog open={!!pendingToken} onOpenChange={open => { if (!open) setPendingToken('') }}>
-      <DialogContent className="max-w-lg"><DialogHeader><DialogTitle>Escolher {pendingKind === 'ads' ? 'conta Google Ads' : 'propriedade Analytics'}</DialogTitle>
+      <DialogContent size="lg"><DialogHeader><DialogTitle>Escolher {pendingKind === 'ads' ? 'conta Google Ads' : 'propriedade Analytics'}</DialogTitle>
         <DialogDescription>Associe ao cliente apenas a conta que lhe pertence.</DialogDescription></DialogHeader>
         <Select value={selectedOption || undefined} onValueChange={setSelectedOption}><SelectTrigger><SelectValue placeholder="Escolha uma conta" /></SelectTrigger>
           <SelectContent>{pendingOptions.map(option => <SelectItem key={`${option.id}-${option.loginCustomerId || ''}`} value={option.id}>{option.name} ({option.id})</SelectItem>)}</SelectContent></Select>
         <DialogFooter><Button onClick={confirm} loading={confirming} disabled={!selectedOption}>Conectar conta</Button></DialogFooter>
       </DialogContent>
     </Dialog>
-  </div>
+  </Page>
 }

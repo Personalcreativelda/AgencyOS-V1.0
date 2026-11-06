@@ -32,6 +32,7 @@ interface SocialPreviewProps {
   clientName?: string | null
   clientLogoUrl?: string | null
   title: string
+  contentType?: string
   hook?: string | null
   caption?: string | null
   cta?: string | null
@@ -110,6 +111,7 @@ function CarouselOverlay({ count, index, onChange }: { count: number; index: num
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onChange(index - 1) }}
+          aria-label="Imagem anterior"
           className="absolute left-1.5 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-[#000]/50 hover:bg-[#000]/70 flex items-center justify-center text-[#fff] transition-colors"
         >
           <ChevronLeft size={14} />
@@ -119,6 +121,7 @@ function CarouselOverlay({ count, index, onChange }: { count: number; index: num
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onChange(index + 1) }}
+          aria-label="Imagem seguinte"
           className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-[#000]/50 hover:bg-[#000]/70 flex items-center justify-center text-[#fff] transition-colors"
         >
           <ChevronRight size={14} />
@@ -157,7 +160,7 @@ function PreviewMedia({
     return (
       <div className={`${wrapperClass} overflow-hidden ${contain ? 'bg-[#000]' : ''}`}>
         {isVideo ? (
-          <video src={image.publicUrl} className={`w-full h-full ${fitClass}`} autoPlay muted loop playsInline />
+          <video key={image.publicUrl} src={image.publicUrl} aria-label={`Vídeo: ${title}`} className={`w-full h-full ${fitClass}`} controls playsInline preload="metadata" />
         ) : (
           <img src={image.publicUrl} alt={title} className={`w-full h-full ${fitClass}`} />
         )}
@@ -198,7 +201,7 @@ function renderCaption(caption?: string | null) {
 
 export function SocialPreview({
   clientName, clientLogoUrl, title, hook, caption, cta, image = null, mediaList, generating = false, uploadProgress = null,
-  selectedPlatforms = [], defaultPlatform = 'INSTAGRAM', value, onChange, dark = false,
+  selectedPlatforms = [], defaultPlatform = 'INSTAGRAM', value, onChange, dark = false, contentType,
 }: SocialPreviewProps) {
   const [internalPlatform, setInternalPlatform] = useState<SocialPlatform>(defaultPlatform)
   const visibleTabs = computeVisibleTabs(selectedPlatforms)
@@ -217,6 +220,7 @@ export function SocialPreview({
   const activeSlideIndex = Math.min(slideIndex, Math.max(resolvedMedia.length - 1, 0))
   const currentMedia = resolvedMedia[activeSlideIndex] || null
   const firstMedia = resolvedMedia[0] || null
+  const feedAspect = contentType === 'REEL' || contentType === 'STORY' ? 'aspect-[9/16]' : 'aspect-square'
 
   // Keeps the parent's controlled `value` in sync when the fallback above silently switches
   // the displayed tab (e.g. the platform picker changed out from under an already-open
@@ -247,12 +251,13 @@ export function SocialPreview({
           <button
             key={tab}
             type="button"
+            aria-pressed={platform === tab}
             onClick={() => setPlatform(tab)}
             className={cn(
-              'flex-1 rounded-lg px-2 py-2 text-[11px] sm:text-xs font-bold whitespace-nowrap transition-all',
+              'flex-1 rounded-lg px-2 py-2 text-[11px] sm:text-xs font-bold whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-light motion-reduce:transition-none',
               platform === tab
                 ? dark ? 'bg-[#fff]/15 text-[#fff]' : 'bg-[#fff] text-grey-800 shadow-z1'
-                : dark ? 'text-grey-400 hover:text-[#fff]' : 'text-grey-500 hover:text-grey-700'
+                : dark ? 'text-[#fff]/70 hover:text-[#fff]' : 'text-grey-500 hover:text-grey-700'
             )}
           >
             {TAB_LABELS[tab]}
@@ -275,7 +280,7 @@ export function SocialPreview({
           </div>
 
           <div className="relative">
-            <PreviewMedia image={currentMedia} title={title} hook={hook} aspect="aspect-square" generating={generating} uploadProgress={uploadProgress} />
+            <PreviewMedia image={currentMedia} title={title} hook={hook} aspect={feedAspect} contain generating={generating} uploadProgress={uploadProgress} />
             <CarouselOverlay count={resolvedMedia.length} index={activeSlideIndex} onChange={setSlideIndex} />
           </div>
 
@@ -321,7 +326,7 @@ export function SocialPreview({
           </div>
 
           <div className="relative">
-            <PreviewMedia image={currentMedia} title={title} hook={hook} aspect="aspect-square" generating={generating} uploadProgress={uploadProgress} />
+            <PreviewMedia image={currentMedia} title={title} hook={hook} aspect={feedAspect} contain generating={generating} uploadProgress={uploadProgress} />
             <CarouselOverlay count={resolvedMedia.length} index={activeSlideIndex} onChange={setSlideIndex} />
           </div>
 
@@ -357,7 +362,7 @@ export function SocialPreview({
 
           <PreviewMedia image={firstMedia} title={title} hook={hook} fill generating={generating} uploadProgress={uploadProgress} />
 
-          <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-[#000]/70 via-[#000]/20 to-transparent">
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-[#000]/70 via-[#000]/20 to-transparent">
             {hook && <p className="text-[11px] text-[#fff]/90 italic mb-1 line-clamp-2">"{hook}"</p>}
             {cta && <p className="text-xs font-extrabold text-[#fff]">{cta}</p>}
           </div>
@@ -443,7 +448,7 @@ export function SocialPreview({
           </div>
 
           <div className="relative">
-            <PreviewMedia image={currentMedia} title={title} hook={hook} aspect="aspect-square" generating={generating} uploadProgress={uploadProgress} />
+            <PreviewMedia image={currentMedia} title={title} hook={hook} aspect={feedAspect} contain generating={generating} uploadProgress={uploadProgress} />
             <CarouselOverlay count={resolvedMedia.length} index={activeSlideIndex} onChange={setSlideIndex} />
           </div>
 
@@ -462,7 +467,7 @@ export function SocialPreview({
         <div className="relative w-full max-w-[220px] mx-auto aspect-[9/16] rounded-2xl overflow-hidden bg-[#000] shadow-card">
           <div className="absolute top-3 left-0 right-0 flex items-center justify-center gap-4 z-10 text-[11px] font-bold">
             <span className="text-[#fff]/60">Seguindo</span>
-            <span className="text-[#fff] border-b-2 border-[#fff] pb-0.5">Para Você</span>
+            <span className="text-[#fff] border-b-2 border-[#fff] pb-0.5">Para você</span>
           </div>
 
           <PreviewMedia image={firstMedia} title={title} hook={hook} fill generating={generating} uploadProgress={uploadProgress} />

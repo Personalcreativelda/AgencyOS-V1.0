@@ -46,7 +46,7 @@ export function Toaster() {
                 </ToastPrimitive.Description>
               )}
             </div>
-            <ToastPrimitive.Close className="shrink-0 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+            <ToastPrimitive.Close aria-label="Fechar notificação" className="shrink-0 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
               <X size={14} />
             </ToastPrimitive.Close>
           </ToastPrimitive.Root>

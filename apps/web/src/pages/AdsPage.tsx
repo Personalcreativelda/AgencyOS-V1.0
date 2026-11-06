@@ -5,6 +5,7 @@ import {
   MousePointerClick, Wallet, Target, Check, X, Trash2, Loader2, Pause, Play,
   MapPin, Users, MessageCircle, Radio,
 } from 'lucide-react'
+import { BrandIcon } from '@/components/brand/BrandIcon'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -17,6 +18,10 @@ import { cn } from '@/lib/utils'
 import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
 import { getErrorMessage } from '@/lib/errors'
+import { Page, PageHeader, PageIcon } from '@/components/layout/Page'
+import { Stat, StatGroup } from '@/components/ui/Stat'
+import { AudienceBreakdown, type AudienceSegment } from '@/components/ads/AudienceBreakdown'
+import { CampaignCreativePreview } from '@/components/ads/CampaignCreativePreview'
 
 const ACTION_LABELS: Record<string, { label: string; variant: 'error' | 'success' | 'warning' | 'default' }> = {
   PAUSE: { label: 'Pausar', variant: 'error' },
@@ -29,7 +34,7 @@ function formatCurrency(value: number, currency?: string | null) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: currency || 'BRL' }).format(value || 0)
 }
 
-type Segment = { label: string; spend: number; impressions: number; clicks: number; results: number; contacts: number }
+type Segment = AudienceSegment
 type AudienceInsights = {
   regions: Segment[]; demographics: Segment[]; placements: Segment[]
   contacts: number; linkClicks: number; contactRate: number | null
@@ -248,7 +253,7 @@ export function AdsPage() {
     if (!account) return
     const ok = await confirmDialog({
       title: 'Desconectar esta conta de anúncios?',
-      description: `A sincronização de métricas e as sugestões do Brand Brain pra "${account.accountName}" vão parar.`,
+      description: `A sincronização de métricas e as sugestões do Brand Brain para "${account.accountName}" vão parar.`,
       variant: 'destructive',
       confirmLabel: 'Desconectar',
     })
@@ -376,8 +381,8 @@ export function AdsPage() {
     { label: 'Alcance', value: audience.reach?.toLocaleString('pt-BR') || '—', icon: Users },
     { label: 'Frequência', value: audience.frequency != null ? audience.frequency.toFixed(2) : '—', icon: Radio },
     { label: 'Cliques no link', value: audience.linkClicks.toLocaleString('pt-BR'), icon: MousePointerClick },
-    { label: 'Contactos iniciados', value: audience.contacts.toLocaleString('pt-BR'), icon: MessageCircle },
-    { label: 'Contactos / clique', value: audience.contactRate != null ? `${audience.contactRate.toFixed(1)}%` : '—', icon: TrendingUp },
+    { label: 'Contatos iniciados', value: audience.contacts.toLocaleString('pt-BR'), icon: MessageCircle },
+    { label: 'Contatos / clique', value: audience.contactRate != null ? `${audience.contactRate.toFixed(1)}%` : '—', icon: TrendingUp },
   ] : []
 
   // Scoped to the same campaign as the KPI cards above — with a specific campaign selected,
@@ -388,24 +393,22 @@ export function AdsPage() {
   )
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] min-w-0 space-y-5 p-4 sm:space-y-6 sm:p-6 lg:p-8 2xl:px-10">
-      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between lg:gap-6">
-        <div className="min-w-0">
-          <h1 className="text-xl font-extrabold tracking-tight text-foreground sm:text-2xl">Meta Ads</h1>
-          <p className="mt-1 max-w-2xl text-xs font-medium leading-relaxed text-muted-foreground sm:text-sm">
-            Performance sincronizada da Meta, com sugestões de otimização do Brand Brain.
-          </p>
-        </div>
-
-        <div className="w-full min-w-0 sm:w-56 sm:shrink-0 lg:w-64">
-          <Select value={clientId} onValueChange={setClientId} disabled={loadingClients}>
-            <SelectTrigger className="shadow-sm hover:border-primary/40 focus-visible:ring-primary/30"><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
-            <SelectContent>
-              {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+    <Page>
+      <PageHeader
+        icon={<PageIcon><BrandIcon platform="META_ADS" size={22} /></PageIcon>}
+        title="Meta Ads"
+        description="Performance sincronizada da Meta, com sugestões de otimização do Brand Brain."
+        actions={
+          <div className="w-full min-w-0 sm:w-64">
+            <Select value={clientId} onValueChange={setClientId} disabled={loadingClients}>
+              <SelectTrigger><SelectValue placeholder="Selecione um cliente" /></SelectTrigger>
+              <SelectContent>
+                {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        }
+      />
 
       {loadingAccounts ? (
         <div className="space-y-3">
@@ -419,7 +422,7 @@ export function AdsPage() {
           description="Conecte a conta de anúncios da Meta deste cliente pra ver performance de campanhas e receber sugestões de otimização do Brand Brain."
           action={
             <Button onClick={handleConnect} loading={connecting}>
-              {!connecting && <><Plus size={16} /><span>Conectar Conta de Anúncios</span></>}
+              {!connecting && <><Plus size={16} /><span>Conectar conta de anúncios</span></>}
             </Button>
           }
         />
@@ -429,14 +432,14 @@ export function AdsPage() {
           <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-muted/60 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
             <div className="flex min-w-0 items-center gap-3 sm:gap-3.5">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary-dark sm:h-11 sm:w-11 sm:rounded-2xl">
-                <Megaphone size={19} />
+                <BrandIcon platform="META_ADS" size={19} />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   {accounts.length > 1 ? (
                     <div className="min-w-0 w-full max-w-64 sm:w-56">
                       <Select value={accountId} onValueChange={setAccountId}>
-                        <SelectTrigger className="h-9 text-xs hover:border-primary/40"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-9 text-[13px]"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.accountName}</SelectItem>)}
                         </SelectContent>
@@ -490,10 +493,10 @@ export function AdsPage() {
              focuses on. */}
           {insights?.campaigns?.length > 1 && (
             <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-              <span className="shrink-0 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Mostrando:</span>
+              <span className="shrink-0 text-xs font-medium text-muted-foreground">Mostrando:</span>
               <div className="w-full min-w-0 sm:w-72 lg:w-80">
                 <Select value={campaignFilter || '__all__'} onValueChange={(v) => setCampaignFilter(v === '__all__' ? '' : v)}>
-                  <SelectTrigger className="h-9 text-xs hover:border-primary/40"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-[13px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__all__">Todas as campanhas (combinado)</SelectItem>
                     {insights.campaigns.map((c: any) => (
@@ -507,28 +510,18 @@ export function AdsPage() {
 
           {/* KPIs */}
           {loadingInsights ? (
-            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4 min-[1440px]:grid-cols-7">
-              {[...Array(7)].map((_, i) => <Skeleton key={i} className="h-24 rounded-2xl" />)}
-            </div>
+            <Skeleton className="h-[236px] rounded-2xl min-[1440px]:h-[118px]" />
           ) : insights && (
-            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 min-[420px]:[&>*:last-child]:col-span-2 lg:grid-cols-4 lg:[&>*:last-child]:col-span-2 min-[1440px]:grid-cols-7 min-[1440px]:[&>*:last-child]:col-span-1">
-              {kpis.map((k: any) => (
-                <div key={k.label} className="card-minimals flex min-h-24 min-w-0 flex-col justify-between gap-3 p-4 transition-colors hover:border-primary/30 sm:p-5" title={k.hint}>
-                  <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
-                    <k.icon size={14} className="shrink-0 text-primary" />
-                    <span className="min-w-0 text-[10px] font-bold uppercase leading-tight tracking-wider sm:text-[11px]">{k.label}</span>
-                  </div>
-                  <p className="break-words text-lg font-extrabold tabular-nums tracking-tight text-foreground sm:text-xl">{k.value}</p>
-                </div>
-              ))}
-            </div>
+            <StatGroup className="min-[1440px]:grid-cols-7">
+              {kpis.map((k: any) => <Stat key={k.label} label={k.label} value={k.value} icon={k.icon} title={k.hint} />)}
+            </StatGroup>
           )}
 
           {/* Live Meta breakdowns are aggregate estimates, never individual locations. */}
           <Card className="min-w-0 p-4 sm:p-5 lg:p-6">
             <CardHeader className="items-start gap-3 pb-4">
               <div className="min-w-0">
-                <CardTitle className="text-sm sm:text-base">Onde os anúncios geram contactos</CardTitle>
+                <CardTitle className="text-sm sm:text-base">Onde os anúncios geram contatos</CardTitle>
                 <CardDescription className="mt-1 max-w-3xl leading-relaxed">Dados agregados da Meta para o período e campanha selecionados. A região refere-se à entrega do anúncio; não identifica a localização de cada pessoa.</CardDescription>
               </div>
             </CardHeader>
@@ -536,26 +529,16 @@ export function AdsPage() {
               {loadingAudience ? <Skeleton className="h-40 rounded-xl" /> : audienceError ? (
                 <p className="text-xs text-muted-foreground">Não foi possível obter os dados detalhados da Meta. Tente atualizar.</p>
               ) : audience ? <>
-                <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 min-[420px]:[&>*:last-child]:col-span-2 lg:grid-cols-3 lg:[&>*:last-child]:col-span-2 min-[1440px]:grid-cols-5 min-[1440px]:[&>*:last-child]:col-span-1">
-                  {audienceKpis.map((k) => <div key={k.label} className="flex min-h-20 min-w-0 flex-col justify-between gap-2 rounded-xl border border-border bg-muted/30 p-3 transition-colors hover:border-primary/30 sm:p-4">
-                    <div className="flex min-w-0 items-center gap-2 text-muted-foreground"><k.icon size={13} className="shrink-0 text-primary" /><span className="text-[10px] font-bold uppercase leading-tight tracking-wider">{k.label}</span></div>
-                    <p className="break-words text-base font-extrabold tabular-nums tracking-tight text-foreground sm:text-lg">{k.value}</p>
-                  </div>)}
-                </div>
-                <p className="max-w-4xl text-[11px] leading-relaxed text-muted-foreground">Contactos iniciados incluem conversas ou leads reportados pela Meta. A taxa usa cliques no link como base e não representa pessoas únicas.</p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:[&>*:last-child]:col-span-2 lg:grid-cols-3 lg:gap-4 lg:[&>*:last-child]:col-span-1">
-                  {([
-                    { title: 'Regiões', icon: MapPin, rows: audience.regions },
-                    { title: 'Públicos', icon: Users, rows: audience.demographics },
-                    { title: 'Posicionamentos', icon: Target, rows: audience.placements },
-                  ] as const).map((group) => <div key={group.title} className="min-w-0 space-y-3 rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/30 sm:p-5">
-                    <h3 className="flex items-center gap-2 text-xs font-bold text-foreground sm:text-sm"><group.icon size={14} className="shrink-0 text-primary" />{group.title}</h3>
-                    {group.rows.length ? group.rows.map((row) => <div key={row.label} className="min-w-0 border-t border-border pt-3 text-xs">
-                      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1 font-semibold text-foreground"><span className="min-w-0 break-words">{row.label}</span><span className="shrink-0 tabular-nums">{row.contacts} contactos</span></div>
-                      <div className="mt-1.5 break-words leading-relaxed text-muted-foreground">{row.clicks} cliques · {row.results} resultados · {formatCurrency(row.spend, account?.currency)} gastos</div>
-                    </div>) : <p className="text-xs text-muted-foreground">Sem dados disponíveis neste período.</p>}
-                  </div>)}
-                </div>
+                <StatGroup className="lg:grid-cols-5 [&>*]:bg-muted/30">
+                  {audienceKpis.map((k) => <Stat key={k.label} label={k.label} value={k.value} icon={k.icon} />)}
+                </StatGroup>
+                <p className="max-w-4xl text-[11px] leading-relaxed text-muted-foreground">Contatos iniciados incluem conversas ou leads reportados pela Meta. A taxa usa cliques no link como base e não representa pessoas únicas.</p>
+                <AudienceBreakdown
+                  regions={audience.regions}
+                  demographics={audience.demographics}
+                  placements={audience.placements}
+                  formatMoney={value => formatCurrency(value, account?.currency)}
+                />
               </> : <p className="text-xs text-muted-foreground">Selecione uma conta para ver os dados.</p>}
             </CardContent>
           </Card>
@@ -592,7 +575,7 @@ export function AdsPage() {
                         const isToggling = togglingCampaignId === c.campaignExternalId
                         return (
                           <tr key={c.campaignExternalId} className="border-b border-border/60 transition-colors last:border-0 hover:bg-muted/40">
-                            <td className="max-w-[24rem] py-3.5 pr-4 font-bold leading-relaxed text-foreground">{c.campaignName}</td>
+                            <td className="max-w-[24rem] py-3.5 pr-4 font-medium leading-relaxed text-foreground"><div className="flex items-center gap-3"><CampaignCreativePreview key={`${accountId}-${c.campaignExternalId}`} accountId={accountId} campaignId={c.campaignExternalId} campaignName={c.campaignName} /><span className="min-w-0 break-words">{c.campaignName}</span></div></td>
                             <td className="whitespace-nowrap py-3.5 pr-4">
                               <Badge variant={c.status === 'ACTIVE' ? 'success' : 'default'} className="text-[10px]">{c.status}</Badge>
                             </td>
@@ -697,7 +680,7 @@ export function AdsPage() {
 
       {/* Ad account picker */}
       <Dialog open={!!pendingToken} onOpenChange={(open) => !open && setPendingToken(null)}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Escolha a conta de anúncios</DialogTitle>
             <DialogDescription>Encontramos mais de uma conta de anúncios nesse login da Meta — selecione qual pertence a este cliente.</DialogDescription>
@@ -731,13 +714,13 @@ export function AdsPage() {
           )}
 
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setPendingToken(null)}>Cancelar</Button>
+            <Button type="button" variant="outline" onClick={() => setPendingToken(null)}>Cancelar</Button>
             <Button type="button" onClick={handleConfirmPendingSelection} loading={confirmingPending} disabled={selectedPendingIds.length === 0}>
               {!confirmingPending && <span>Conectar ({selectedPendingIds.length})</span>}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </Page>
   )
 }

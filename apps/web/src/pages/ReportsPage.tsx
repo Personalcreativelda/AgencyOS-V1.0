@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react'
-import { Plus, BarChart2, Sparkles, ExternalLink, Copy, Check, Trash2 } from 'lucide-react'
+import { Plus, BarChart2, Sparkles, ExternalLink, Copy, Check, Trash2, FileBarChart } from 'lucide-react'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Badge } from '@/components/ui/Badge'
-import { Skeleton } from '@/components/ui/Skeleton'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select'
-import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/Dialog'
+import { Dialog, DialogContent, DialogTitle, DialogFooter, DialogHeader, DialogDescription, DialogIcon } from '@/components/ui/Dialog'
 import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
 import { getErrorMessage } from '@/lib/errors'
+import { Page, PageHeader } from '@/components/layout/Page'
+import { ListCard, ListSkeleton, listRowClass, Meta } from '@/components/ui/List'
+import { cn } from '@/lib/utils'
 
 export function ReportsPage() {
   const [reports, setReports] = useState<any[]>([])
@@ -105,27 +107,20 @@ export function ReportsPage() {
   }
 
   return (
-    <div className="p-4 sm:p-8 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Relatórios Mensais</h1>
-          <p className="text-xs text-muted-foreground font-medium mt-1">
-            Relatórios de desempenho e métricas com análises geradas pelo Brand Brain.
-          </p>
-        </div>
-
-        <Button onClick={() => setShowModal(true)} className="self-start">
-          <Plus size={16} />
-          <span>Gerar Novo Relatório</span>
-        </Button>
-      </div>
+    <Page>
+      <PageHeader
+        title="Relatórios mensais"
+        description="Relatórios de desempenho e métricas com análises geradas pelo Brand Brain."
+        actions={
+          <Button onClick={() => setShowModal(true)}>
+            <Plus size={16} />
+            <span>Gerar relatório</span>
+          </Button>
+        }
+      />
 
       {loading ? (
-        <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded-2xl" />
-          ))}
-        </div>
+        <ListSkeleton rows={3} />
       ) : reports.length === 0 ? (
         <EmptyState
           icon={BarChart2}
@@ -133,64 +128,61 @@ export function ReportsPage() {
           description="Gere relatórios mensais para seus clientes com síntese estratégica via Brand Brain."
         />
       ) : (
-        <div className="space-y-3.5">
+        <ListCard>
           {reports.map((rep) => (
-            <div
-              key={rep.id}
-              className="card-minimals-hover p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-            >
-              <div className="space-y-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  <span className="text-xs font-bold text-primary truncate max-w-[200px]">{rep.client?.name}</span>
-                  <span className="text-xs text-muted-foreground/60">•</span>
-                  <span className="text-xs text-muted-foreground font-medium">
-                    Período: {new Date(rep.periodStart).toLocaleDateString('pt-BR')} até {new Date(rep.periodEnd).toLocaleDateString('pt-BR')}
-                  </span>
-                </div>
-                <h3 className="text-sm font-bold text-foreground">{rep.title}</h3>
+            <div key={rep.id} className={cn(listRowClass(false), 'flex-wrap sm:flex-nowrap')}>
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
+                <FileBarChart size={18} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate text-sm font-semibold text-foreground">{rep.title}</h3>
+                <Meta
+                  className="mt-1"
+                  items={[
+                    <span className="font-medium text-foreground/80">{rep.client?.name}</span>,
+                    `${new Date(rep.periodStart).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })} – ${new Date(rep.periodEnd).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+                  ]}
+                />
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <Badge variant="success">Publicado</Badge>
-
+              <div className="flex w-full items-center gap-2 pl-14 sm:w-auto sm:pl-0">
+                <Badge dot variant="success" className="mr-auto sm:mr-1">Publicado</Badge>
                 {rep.publicToken && (
                   <>
-                    <Button
-                      variant="subtle"
-                      onClick={() => handleCopyLink(rep.publicToken)}
-                      className="gap-1.5"
-                    >
-                      {copiedId === rep.publicToken ? <Check size={13} /> : <Copy size={13} />}
-                      <span>{copiedId === rep.publicToken ? 'Copiado!' : 'Copiar Link'}</span>
+                    <Button variant="outline" size="sm" onClick={() => handleCopyLink(rep.publicToken)} aria-label="Copiar link do relatório">
+                      {copiedId === rep.publicToken ? <Check size={14} /> : <Copy size={14} />}
+                      <span className="hidden sm:inline">{copiedId === rep.publicToken ? 'Copiado' : 'Copiar link'}</span>
                     </Button>
-
-                    <Button asChild className="gap-1.5">
+                    <Button asChild size="sm" variant="outline">
                       <a href={`/report/${rep.publicToken}`} target="_blank" rel="noreferrer">
-                        <ExternalLink size={13} />
-                        <span>Ver Relatório</span>
+                        <ExternalLink size={14} />
+                        <span>Abrir</span>
                       </a>
                     </Button>
                   </>
                 )}
-
                 <button
                   type="button"
                   title="Excluir relatório"
+                  aria-label={`Excluir ${rep.title}`}
                   onClick={() => handleDeleteReport(rep.id, rep.title)}
-                  className="p-2 rounded-xl text-muted-foreground hover:text-error hover:bg-error/10 transition-colors"
+                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-error/10 hover:text-error"
                 >
                   <Trash2 size={15} />
                 </button>
               </div>
             </div>
           ))}
-        </div>
+        </ListCard>
       )}
 
       {/* New Report Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-md">
-          <DialogTitle>Gerar Relatório com Brand Brain</DialogTitle>
+        <DialogContent>
+          <DialogHeader icon={<DialogIcon className="border-transparent bg-primary text-[#fff]"><Sparkles /></DialogIcon>}>
+            <DialogTitle>Gerar relatório com Brand Brain</DialogTitle>
+            <DialogDescription>Métricas do período com análise e recomendações escritas pelo Brand Brain.</DialogDescription>
+          </DialogHeader>
 
           <form onSubmit={handleCreateReport} className="space-y-4">
             <div>
@@ -210,7 +202,7 @@ export function ReportsPage() {
             </div>
 
             <div>
-              <Label htmlFor="reportTitle">Título do Relatório</Label>
+              <Label htmlFor="reportTitle">Título do relatório</Label>
               <Input
                 id="reportTitle"
                 type="text"
@@ -220,9 +212,9 @@ export function ReportsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="reportStart">Data Início</Label>
+                <Label htmlFor="reportStart">Data início</Label>
                 <Input
                   id="reportStart"
                   type="date"
@@ -234,7 +226,7 @@ export function ReportsPage() {
               </div>
 
               <div>
-                <Label htmlFor="reportEnd">Data Fim</Label>
+                <Label htmlFor="reportEnd">Data fim</Label>
                 <Input
                   id="reportEnd"
                   type="date"
@@ -247,14 +239,14 @@ export function ReportsPage() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setShowModal(false)} disabled={creating}>
+              <Button type="button" variant="outline" onClick={() => setShowModal(false)} disabled={creating}>
                 Cancelar
               </Button>
               <Button type="submit" loading={creating}>
                 {!creating && (
                   <>
                     <Sparkles size={15} />
-                    <span>Gerar e Publicar</span>
+                    <span>Gerar e publicar</span>
                   </>
                 )}
                 {creating && <span>Analisando com Brand Brain...</span>}
@@ -263,6 +255,6 @@ export function ReportsPage() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </Page>
   )
 }

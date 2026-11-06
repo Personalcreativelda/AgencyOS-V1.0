@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { fieldBase, fieldHeight } from './field'
 
 // A native `<input type="datetime-local">`'s displayed time format (12h AM/PM vs 24h) is
 // rendered by the browser/OS locale, not by this app — setting `lang` on the element is a weak
@@ -23,8 +24,7 @@ export function toDateTimeLocalValue(input: string | Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-const fieldClass =
-  'bg-card border border-border rounded-xl px-3 py-2.5 text-sm font-medium text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 transition-colors disabled:opacity-50 disabled:bg-muted'
+const fieldClass = cn(fieldBase, fieldHeight, 'w-auto px-3 tabular-nums')
 
 interface DateTimeFieldProps {
   id?: string

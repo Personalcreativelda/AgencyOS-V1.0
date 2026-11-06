@@ -7,7 +7,6 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { ClientsPage } from '@/pages/clients/ClientsPage'
 import { ClientDetailPage } from '@/pages/clients/ClientDetailPage'
 import { NewClientPage } from '@/pages/clients/NewClientPage'
-import { CalendarPage } from '@/pages/CalendarPage'
 import { ContentPage } from '@/pages/ContentPage'
 import { ContentDetailPage } from '@/pages/ContentDetailPage'
 import { ApprovalsPage } from '@/pages/ApprovalsPage'
@@ -52,7 +51,7 @@ export default function App() {
           <Route path="clients" element={<ClientsPage />} />
           <Route path="clients/new" element={<NewClientPage />} />
           <Route path="clients/:id/*" element={<ClientDetailPage />} />
-          <Route path="calendar" element={<CalendarPage />} />
+          <Route path="calendar" element={<Navigate to="/app/content/calendar" replace />} />
           <Route path="content" element={<ContentPage view="list" />} />
           <Route path="content/calendar" element={<ContentPage view="calendar" />} />
           <Route path="content/board" element={<ContentPage view="board" />} />

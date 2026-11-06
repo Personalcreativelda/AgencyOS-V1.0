@@ -1,11 +1,13 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Zap, ArrowRight, Lock, Mail, AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { ArrowRight, Lock, Mail, AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { Logo } from '@/components/brand/Logo'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
+import { ThemeMenu } from '@/components/ui/ThemeMenu'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -33,21 +35,14 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted p-4 font-sans relative">
-      <div className="w-full max-w-md bg-card rounded-3xl p-8 sm:p-10 shadow-dialog border border-border space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 pt-16 sm:p-6 font-sans relative">
+      <div className="absolute right-4 top-4"><ThemeMenu /></div>
+      <div className="w-full max-w-md bg-card rounded-3xl p-6 sm:p-10 shadow-dialog border border-border space-y-6">
         {/* Brand Header */}
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center">
-            <Zap className="text-[#fff] w-6 h-6 fill-[#fff]" />
-          </div>
-          <div>
-            <h1 className="text-xl font-extrabold text-foreground tracking-tight">AgencyOS</h1>
-            <p className="text-xs text-primary font-bold">Sistema Operacional de Agências</p>
-          </div>
-        </div>
+        <Logo size={48} tagline="Sistema Operacional de Agências" wordmarkClassName="text-xl" />
 
         <div>
-          <h2 className="text-xl font-extrabold text-foreground tracking-tight">Entrar na sua Agência</h2>
+          <h2 className="text-xl font-extrabold text-foreground tracking-tight">Entrar na sua agência</h2>
           <p className="text-xs text-muted-foreground font-medium mt-1">
             Novo usuário?{' '}
             <Link to="/register" className="text-primary hover:underline font-bold">
@@ -102,7 +97,7 @@ export function LoginPage() {
           <Button type="submit" variant="dark" size="lg" loading={loading} className="w-full mt-2">
             {!loading && (
               <>
-                <span>Acessar Painel</span>
+                <span>Acessar painel</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

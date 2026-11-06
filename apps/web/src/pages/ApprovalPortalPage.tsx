@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   CheckCircle2, AlertTriangle, XCircle, Send,
-  Calendar, Check, Zap, Sun, Moon
+  Calendar, Check, Sun, Moon
 } from 'lucide-react'
+import { LogoMark } from '@/components/brand/Logo'
 import api from '@/lib/api'
 import { CONTENT_TYPE_LABELS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
@@ -11,15 +12,16 @@ import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Textarea } from '@/components/ui/Textarea'
 import { Badge } from '@/components/ui/Badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogIcon } from '@/components/ui/Dialog'
 import { SocialPreview } from '@/components/SocialPreview'
 import { useThemeStore } from '@/stores/themeStore'
+import { ThemeMenu } from '@/components/ui/ThemeMenu'
 import { toast } from '@/lib/toast'
 import { getErrorMessage } from '@/lib/errors'
 
 export function ApprovalPortalPage() {
   const { token } = useParams<{ token: string }>()
-  const { mode, toggle } = useThemeStore()
+  const { mode } = useThemeStore()
   const isDark = mode === 'dark'
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -83,16 +85,7 @@ export function ApprovalPortalPage() {
     }
   }
 
-  const ThemeToggle = (
-    <button
-      type="button"
-      onClick={toggle}
-      title={isDark ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
-      className="w-10 h-10 shrink-0 rounded-xl border border-border bg-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-    >
-      {isDark ? <Sun size={16} /> : <Moon size={16} />}
-    </button>
-  )
+  const ThemeToggle = <ThemeMenu />
 
   if (loading) {
     return (
@@ -110,7 +103,7 @@ export function ApprovalPortalPage() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4 font-sans text-foreground">
         <div className="bg-card border border-border rounded-2xl p-8 max-w-md w-full text-center space-y-4 shadow-dialog">
           <XCircle className="w-12 h-12 text-error mx-auto" />
-          <h2 className="text-lg font-extrabold">Link Indisponível</h2>
+          <h2 className="text-lg font-extrabold">Link indisponível</h2>
           <p className="text-sm text-muted-foreground">{error || 'Não foi possível encontrar a solicitação.'}</p>
         </div>
       </div>
@@ -170,7 +163,7 @@ export function ApprovalPortalPage() {
             {actionDone === 'APPROVED' ? (
               <>
                 <CheckCircle2 className="w-12 h-12 mx-auto text-success mb-2" />
-                <h3 className="text-lg font-extrabold text-foreground">Conteúdo Aprovado com Sucesso!</h3>
+                <h3 className="text-lg font-extrabold text-foreground">Conteúdo aprovado com sucesso!</h3>
                 <p className="text-sm text-muted-foreground font-medium">
                   A equipe da agência já foi notificada e dará andamento à publicação.
                 </p>
@@ -178,7 +171,7 @@ export function ApprovalPortalPage() {
             ) : (
               <>
                 <AlertTriangle className="w-12 h-12 mx-auto text-warning mb-2" />
-                <h3 className="text-lg font-extrabold text-foreground">Alterações Solicitadas!</h3>
+                <h3 className="text-lg font-extrabold text-foreground">Alterações solicitadas!</h3>
                 <p className="text-sm text-muted-foreground font-medium">
                   Suas observações foram salvas na memória da marca para orientar a equipe.
                 </p>
@@ -216,11 +209,11 @@ export function ApprovalPortalPage() {
         {/* Action Controls */}
         {!actionDone && (
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4 shadow-card">
-            <h3 className="text-sm font-extrabold text-foreground">Sua Decisão:</h3>
+            <h3 className="text-sm font-extrabold text-foreground">Sua decisão:</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="actorName" className="text-muted-foreground mb-1.5">Seu Nome (Opcional)</Label>
+                <Label htmlFor="actorName" className="text-muted-foreground mb-1.5">Seu nome (opcional)</Label>
                 <Input
                   id="actorName"
                   type="text"
@@ -239,7 +232,7 @@ export function ApprovalPortalPage() {
                   className="w-full sm:flex-1 justify-center bg-success hover:bg-success-dark text-[#fff] hover:text-[#fff]"
                 >
                   <Check size={16} />
-                  <span>Aprovar Post</span>
+                  <span>Aprovar post</span>
                 </Button>
 
                 <Button
@@ -249,7 +242,7 @@ export function ApprovalPortalPage() {
                   className="w-full sm:flex-1 justify-center bg-muted hover:bg-grey-300 text-foreground hover:text-foreground border border-border"
                 >
                   <AlertTriangle size={15} className="text-warning" />
-                  <span>Pedir Ajuste</span>
+                  <span>Pedir ajuste</span>
                 </Button>
               </div>
             </div>
@@ -259,17 +252,10 @@ export function ApprovalPortalPage() {
 
       {/* Changes Modal */}
       <Dialog open={showChangesModal} onOpenChange={setShowChangesModal}>
-        <DialogContent hideClose className="max-w-md bg-card border-border text-foreground">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-warning/20 text-warning flex items-center justify-center shrink-0">
-                <AlertTriangle size={20} />
-              </div>
-              <div>
-                <DialogTitle className="text-foreground">Solicitar Alterações</DialogTitle>
+        <DialogContent hideClose>
+          <DialogHeader icon={<DialogIcon className="border-transparent bg-warning/10 text-warning"><AlertTriangle size={20} /></DialogIcon>}>
+                <DialogTitle className="text-foreground">Solicitar alterações</DialogTitle>
                 <DialogDescription>O que você gostaria de mudar neste conteúdo?</DialogDescription>
-              </div>
-            </div>
           </DialogHeader>
 
           <form onSubmit={handleRequestChanges} className="space-y-4">
@@ -283,12 +269,12 @@ export function ApprovalPortalPage() {
             />
 
             <DialogFooter className="border-border">
-              <Button type="button" variant="ghost" onClick={() => setShowChangesModal(false)} className="text-muted-foreground hover:text-foreground hover:bg-transparent">
+              <Button type="button" variant="outline" onClick={() => setShowChangesModal(false)} className="text-muted-foreground hover:text-foreground hover:bg-transparent">
                 Cancelar
               </Button>
-              <Button type="submit" variant="ghost" disabled={submitting} className="bg-warning hover:bg-warning-dark text-warning-foreground hover:text-warning-foreground">
+              <Button type="submit" variant="outline" disabled={submitting} className="bg-warning hover:bg-warning-dark text-warning-foreground hover:text-warning-foreground">
                 <Send size={14} />
-                <span>Enviar Ajustes</span>
+                <span>Enviar ajustes</span>
               </Button>
             </DialogFooter>
           </form>
@@ -300,7 +286,7 @@ export function ApprovalPortalPage() {
         <span className="flex items-center justify-center gap-2">
           Powered by
           <span className="flex items-center gap-1 font-bold text-foreground/80">
-            <Zap size={13} className="text-primary" />
+            <LogoMark size={16} />
             AgencyOS
           </span>
           — Sistema Operacional de Agências

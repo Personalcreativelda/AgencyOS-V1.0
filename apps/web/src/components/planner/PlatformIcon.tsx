@@ -1,14 +1,5 @@
-import { Instagram, Facebook, Youtube, Linkedin, Twitter, MessageCircle } from 'lucide-react'
 import { PLATFORM_COLORS, PLATFORM_LABELS } from '@/lib/utils'
-
-const ICONS: Record<string, typeof Instagram> = {
-  INSTAGRAM: Instagram,
-  FACEBOOK: Facebook,
-  YOUTUBE: Youtube,
-  LINKEDIN: Linkedin,
-  X: Twitter,
-  WHATSAPP: MessageCircle,
-}
+import { BrandIcon, hasBrandIcon } from '@/components/brand/BrandIcon'
 
 interface PlatformIconProps {
   platform: string
@@ -17,19 +8,18 @@ interface PlatformIconProps {
 }
 
 export function PlatformIcon({ platform, size = 13, className }: PlatformIconProps) {
-  const Icon = ICONS[platform]
-  const color = PLATFORM_COLORS[platform] || '#8E33FF'
   const label = PLATFORM_LABELS[platform] || platform
 
-  if (Icon) {
+  if (hasBrandIcon(platform)) {
     return (
       <span title={label} className={className}>
-        <Icon size={size} style={{ color }} />
+        <BrandIcon platform={platform} size={size} />
       </span>
     )
   }
 
-  // No lucide icon for this platform (e.g. TikTok) — fall back to a colored initial dot.
+  // Unknown platform — fall back to a colored initial dot.
+  const color = PLATFORM_COLORS[platform] || '#8E33FF'
   return (
     <span
       title={label}

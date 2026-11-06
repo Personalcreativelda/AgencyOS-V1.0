@@ -527,6 +527,56 @@ export async function setCampaignStatus(req: AuthRequest, res: Response, next: N
   } catch (err) { next(err); }
 }
 
+// Read-only creative previews. Existing insights and campaign controls keep their contracts.
+export async function getCampaignCreatives(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const campaignId = req.params.campaignId;
+    if (!/^\d+$/.test(campaignId)) throw new ValidationError('Campanha inválida.');
+    const connection = await prisma.socialConnection.findFirst({
+      where: { id: req.params.id, agencyId: req.user!.agencyId, platform: 'META_ADS' },
+    });
+    if (!connection?.accessTokenEncrypted || !connection.externalPageId) throw new NotFoundError('Conta de anúncios não encontrada ou desconectada.');
+    const token = decrypt(connection.accessTokenEncrypted);
+    // A campaign ID alone must never allow a token with access to other clients to cross accounts.
+    const campaignResponse = await fetch(`${GRAPH_URL}/${campaignId}?` + new URLSearchParams({ fields: 'account_id', access_token: token }));
+    if (!campaignResponse.ok) throw await metaApiError(campaignResponse);
+    const campaign = await campaignResponse.json() as { account_id?: string };
+    if (campaign.account_id !== connection.externalPageId.replace(/^act_/, '')) throw new NotFoundError('Campanha não encontrada nesta conta.');
+    const ads = await fetchAllMetaInsightRows(`${GRAPH_URL}/${campaignId}/ads?` + new URLSearchParams({
+      fields: 'id,name,effective_status,creative{id,name,image_url,thumbnail_url,video_id}',
+      limit: '100', access_token: token,
+    }));
+    // Boosted posts often only expose a tiny default thumbnail. Ask Meta for a larger
+    // poster when no original image is available, retaining the small one on failure.
+    const posterIds = [...new Set<string>(ads.filter(ad => !ad.creative?.image_url && ad.creative?.thumbnail_url && /^\d+$/.test(ad.creative?.id || '')).map(ad => ad.creative.id))].slice(0, 12);
+    const posters = new Map<string, any>();
+    for (let start = 0; start < posterIds.length; start += 4) {
+      await Promise.all(posterIds.slice(start, start + 4).map(async id => {
+        try {
+          const response = await fetch(`${GRAPH_URL}/${id}?` + new URLSearchParams({
+            fields: 'image_url,thumbnail_url', thumbnail_width: '800', thumbnail_height: '800', access_token: token,
+          }), { signal: AbortSignal.timeout(10000) });
+          if (response.ok) posters.set(id, await response.json());
+        } catch { /* The existing preview remains usable if a larger poster is unavailable. */ }
+      }));
+    }
+    for (const ad of ads) {
+      const poster = posters.get(ad.creative?.id);
+      if (poster) ad.creative = { ...ad.creative, image_url: poster.image_url || ad.creative.image_url, thumbnail_url: poster.thumbnail_url || ad.creative.thumbnail_url };
+    }
+    const safeImage = (value: unknown): string | null => {
+      if (typeof value !== 'string') return null;
+      try { const url = new URL(value); return url.protocol === 'https:' && !url.searchParams.has('access_token') ? url.toString() : null; } catch { return null; }
+    };
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.json({ campaignId, ads: ads.map(ad => ({
+      id: String(ad.id), name: ad.name || ad.creative?.name || 'Anúncio', status: ad.effective_status || 'UNKNOWN',
+      imageUrl: safeImage(ad.creative?.image_url), thumbnailUrl: safeImage(ad.creative?.thumbnail_url),
+      isVideo: Boolean(ad.creative?.video_id),
+    })) });
+  } catch (err) { next(err); }
+}
+
 // ─── INSIGHTS (read synced data) ───────────────────────────────────────────────
 
 export async function getAdInsights(req: AuthRequest, res: Response, next: NextFunction) {

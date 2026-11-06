@@ -16,19 +16,28 @@ interface ConfirmRequest extends ConfirmOptions {
 interface ConfirmState {
   request: ConfirmRequest | null
   open: (request: ConfirmRequest) => void
-  close: () => void
+  settle: (value: boolean) => void
 }
 
-export const useConfirmStore = create<ConfirmState>((set) => ({
+export const useConfirmStore = create<ConfirmState>((set, get) => ({
   request: null,
-  open: (request) => set({ request }),
-  close: () => set({ request: null }),
+  open: (request) => {
+    // A new confirmation replaces any pending one — resolve the old promise as "cancelled"
+    // so its caller doesn't hang forever.
+    get().request?.resolve(false)
+    set({ request })
+  },
+  settle: (value) => {
+    const { request } = get()
+    if (!request) return
+    request.resolve(value)
+    set({ request: null })
+  },
 }))
 
 /** Promise-based replacement for `window.confirm()` — resolves `true`/`false` the same way,
- *  so existing `if (!(await confirmDialog({...}))) return` call sites read almost identically
- *  to the old `if (!confirm('...')) return`, but render our own styled dialog instead of the
- *  browser's native (and visibly unprofessional) confirm box. */
+ *  so call sites read `if (!(await confirmDialog({...}))) return`, but render our own styled
+ *  dialog instead of the browser's native confirm box. */
 export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
   return new Promise((resolve) => {
     useConfirmStore.getState().open({ ...options, resolve })

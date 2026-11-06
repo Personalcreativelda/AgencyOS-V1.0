@@ -1,38 +1,60 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Sparkles, Send, Copy, ImagePlus, Upload,
-  MessageSquare, Share2, Check, RefreshCw, Mail, MessageCircle, XCircle, Trash2, X, Plus
+  Share2, Check, Mail, MessageCircle, XCircle, Trash2, X, Plus,
+  Save, MoreHorizontal, Eye, Maximize2, AlignLeft, CalendarDays
 } from 'lucide-react'
 import api from '@/lib/api'
-import { StatusBadge } from '@/components/ui/StatusBadge'
-import { CONTENT_TYPE_LABELS } from '@/lib/utils'
+import { cn, CONTENT_TYPE_LABELS, PLATFORM_LABELS, STATUS_LABELS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { DateTimeField, toDateTimeLocalValue } from '@/components/ui/DateTimeField'
 import { PlatformPicker } from '@/components/planner/PlatformPicker'
 import { Label } from '@/components/ui/Label'
 import { Textarea } from '@/components/ui/Textarea'
-import { Badge } from '@/components/ui/Badge'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Card } from '@/components/ui/Card'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/Select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/Dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogIcon } from '@/components/ui/Dialog'
 import { SocialPreview, type SocialPlatform } from '@/components/SocialPreview'
 import { useThemeStore } from '@/stores/themeStore'
 import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
 import { getErrorMessage } from '@/lib/errors'
+import { Page } from '@/components/layout/Page'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/DropdownMenu'
+import { EditorSection } from '@/components/content/EditorSection'
+import { editorSnapshot, sameEditorSnapshot, mergeEditorResponse, initialEditorPreview, type EditorSnapshot } from '@/components/content/editorState'
+import { useUnsavedChanges } from '@/hooks/useUnsavedChanges'
+
+const EDITABLE_STATUSES = ['DRAFT', 'IN_PRODUCTION', 'INTERNAL_REVIEW', 'CLIENT_REVIEW', 'APPROVED', 'SCHEDULED', 'PUBLISHED']
 
 type PublishablePlatform = 'FACEBOOK' | 'INSTAGRAM' | 'INSTAGRAM_STORY' | 'LINKEDIN' | 'TIKTOK' | 'YOUTUBE' | 'WHATSAPP'
 
 export function ContentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const { mode } = useThemeStore()
   const [content, setContent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [savedSnapshot, setSavedSnapshot] = useState<EditorSnapshot | null>(null)
+  const baselineRef = useRef<EditorSnapshot | null>(null)
+  const currentId = useRef(id)
+  currentId.current = id
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
+  const [saveError, setSaveError] = useState('')
+  const [loadError, setLoadError] = useState(false)
+  const [platformsBusy, setPlatformsBusy] = useState(false)
+  const [statusBusy, setStatusBusy] = useState(false)
+  const [requestingApproval, setRequestingApproval] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [sections, setSections] = useState({ copy: true, networks: false, schedule: false, brief: false, comments: false })
+  const toolbarRef = useRef<HTMLElement>(null)
+  const [toolbarHeight, setToolbarHeight] = useState(96)
 
   // AI Generation States
   const [generatingCaption, setGeneratingCaption] = useState(false)
@@ -53,7 +75,11 @@ export function ContentDetailPage() {
   // real duplicate ContentAsset rows sharing one assetId — the source of the duplicate React key
   // warning and the confusing "error, but the image vanished anyway" behavior).
   const [assetsBusy, setAssetsBusy] = useState(false)
-  const [previewPlatform, setPreviewPlatform] = useState<SocialPlatform>('INSTAGRAM')
+  const [previewPlatform, setPreviewPlatform] = useState<SocialPlatform>(() => {
+    const requested = location.state?.previewPlatform
+    if (requested === 'INSTAGRAM_STORY') return 'STORY'
+    return ['INSTAGRAM', 'FACEBOOK', 'STORY', 'LINKEDIN', 'TIKTOK', 'YOUTUBE', 'WHATSAPP'].includes(requested) ? requested : 'INSTAGRAM'
+  })
   const fileInputRef = useRef<HTMLInputElement>(null)
   const addMoreInputRef = useRef<HTMLInputElement>(null)
 
@@ -72,6 +98,29 @@ export function ContentDetailPage() {
   // Comments
   const [comments, setComments] = useState<any[]>([])
   const [newComment, setNewComment] = useState('')
+  const [sendingComment, setSendingComment] = useState(false)
+  const isDirty = Boolean(content && savedSnapshot && !sameEditorSnapshot(editorSnapshot(content), savedSnapshot))
+  const allowNextNavigation = useUnsavedChanges(isDirty || Boolean(newComment.trim()))
+
+  useEffect(() => {
+    if (loading || !toolbarRef.current) return
+    const observer = new ResizeObserver(([entry]) => setToolbarHeight(Math.ceil(entry.target.getBoundingClientRect().height)))
+    observer.observe(toolbarRef.current)
+    return () => observer.disconnect()
+  }, [loading])
+
+  const applyServerContent = (data: any) => {
+    if (data.id !== currentId.current) return
+    const baseline = baselineRef.current
+    setContent((previous: any) => mergeEditorResponse(previous, data, baseline))
+    const snapshot = editorSnapshot(data)
+    baselineRef.current = snapshot
+    setSavedSnapshot(snapshot)
+  }
+  const updateField = (field: keyof EditorSnapshot, value: string | null) => {
+    setContent((previous: any) => previous ? { ...previous, [field]: value } : previous)
+    setSaveError('')
+  }
 
   // Social publishing
   const [connections, setConnections] = useState<any[]>([])
@@ -81,23 +130,38 @@ export function ContentDetailPage() {
   const loadContent = async () => {
     try {
       const { data } = await api.get(`/contents/${id}`)
-      setContent(data)
+      if (id !== currentId.current) return
+      applyServerContent(data)
+      setLoadError(false)
       setComments(data.comments || [])
       if (data.clientId) {
         api.get('/social/connections', { params: { clientId: data.clientId } })
-          .then((res) => setConnections(res.data || []))
-          .catch(() => setConnections([]))
+          .then((res) => { if (id === currentId.current) setConnections(res.data || []) })
+          .catch(() => { if (id === currentId.current) setConnections([]) })
       }
     } catch (err) {
-      console.error(err)
+      if (id === currentId.current) setLoadError(true)
     } finally {
-      setLoading(false)
+      if (id === currentId.current) setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadContent()
+    setLoading(true)
+    setContent(null)
+    baselineRef.current = null
+    setSavedSnapshot(null)
+    setLastSavedAt(null)
+    setSaveError('')
+    setAiHooks([])
+    setNewComment('')
+    setConnections([])
+    void loadContent()
   }, [id])
+
+  useEffect(() => {
+    if (content?.id) setPreviewPlatform(initialEditorPreview(content, location.state?.previewPlatform) as SocialPlatform)
+  }, [content?.id])
 
   const PLATFORM_PUBLISH_LABEL: Record<PublishablePlatform, string> = {
     FACEBOOK: 'Facebook', INSTAGRAM: 'Instagram', INSTAGRAM_STORY: 'Stories do Instagram',
@@ -117,9 +181,9 @@ export function ContentDetailPage() {
       const { data } = await api.post('/social/publish', { contentId: content.id, platform })
       if (data.externalPostUrl) {
         const openPost = await confirmDialog({
-          title: 'Publicado com sucesso!',
-          description: `Abrir o post no ${label} pra conferir?`,
-          confirmLabel: 'Abrir',
+          title: 'Publicado com sucesso',
+          description: `Quer abrir o post no ${label} para conferir?`,
+          confirmLabel: 'Abrir post',
           cancelLabel: 'Agora não',
         })
         if (openPost) window.open(data.externalPostUrl, '_blank', 'noopener,noreferrer')
@@ -153,9 +217,12 @@ export function ContentDetailPage() {
   }
 
   const handleSave = async () => {
+    if (saving || !isDirty) return
+    const submitted = editorSnapshot(content)
+    setSaveError('')
     setSaving(true)
     try {
-      await api.patch(`/contents/${id}`, {
+      const { data } = await api.patch(`/contents/${id}`, {
         title: content.title,
         brief: content.brief,
         hook: content.hook,
@@ -164,8 +231,17 @@ export function ContentDetailPage() {
         status: content.status,
         scheduledAt: content.scheduledAt,
       })
+      if (id !== currentId.current) return
+      applyServerContent(data)
+      if (!sameEditorSnapshot(submitted, editorSnapshot(data))) {
+        setSaveError('Algumas alterações não foram guardadas. Verifique a data agendada e tente novamente.')
+        setSections(previous => ({ ...previous, schedule: true }))
+        return
+      }
+      setLastSavedAt(new Date())
       toast.success('Conteúdo salvo com sucesso!')
     } catch (err) {
+      setSaveError('Não foi possível guardar. As alterações continuam no editor; tente novamente.')
       toast.error('Erro ao salvar conteúdo', getErrorMessage(err))
     } finally {
       setSaving(false)
@@ -183,6 +259,7 @@ export function ContentDetailPage() {
     try {
       await api.delete(`/contents/${id}`)
       toast.success('Conteúdo excluído.')
+      allowNextNavigation()
       navigate('/app/content')
     } catch (err) {
       toast.error('Erro ao excluir conteúdo', getErrorMessage(err))
@@ -190,12 +267,14 @@ export function ContentDetailPage() {
   }
 
   const handleStatusChange = async (newStatus: string) => {
+    if (statusBusy) return
+    setStatusBusy(true)
     try {
       const { data } = await api.post(`/contents/${id}/change-status`, { status: newStatus })
-      setContent({ ...content, status: data.status })
+      applyServerContent(data)
     } catch (err) {
       toast.error('Erro ao alterar status', getErrorMessage(err))
-    }
+    } finally { setStatusBusy(false) }
   }
 
   // Platform selection used to only exist at content-creation time — once inside the
@@ -204,6 +283,8 @@ export function ContentDetailPage() {
   // immediately (add/remove), matching how they already work (see content.routes.ts), then
   // re-syncs from the server rather than hand-merging optimistic state.
   const handleTogglePlatforms = async (nextPlatforms: string[]) => {
+    if (platformsBusy) return
+    setPlatformsBusy(true)
     const current: any[] = content.platforms || []
     const currentValues = current.map((p) => p.platform)
     const toAdd = nextPlatforms.filter((p) => !currentValues.includes(p))
@@ -217,6 +298,7 @@ export function ContentDetailPage() {
       toast.error('Erro ao atualizar redes sociais', getErrorMessage(err))
     } finally {
       await loadContent()
+      setPlatformsBusy(false)
     }
   }
 
@@ -229,12 +311,10 @@ export function ContentDetailPage() {
         brief: content.brief || content.title,
         contentType: content.contentType,
       })
-      setContent({
-        ...content,
-        caption: data.caption || content.caption,
-        hook: data.hook || content.hook,
-        cta: data.cta || content.cta,
-      })
+      setContent((previous: any) => previous?.id === content.id ? ({ ...previous,
+        caption: data.caption || previous.caption, hook: data.hook || previous.hook, cta: data.cta || previous.cta,
+      }) : previous)
+      setSections(previous => ({ ...previous, copy: true }))
     } catch (err) {
       toast.error('Erro ao gerar legenda com Brand Brain', getErrorMessage(err))
     } finally {
@@ -251,6 +331,7 @@ export function ContentDetailPage() {
         contentType: content.contentType,
       })
       setAiHooks(data.hooks || [])
+      setSections(previous => ({ ...previous, copy: true }))
     } catch (err) {
       toast.error('Erro ao gerar hooks', getErrorMessage(err))
     } finally {
@@ -397,6 +478,8 @@ export function ContentDetailPage() {
   }
 
   const handleRequestApproval = async () => {
+    if (requestingApproval) return
+    setRequestingApproval(true)
     try {
       const { data } = await api.post(`/approvals/contents/${id}/request`, {
         expiresInDays: 7,
@@ -407,22 +490,23 @@ export function ContentDetailPage() {
       setManualEmail(content.client?.email || '')
       setManualEmailResult(null)
       setApprovalModal(true)
-      setContent({ ...content, status: 'CLIENT_REVIEW' })
+      setContent((previous: any) => previous ? { ...previous, status: 'CLIENT_REVIEW' } : previous)
     } catch (err) {
       toast.error('Erro ao gerar link de aprovação', getErrorMessage(err))
-    }
+    } finally { setRequestingApproval(false) }
   }
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newComment.trim()) return
+    if (!newComment.trim() || sendingComment) return
+    setSendingComment(true)
     try {
       const { data } = await api.post(`/contents/${id}/comments`, { comment: newComment })
-      setComments([...comments, data])
+      setComments(previous => [...previous, data])
       setNewComment('')
     } catch (err) {
       toast.error('Erro ao adicionar comentário', getErrorMessage(err))
-    }
+    } finally { setSendingComment(false) }
   }
 
   const copyToClipboard = () => {
@@ -459,15 +543,17 @@ export function ContentDetailPage() {
     }
   }
 
+  if (!loading && !content && loadError) return <Page><div role="alert" className="space-y-4 rounded-xl border border-border bg-card p-6"><h1 className="text-lg font-semibold">Não foi possível abrir o criativo</h1><p className="text-sm text-muted-foreground">Verifique a ligação e tente novamente.</p><div className="flex gap-2"><Button onClick={() => { setLoading(true); void loadContent() }}>Tentar novamente</Button><Button asChild variant="outline"><Link to="/app/content">Voltar para criativos</Link></Button></div></div></Page>
+
   if (loading || !content) {
     return (
-      <div className="p-4 sm:p-8 space-y-6">
+      <Page>
         <Skeleton className="h-8 w-1/4" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Skeleton className="h-96 rounded-2xl" />
           <Skeleton className="h-96 rounded-2xl" />
         </div>
-      </div>
+      </Page>
     )
   }
 
@@ -476,115 +562,145 @@ export function ContentDetailPage() {
   // TikTok/YouTube and common for Reels; the preview branches on mimeType to render <video> vs
   // <img>. For CAROUSEL content this can be 2+ images; for everything else it's always 0 or 1.
   const primaryMediaList = (content.assets || [])
-    .filter((a: any) => a.role === 'PRIMARY')
+    .filter((a: any) => a.role === 'PRIMARY' && a.asset?.publicUrl)
     .slice()
     .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     .map((a: any) => a.asset)
   const primaryMedia = primaryMediaList[0] || null
 
+  const selectedPlatforms = (content.platforms || []).map((p: any) => p.platform)
+  const previewSelected = selectedPlatforms.includes(previewPlatform === 'STORY' ? 'INSTAGRAM' : previewPlatform)
+  const aiBusy = generatingCaption || generatingHooks || generatingImage
+  const toggleSection = (key: keyof typeof sections) => setSections(previous => ({ ...previous, [key]: !previous[key] }))
+  const preview = <SocialPreview
+    clientName={content.client?.name} clientLogoUrl={content.client?.logoUrl}
+    title={content.title} hook={content.hook} caption={content.caption} cta={content.cta}
+    contentType={content.contentType} image={primaryMedia} mediaList={primaryMediaList}
+    generating={generatingImage} uploadProgress={uploadProgress} selectedPlatforms={selectedPlatforms}
+    value={previewPlatform} onChange={setPreviewPlatform} dark={mode === 'dark'}
+  />
+  const saveMessage = saving ? 'A guardar alterações…' : saveError || (isDirty ? 'Alterações por guardar' : lastSavedAt
+    ? `Guardado às ${lastSavedAt.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}`
+    : 'Sem alterações por guardar')
+
   return (
-    <div className="p-4 sm:p-8 space-y-6">
-      {/* Top action bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <Button asChild variant="ghost" size="icon">
-            <Link to="/app/content">
-              <ArrowLeft size={20} />
-            </Link>
-          </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-primary">{content.client?.name}</span>
-              <span className="text-xs text-muted-foreground/60">•</span>
-              <span className="text-xs text-muted-foreground font-medium">{CONTENT_TYPE_LABELS[content.contentType]}</span>
+    <Page className="space-y-5 !pt-0">
+      <div style={{ '--editor-toolbar-height': `${toolbarHeight}px` } as React.CSSProperties} className="min-w-0 space-y-5">
+      <header ref={toolbarRef} className="sticky top-0 z-20 -mx-1 border-b border-border bg-background/95 px-1 py-4 backdrop-blur-md sm:py-5">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+          <div className="flex min-w-0 items-center gap-3">
+            <Button asChild variant="ghost" size="icon" className="shrink-0"><Link to="/app/content" aria-label="Voltar para criativos"><ArrowLeft size={19} /></Link></Button>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2.5"><h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Editar criativo</h1><StatusBadge status={content.status} /></div>
+              <p className="mt-1 truncate text-xs text-muted-foreground sm:text-[13px]" title={`${content.client?.name || 'Cliente'} · ${content.title}`}>{content.client?.name || 'Cliente'} <span className="px-1">/</span> {content.title}</p>
             </div>
-            <h1 className="text-xl font-extrabold text-foreground tracking-tight">{content.title}</h1>
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button size="sm" onClick={handleSave} loading={saving} disabled={!isDirty || saving || platformsBusy || statusBusy} className="gap-1.5 px-2 sm:px-2.5"><Save size={14} />{saving ? 'A guardar…' : 'Guardar'}</Button>
+            <Button size="sm" variant="outline" onClick={handleRequestApproval} loading={requestingApproval} disabled={saving || requestingApproval} className="px-2 sm:px-2.5"><Share2 size={14} /><span>Aprovação</span></Button>
+            <Button size="sm" variant="outline" onClick={() => setPreviewOpen(true)} aria-label="Preview social" className="size-9 p-2 sm:w-auto sm:px-3 xl:hidden"><Eye size={15} /><span className="hidden sm:inline">Preview</span></Button>
+            <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Mais ações"><MoreHorizontal size={19} /></Button></DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Este criativo</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => fileInputRef.current?.click()} disabled={uploadingCreative || assetsBusy}><Upload size={15} />Enviar criativo</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void handleSendWhatsAppContent()} disabled={sendingWhatsAppContent}><MessageCircle size={15} />{sendingWhatsAppContent ? 'A enviar…' : 'Enviar por WhatsApp'}</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => void handleDeleteContent()} className="text-error-dark dark:text-error-light"><Trash2 size={15} />Excluir conteúdo</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <StatusBadge status={content.status} />
-
-          <div className="w-48">
-            <Select value={content.status} onValueChange={handleStatusChange}>
-              <SelectTrigger className="shadow-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="DRAFT">Rascunho</SelectItem>
-                <SelectItem value="IN_PRODUCTION">Em Produção</SelectItem>
-                <SelectItem value="INTERNAL_REVIEW">Revisão Interna</SelectItem>
-                <SelectItem value="CLIENT_REVIEW">Aguardando Cliente</SelectItem>
-                <SelectItem value="APPROVED">Aprovado</SelectItem>
-                <SelectItem value="SCHEDULED">Agendado</SelectItem>
-                <SelectItem value="PUBLISHED">Publicado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button variant="ghost" onClick={handleRequestApproval} className="bg-warning hover:bg-warning-dark text-warning-foreground hover:text-warning-foreground">
-            <Share2 size={14} />
-            <span>Link de Aprovação</span>
-          </Button>
-
-          {/* Shares the creative with the client's own phone via the agency's connected
-             number — for their records/approval, unrelated to publishing to any network
-             (that's the "Publicar" button inside each preview tab, including WhatsApp Status). */}
-          <Button variant="outline" onClick={handleSendWhatsAppContent} loading={sendingWhatsAppContent} className="gap-1.5">
-            {!sendingWhatsAppContent && (
-              <>
-                <MessageCircle size={14} />
-                <span>Enviar por WhatsApp</span>
-              </>
-            )}
-          </Button>
-
-          <Button onClick={handleSave} loading={saving}>
-            {!saving && <span>Salvar Alterações</span>}
-            {saving && <span>Salvando...</span>}
-          </Button>
-
-          <Button variant="ghost" size="icon" title="Excluir conteúdo" onClick={handleDeleteContent} className="hover:text-error hover:bg-error/10">
-            <Trash2 size={16} />
-          </Button>
+        <p role="status" aria-live="polite" className={cn('mt-3 text-xs leading-5', saveError ? 'text-error-dark dark:text-error-light' : isDirty ? 'text-warning-dark dark:text-warning-light' : 'text-muted-foreground')}>{saveMessage}{newComment.trim() && <span className="text-muted-foreground"> · Comentário por enviar</span>}</p>
+      </header>
+      {(content.platforms || []).some((platform: any) => platform.status === 'FAILED') && (
+        <div role="status" className="flex items-start gap-3 rounded-xl border border-error/20 bg-error/5 px-4 py-3">
+          <XCircle size={18} aria-hidden className="mt-0.5 shrink-0 text-error-dark dark:text-error-light" />
+          <div><p className="text-sm font-medium">Falha de publicação em {(content.platforms || []).filter((platform: any) => platform.status === 'FAILED').map((platform: any) => PLATFORM_LABELS[platform.platform] || platform.platform).join(', ')}.</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Reveja o conteúdo e a conexão da plataforma antes de voltar a publicar.</p></div>
         </div>
-      </div>
+      )}
 
-      {/* Main Workspace Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Live Social Preview (5 cols) */}
-        <div className="lg:col-span-5 space-y-5">
-          <Card className="space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Preview Social
-              </span>
-              <Badge variant="primary">Simulação Realtime</Badge>
+      <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)]">
+        <div className="min-w-0 space-y-3 xl:order-2">
+          <div className="flex items-center justify-between gap-3 px-1">
+            <h2 className="text-sm font-semibold">Editor</h2>
+            <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="sm" disabled={aiBusy} aria-label="Ferramentas de IA — Brand Brain"><Sparkles size={14} className="text-primary" />{aiBusy ? 'A gerar…' : 'Brand Brain'}</Button></DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>Assistente de conteúdo</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => void handleGenerateCaption()}><AlignLeft size={15} />Gerar legenda</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void handleGenerateHooks()}><Sparkles size={15} />Sugerir hooks</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Direção visual</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => void handleGenerateImage()}><ImagePlus size={15} />Gerar criativo</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <EditorSection title="Conteúdo e legenda" summary="Título, mensagem e chamada para ação" open={sections.copy} onToggle={() => toggleSection('copy')}>
+            <div><Label htmlFor="contentTitle">Título do post</Label><Input id="contentTitle" value={content.title || ''} onChange={e => updateField('title', e.target.value)} className="font-medium" /></div>
+            <div><Label htmlFor="contentHook">Hook / gancho inicial</Label><Input id="contentHook" value={content.hook || ''} placeholder="Primeira linha da publicação" onChange={e => updateField('hook', e.target.value)} /></div>
+            {aiHooks.length > 0 && <div className="space-y-2"><p className="text-xs font-medium text-muted-foreground">Hooks sugeridos · selecione para aplicar</p>{aiHooks.map((hook, i) => <Button key={i} variant="ghost" className="h-auto w-full justify-start whitespace-normal bg-muted/50 px-3 py-2 text-left text-xs font-normal" onClick={() => updateField('hook', hook)}>{hook}</Button>)}</div>}
+            <div><div className="flex items-center justify-between gap-2"><Label htmlFor="contentCaption">Legenda principal</Label><span className="text-[11px] tabular-nums text-muted-foreground">{(content.caption || '').length.toLocaleString('pt-PT')} caracteres</span></div><Textarea id="contentCaption" rows={8} value={content.caption || ''} placeholder="Escreva a legenda ou use o Brand Brain…" onChange={e => updateField('caption', e.target.value)} className="min-h-48 py-3 leading-relaxed" /></div>
+            <div><Label htmlFor="contentCta">Chamada para ação (CTA)</Label><Input id="contentCta" value={content.cta || ''} placeholder="O que o público deve fazer a seguir?" onChange={e => updateField('cta', e.target.value)} /></div>
+          </EditorSection>
+          <EditorSection title="Redes sociais e estado" summary={selectedPlatforms.length ? selectedPlatforms.map((p: string) => PLATFORM_LABELS[p] || p).join(' · ') : 'Nenhuma rede selecionada'} open={sections.networks} onToggle={() => toggleSection('networks')}>
+            <fieldset disabled={platformsBusy || saving || statusBusy} className="min-w-0 space-y-3"><legend className="mb-2 text-xs font-medium">Plataformas de publicação</legend><PlatformPicker value={selectedPlatforms} onChange={handleTogglePlatforms} disabled={platformsBusy || saving || statusBusy} /></fieldset>
+            <div className="grid gap-4 sm:grid-cols-2"><div><Label htmlFor="contentStatus">Estado do conteúdo</Label><Select value={content.status} onValueChange={handleStatusChange} disabled={statusBusy || saving || platformsBusy}><SelectTrigger id="contentStatus"><SelectValue /></SelectTrigger><SelectContent>{EDITABLE_STATUSES.map(status => <SelectItem key={status} value={status}>{STATUS_LABELS[status]}</SelectItem>)}</SelectContent></Select></div><div><p className="mb-1.5 text-xs font-medium">Formato atual</p><p className="flex h-10 items-center text-sm text-muted-foreground">{CONTENT_TYPE_LABELS[content.contentType]}</p></div></div>
+            <p role="status" className="text-xs leading-5 text-muted-foreground">{platformsBusy || statusBusy ? 'A atualizar…' : 'As redes e o estado são guardados imediatamente.'}</p>
+          </EditorSection>
+          <EditorSection title="Agendamento" summary={content.scheduledAt ? new Date(content.scheduledAt).toLocaleString('pt-PT', { dateStyle: 'medium', timeStyle: 'short' }) : 'Sem data definida'} open={sections.schedule} onToggle={() => toggleSection('schedule')}>
+            <div><Label htmlFor="contentScheduledAt">Data e hora agendada</Label><DateTimeField id="contentScheduledAt" className="flex-wrap sm:flex-nowrap [&>input]:basis-full sm:[&>input]:basis-auto" value={content.scheduledAt ? toDateTimeLocalValue(content.scheduledAt) : ''} onChange={value => updateField('scheduledAt', value ? new Date(value).toISOString() : null)} /></div>
+            <p className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"><CalendarDays size={15} className="mt-0.5 shrink-0" /><span>Horário local · {Intl.DateTimeFormat().resolvedOptions().timeZone}. Guarde as alterações para confirmar a data. A seleção da data mantém o estado atual do conteúdo.</span></p>
+          </EditorSection>
+          <EditorSection title="Briefing e orientações" summary="Contexto e direção criativa para a equipa e o Brand Brain" open={sections.brief} onToggle={() => toggleSection('brief')}>
+            <div><Label htmlFor="contentBrief">Briefing e orientações visuais</Label><Textarea id="contentBrief" rows={5} value={content.brief || ''} onChange={e => updateField('brief', e.target.value)} placeholder="Objetivo, público e orientações para este criativo…" /></div>
+          </EditorSection>
+          <EditorSection title="Comentários internos" summary={newComment.trim() ? 'Comentário por enviar' : comments.length ? `${comments.length} comentários` : 'Converse com a equipa sobre este conteúdo'} open={sections.comments} onToggle={() => toggleSection('comments')}>
+            <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+              {comments.length === 0 ? (
+                <p className="text-xs text-muted-foreground italic">Nenhum comentário registrado.</p>
+              ) : (
+                comments.map((c) => (
+                  <div key={c.id} className="p-3 bg-muted rounded-xl space-y-1">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-foreground">{c.user?.name || 'Equipe'}</span>
+                      <span className="text-muted-foreground">{new Date(c.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <p className="text-xs text-foreground/80 font-medium">{c.comment}</p>
+                  </div>
+                ))
+              )}
             </div>
 
-            <SocialPreview
-              clientName={content.client?.name}
-              clientLogoUrl={content.client?.logoUrl}
-              title={content.title}
-              hook={content.hook}
-              caption={content.caption}
-              cta={content.cta}
-              image={primaryMedia}
-              mediaList={primaryMediaList}
-              generating={generatingImage}
-              uploadProgress={uploadProgress}
-              selectedPlatforms={(content.platforms || []).map((p: any) => p.platform)}
-              value={previewPlatform}
-              onChange={setPreviewPlatform}
-              dark={mode === 'dark'}
-            />
+            <form onSubmit={handleAddComment} className="flex gap-2">
+              <Input
+                type="text"
+                aria-label="Novo comentário interno"
+                disabled={sendingComment}
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Escreva uma observação..."
+                className="flex-1 px-3 py-2"
+              />
+              <Button type="submit" size="icon" aria-label="Enviar comentário" loading={sendingComment} disabled={!newComment.trim()}>
+                <Send size={14} />
+              </Button>
+            </form>
 
+          </EditorSection>
+        </div>
+        <aside aria-label="Preview social e mídia" className="min-w-0 xl:order-1 xl:sticky xl:top-[calc(var(--editor-toolbar-height)+1rem)]">
+          <Card className="min-w-0 space-y-4 xl:max-h-[calc(100dvh-5rem-var(--editor-toolbar-height))] xl:overflow-y-auto" tabIndex={0} role="region" aria-label="Mídia e pré-visualização">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold">Preview e mídia</h2>
+              <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">{CONTENT_TYPE_LABELS[content.contentType]}</span><Button size="icon" variant="ghost" aria-label="Ampliar preview" onClick={() => setPreviewOpen(true)}><Maximize2 size={15} /></Button></div>
+            </div>
+            <div className="hidden xl:block">{preview}</div>
+            <button type="button" onClick={() => setPreviewOpen(true)} className="flex w-full items-center gap-3 rounded-lg bg-muted/50 p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 xl:hidden">
+              {primaryMedia && !primaryMedia.mimeType?.startsWith('video/') ? <img src={primaryMedia.publicUrl} alt="" className="size-14 rounded-md object-contain" /> : <Eye size={24} className="m-3 shrink-0 text-muted-foreground" />}
+              <span><span className="block text-sm font-medium">Abrir preview social</span><span className="mt-1 block text-xs text-muted-foreground">{selectedPlatforms.length ? 'Ver conteúdo nas redes selecionadas' : 'Selecione uma rede no editor'}</span></span>
+            </button>
+            {isDirty && <p className="text-xs leading-5 text-warning-dark dark:text-warning-light">O preview inclui alterações por guardar. Guarde antes de publicar ou pedir aprovação.</p>}
             {/* Image controls */}
             <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border">
-              <Button variant="outline" size="sm" onClick={handleGenerateImage} disabled={generatingImage} className="gap-1.5">
-                <ImagePlus size={13} />
-                <span>{generatingImage ? 'Gerando imagem...' : 'Gerar com Brand Brain'}</span>
-              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -608,7 +724,7 @@ export function ContentDetailPage() {
                 onChange={handleUploadCreative}
               />
 
-              {(previewPlatform === 'FACEBOOK' || previewPlatform === 'INSTAGRAM' || previewPlatform === 'STORY') && (() => {
+              {previewSelected && (previewPlatform === 'FACEBOOK' || previewPlatform === 'INSTAGRAM' || previewPlatform === 'STORY') && (() => {
                 const targetPlatform = previewPlatform === 'STORY' ? 'INSTAGRAM_STORY' : previewPlatform
                 const connectionPlatform = previewPlatform === 'STORY' ? 'INSTAGRAM' : previewPlatform
                 return connections.some((c) => c.platform === connectionPlatform && c.status === 'ACTIVE') ? (
@@ -634,7 +750,7 @@ export function ContentDetailPage() {
                 )
               })()}
 
-              {(previewPlatform === 'LINKEDIN' || previewPlatform === 'TIKTOK' || previewPlatform === 'YOUTUBE' || previewPlatform === 'WHATSAPP') && (() => {
+              {previewSelected && (previewPlatform === 'LINKEDIN' || previewPlatform === 'TIKTOK' || previewPlatform === 'YOUTUBE' || previewPlatform === 'WHATSAPP') && (() => {
                 const targetPlatform = previewPlatform as PublishablePlatform
                 const label = PLATFORM_PUBLISH_LABEL[targetPlatform]
                 return connections.some((c) => c.platform === targetPlatform && c.status === 'ACTIVE') ? (
@@ -698,7 +814,8 @@ export function ContentDetailPage() {
                           <button
                             type="button"
                             title="Remover imagem"
-                            disabled={assetsBusy}
+                            aria-label={`Remover imagem ${i + 1}`}
+                            disabled={assetsBusy || primaryMediaList.length <= 1}
                             onClick={() => handleRemoveSlide(m.id)}
                             className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-[#000]/70 text-[#fff] flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity hover:bg-error disabled:opacity-30 disabled:pointer-events-none"
                           >
@@ -717,7 +834,7 @@ export function ContentDetailPage() {
                       {!addingMore && primaryMediaList.length < MAX_CAROUSEL_IMAGES && (
                         <button
                           type="button"
-                          title="Adicionar imagens"
+                          title="Adicionar imagens" aria-label="Adicionar imagens"
                           disabled={assetsBusy}
                           onClick={() => addMoreInputRef.current?.click()}
                           className="w-14 h-14 rounded-lg border-2 border-dashed border-border shrink-0 flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary transition-colors disabled:opacity-30 disabled:pointer-events-none"
@@ -738,185 +855,18 @@ export function ContentDetailPage() {
               className="hidden"
               onChange={handleAddMoreImages}
             />
+
           </Card>
-
-          {/* Comments and History */}
-          <Card className="space-y-4">
-            <div className="flex items-center gap-2 font-bold text-xs text-muted-foreground uppercase tracking-wider">
-              <MessageSquare size={16} className="text-primary" />
-              <span>Comentários Internos</span>
-            </div>
-
-            <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-              {comments.length === 0 ? (
-                <p className="text-xs text-muted-foreground italic">Nenhum comentário registrado.</p>
-              ) : (
-                comments.map((c) => (
-                  <div key={c.id} className="p-3 bg-muted rounded-xl space-y-1">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <span className="font-bold text-foreground">{c.user?.name || 'Equipe'}</span>
-                      <span className="text-muted-foreground">{new Date(c.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                    <p className="text-xs text-foreground/80 font-medium">{c.comment}</p>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <form onSubmit={handleAddComment} className="flex gap-2">
-              <Input
-                type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Escreva uma observação..."
-                className="flex-1 px-3 py-2"
-              />
-              <Button type="submit" size="icon">
-                <Send size={14} />
-              </Button>
-            </form>
-          </Card>
-        </div>
-
-        {/* Right Column: Copy & AI Editor (7 cols) */}
-        <div className="lg:col-span-7 space-y-5">
-          {/* AI Tools Bar */}
-          <Card className="p-4 flex flex-wrap items-center justify-between gap-3 bg-primary/5 border-primary/15">
-            <div className="flex items-center gap-2">
-              <Sparkles size={18} className="text-primary" />
-              <span className="text-xs font-bold text-foreground">AI Copywriter (Brand-Aware)</span>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button onClick={handleGenerateCaption} loading={generatingCaption} className="gap-1.5">
-                {!generatingCaption && (
-                  <>
-                    <RefreshCw size={13} />
-                    <span>Gerar Legenda com Brand Brain</span>
-                  </>
-                )}
-                {generatingCaption && <span>Escrevendo...</span>}
-              </Button>
-
-              <Button variant="outline" onClick={handleGenerateHooks} disabled={generatingHooks}>
-                {generatingHooks ? 'Gerando...' : 'Sugerir Hooks'}
-              </Button>
-            </div>
-          </Card>
-
-          {/* AI Hooks */}
-          {aiHooks.length > 0 && (
-            <Card className="p-4 space-y-2 animate-fade-in border-primary/30">
-              <span className="text-xs font-bold text-primary block">Selecione um Hook Sugerido:</span>
-              <div className="space-y-1.5">
-                {aiHooks.map((h, i) => (
-                  <Button
-                    key={i}
-                    variant="ghost"
-                    onClick={() => setContent({ ...content, hook: h })}
-                    className="w-full justify-start text-left h-auto p-3 whitespace-normal break-words bg-muted hover:bg-primary/10 text-foreground hover:text-primary border border-border"
-                  >
-                    "{h}"
-                  </Button>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* Form Fields */}
-          <Card className="space-y-5">
-            <div>
-              <Label htmlFor="contentTitle">Título do Post</Label>
-              <Input
-                id="contentTitle"
-                type="text"
-                value={content.title}
-                onChange={(e) => setContent({ ...content, title: e.target.value })}
-                className="font-bold"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="contentHook">Hook / Gancho Inicial (Primeira Linha)</Label>
-              <Input
-                id="contentHook"
-                type="text"
-                placeholder="Ex: O maior erro que você comete ao escolher um vestido..."
-                value={content.hook || ''}
-                onChange={(e) => setContent({ ...content, hook: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="contentCaption">Legenda Principal (Copy)</Label>
-              <Textarea
-                id="contentCaption"
-                rows={8}
-                placeholder="Escreva a legenda completa ou gere com o Brand Brain..."
-                value={content.caption || ''}
-                onChange={(e) => setContent({ ...content, caption: e.target.value })}
-                className="py-3 leading-relaxed"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="contentCta">Call to Action (CTA)</Label>
-                <Input
-                  id="contentCta"
-                  type="text"
-                  placeholder="Ex: Comente EU QUERO / Link na bio"
-                  value={content.cta || ''}
-                  onChange={(e) => setContent({ ...content, cta: e.target.value })}
-                  className="py-2"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="contentScheduledAt">Data e Hora Agendada</Label>
-                <DateTimeField
-                  id="contentScheduledAt"
-                  value={content.scheduledAt ? toDateTimeLocalValue(content.scheduledAt) : ''}
-                  onChange={(v) => setContent({ ...content, scheduledAt: v ? new Date(v).toISOString() : null })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Redes Sociais</Label>
-              <PlatformPicker
-                value={(content.platforms || []).map((p: any) => p.platform)}
-                onChange={handleTogglePlatforms}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="contentBrief">Briefing & Orientações Visuais</Label>
-              <Textarea
-                id="contentBrief"
-                rows={3}
-                placeholder="Direção criativa para o designer..."
-                value={content.brief || ''}
-                onChange={(e) => setContent({ ...content, brief: e.target.value })}
-              />
-            </div>
-          </Card>
-        </div>
+        </aside>
       </div>
-
+      </div>
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}><DialogContent size="lg"><DialogHeader><DialogTitle>Preview social</DialogTitle><DialogDescription>{content.client?.name} · {CONTENT_TYPE_LABELS[content.contentType]} · {content.title}</DialogDescription></DialogHeader>{preview}<p className="text-xs leading-5 text-muted-foreground">Simulação do conteúdo atual. A apresentação final pode variar entre plataformas.</p></DialogContent></Dialog>
       {/* Client Approval Modal */}
       <Dialog open={approvalModal} onOpenChange={setApprovalModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-warning/15 text-warning-dark flex items-center justify-center shrink-0">
-                <Share2 size={22} />
-              </div>
-              <div>
-                <DialogTitle>Link de Aprovação Gerado</DialogTitle>
+        <DialogContent>
+          <DialogHeader icon={<DialogIcon className="border-transparent bg-warning/10 text-warning-dark"><Share2 size={22} /></DialogIcon>}>
+                <DialogTitle>Link de aprovação gerado</DialogTitle>
                 <DialogDescription>Envie este link direto para o cliente aprovar sem login</DialogDescription>
-              </div>
-            </div>
           </DialogHeader>
 
           <div className="p-3 bg-muted border border-border rounded-xl flex items-center justify-between gap-2">
@@ -996,6 +946,6 @@ export function ContentDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </Page>
   )
 }

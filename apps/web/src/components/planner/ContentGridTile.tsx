@@ -1,91 +1,93 @@
-import { Image as ImageIcon, Layers, Video, Clapperboard, FileText, Trash2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowUpRight, Eye, FileText, Layers, MoreHorizontal, Play, Trash2 } from 'lucide-react'
+import { cn, CONTENT_TYPE_LABELS, PLATFORM_LABELS } from '@/lib/utils'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { getPrimaryImage, getSlideCount } from './plannerUtils'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/DropdownMenu'
+import { CreativeThumbnail } from '@/components/content/CreativeMedia'
+import { getCreativeMedia, type LibraryContent } from '@/components/content/libraryUtils'
 import { PlatformIcon } from './PlatformIcon'
 
-const TYPE_ICON: Record<string, typeof ImageIcon> = {
-  IMAGE: ImageIcon,
-  CAROUSEL: Layers,
-  REEL: Clapperboard,
-  VIDEO: Video,
-  STORY: Clapperboard,
-  TEXT: FileText,
-  ARTICLE: FileText,
-}
-
-interface ContentGridTileProps {
-  content: any
+type CreativeItemProps = {
+  content: LibraryContent
   onClick: () => void
-  onDelete?: () => void
+  onPreview: () => void
+  onDelete: () => void
+}
+const focus = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background'
+
+function ContentActions({ content, onClick, onPreview, onDelete }: CreativeItemProps) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" aria-label={`Ações de ${content.title}`} title="Ações do conteúdo" className={cn('relative z-10 inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground data-[state=open]:bg-muted motion-reduce:transition-none', focus)}><MoreHorizontal size={18} aria-hidden /></button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuItem onSelect={onClick}><ArrowUpRight size={15} aria-hidden />Abrir Workspace</DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => requestAnimationFrame(onPreview)}><Eye size={15} aria-hidden />Pré-visualizar</DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => requestAnimationFrame(onDelete)} className="text-error-dark data-[highlighted]:bg-error/10 data-[highlighted]:text-error-dark dark:text-error-light dark:data-[highlighted]:text-error-light"><Trash2 size={15} aria-hidden />Excluir conteúdo</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
-export function ContentGridTile({ content, onClick, onDelete }: ContentGridTileProps) {
-  const image = getPrimaryImage(content)
-  const TypeIcon = TYPE_ICON[content.contentType] || FileText
-  const time = content.scheduledAt
-    ? new Date(content.scheduledAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-    : null
-  const platforms: string[] = (content.platforms || []).map((p: any) => p.platform)
+function Platforms({ content }: { content: LibraryContent }) {
+  const platforms = content.platforms || []
+  return platforms.length ? <span className="inline-flex shrink-0 items-center gap-1.5" aria-label={`Redes: ${platforms.map(item => PLATFORM_LABELS[item.platform] || item.platform).join(', ')}`}>
+    {platforms.slice(0, 4).map(item => <span key={item.id} aria-hidden><PlatformIcon platform={item.platform} size={13} /></span>)}
+    {platforms.length > 4 && <span className="text-xs text-muted-foreground" aria-hidden>+{platforms.length - 4}</span>}
+  </span> : null
+}
 
+function ScheduledDate({ content }: { content: LibraryContent }) {
+  const date = content.scheduledAt ? new Date(content.scheduledAt) : null
+  return date && Number.isFinite(date.getTime()) ? <time dateTime={content.scheduledAt!} title="Data agendada" className="text-xs leading-5 text-muted-foreground">{date.toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</time> : <span className="text-xs leading-5 text-muted-foreground">Sem data agendada</span>
+}
+
+export function ContentGridTile(props: CreativeItemProps) {
+  const { content, onPreview } = props
+  const media = getCreativeMedia(content)
+  const video = media[0]?.mimeType.startsWith('video/') || ['REEL', 'VIDEO', 'STORY'].includes(content.contentType)
+  const carousel = content.contentType === 'CAROUSEL'
   return (
-    <div
-      onClick={onClick}
-      title={content.title}
-      className="group relative aspect-square rounded-2xl overflow-hidden bg-card border border-border hover:shadow-z8 hover:border-primary/30 transition-all cursor-pointer"
-    >
-      {image ? (
-        <img src={image.publicUrl} alt="" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center bg-primary/10">
-          <TypeIcon size={28} className="text-primary-dark" strokeWidth={1.5} />
+    <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card transition-colors duration-150 hover:border-muted-foreground/50 focus-within:border-primary/60 motion-reduce:transition-none">
+      <button type="button" onClick={onPreview} aria-label={`Pré-visualizar ${content.title}`} className={cn('group/media relative block aspect-[4/3] w-full overflow-hidden border-b border-border bg-muted/50 focus-visible:ring-inset', focus)}>
+        <CreativeThumbnail content={content} showLabel />
+        <span className="absolute left-3 top-3 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 rounded-md border border-border/60 bg-card/95 px-2 py-1 text-xs font-medium text-foreground">
+          {carousel ? <Layers size={13} aria-hidden /> : video ? <Play size={12} aria-hidden /> : <FileText size={13} aria-hidden />}
+          {CONTENT_TYPE_LABELS[content.contentType] || content.contentType}{carousel && media.length > 0 && <span className="tabular-nums">· {media.length}</span>}
+        </span>
+        {video && media.length > 0 && <span className="absolute inset-0 flex items-center justify-center"><span className="flex size-11 items-center justify-center rounded-full bg-[#000]/60 text-[#fff] transition-colors group-hover/media:bg-[#000]/75 motion-reduce:transition-none"><Play size={20} aria-hidden className="ml-0.5" /></span></span>}
+        <span className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-[#000]/35 to-transparent px-3 pb-3 pt-6 opacity-0 transition-opacity group-hover/media:opacity-100 group-focus-visible/media:opacity-100 motion-reduce:transition-none"><span className="inline-flex items-center gap-1.5 rounded-md bg-card px-2 py-1 text-xs font-medium text-foreground"><Eye size={13} aria-hidden />Pré-visualizar</span></span>
+      </button>
+      <div className="flex flex-1 flex-col gap-3 p-4">
+        <div className="min-w-0"><h3 className="min-h-10 text-sm font-semibold leading-5"><Link to={`/app/content/${content.id}`} title={content.title} className={cn('line-clamp-2 rounded-sm hover:underline hover:underline-offset-4', focus)}>{content.title}</Link></h3>
+          <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2"><p className="truncate text-xs leading-5 text-muted-foreground" title={content.client?.name}>{content.client?.name || 'Cliente não disponível'}</p><Platforms content={content} /></div>
+          <ScheduledDate content={content} />
         </div>
-      )}
-
-      {/* Type indicator, top-left */}
-      {(content.contentType === 'REEL' || content.contentType === 'VIDEO') && (
-        <span className="absolute top-2 left-2 bg-[#000]/60 backdrop-blur-sm rounded-full p-1.5">
-          <Video size={12} className="text-[#fff]" />
-        </span>
-      )}
-      {content.contentType === 'CAROUSEL' && getSlideCount(content) > 1 && (
-        <span className="absolute top-2 left-2 bg-[#000]/60 backdrop-blur-sm text-[#fff] text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1">
-          <Layers size={10} /> {getSlideCount(content)}
-        </span>
-      )}
-      {content.contentType === 'STORY' && (
-        <span className="absolute top-2 left-2 bg-[#000]/60 backdrop-blur-sm text-[#fff] text-[10px] font-bold px-2 py-0.5 rounded-full">
-          Story
-        </span>
-      )}
-
-      {/* Status, top-right */}
-      <div className="absolute top-2 right-2 flex items-center gap-1.5">
-        <StatusBadge status={content.status} className="text-[9px] px-1.5 py-0.5 shadow-z4" />
-        {onDelete && (
-          <button
-            type="button"
-            title="Excluir conteúdo"
-            onClick={(e) => { e.stopPropagation(); onDelete() }}
-            className="opacity-0 group-hover:opacity-100 p-1.5 rounded-full bg-[#000]/60 backdrop-blur-sm text-[#fff]/80 hover:text-[#fff] hover:bg-error/80 transition-all shrink-0"
-          >
-            <Trash2 size={12} />
-          </button>
-        )}
+        <div className="mt-auto flex min-w-0 items-center justify-between gap-2 border-t border-border pt-2"><StatusBadge status={content.status} className="max-w-[calc(100%-2.75rem)] truncate rounded-md px-2 py-0.5 text-xs font-medium" /><ContentActions {...props} /></div>
       </div>
+    </article>
+  )
+}
 
-      {/* Caption overlay, bottom — fixed dark scrim regardless of app theme (photo caption, not chrome) */}
-      <div className="absolute inset-x-0 bottom-0 p-2.5 bg-gradient-to-t from-[#000]/85 via-[#000]/40 to-transparent">
-        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[#fff]/80 mb-0.5">
-          <span className="truncate">{content.client?.name}</span>
-          {time && <span className="shrink-0">· {time}</span>}
-          {platforms.length > 0 && (
-            <span className="flex items-center gap-1 ml-auto shrink-0">
-              {platforms.slice(0, 2).map((p) => <PlatformIcon key={p} platform={p} size={10} />)}
-            </span>
-          )}
-        </div>
-        <p className="text-xs font-bold text-[#fff] leading-snug line-clamp-2">{content.title}</p>
+export function ContentListRow(props: CreativeItemProps) {
+  const { content, onPreview } = props
+  const media = getCreativeMedia(content)
+  const video = media[0]?.mimeType.startsWith('video/')
+  return (
+    <article className="group relative flex min-w-0 items-center gap-3 px-3 py-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 sm:gap-4 sm:px-5 motion-reduce:transition-none">
+      <button type="button" onClick={onPreview} aria-label={`Pré-visualizar ${content.title}`} className={cn('relative z-10 size-16 shrink-0 overflow-hidden rounded-lg border border-border bg-muted', focus)}>
+        <CreativeThumbnail content={content} />
+        {(video || (content.contentType === 'CAROUSEL' && media.length > 0)) && <span className="absolute bottom-0 right-0 inline-flex items-center gap-0.5 rounded-tl-md bg-[#000]/70 px-1 py-0.5 text-[10px] text-[#fff]">{video ? <Play size={10} aria-hidden /> : <><Layers size={10} aria-hidden />{media.length}</>}</span>}
+      </button>
+      <div className="min-w-0 flex-1 space-y-1">
+        <h3 className="line-clamp-2 text-[13px] font-semibold leading-5 sm:text-sm"><Link to={`/app/content/${content.id}`} aria-label={`Abrir Workspace de ${content.title}`} className="outline-none after:absolute after:inset-0 after:rounded-md focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary/60">{content.title}</Link></h3>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5 text-muted-foreground"><span className="max-w-full truncate">{content.client?.name || 'Cliente não disponível'}</span><span aria-hidden>·</span><span>{CONTENT_TYPE_LABELS[content.contentType] || content.contentType}{content.contentType === 'CAROUSEL' && media.length > 0 ? ` · ${media.length} ${media.length === 1 ? 'mídia' : 'mídias'}` : ''}</span><Platforms content={content} /></div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><ScheduledDate content={content} /><StatusBadge status={content.status} className="rounded-md px-2 py-0.5 text-xs font-medium sm:hidden" /></div>
       </div>
-    </div>
+      <StatusBadge status={content.status} className="hidden rounded-md px-2 py-0.5 text-xs font-medium sm:inline-flex" />
+      <ContentActions {...props} />
+    </article>
   )
 }

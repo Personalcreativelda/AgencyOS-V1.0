@@ -17,14 +17,14 @@ import {
   Card, CardHeader, CardTitle, CardDescription, CardContent,
 } from '@/components/ui/Card'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from '@/components/ui/Dialog'
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogIcon } from '@/components/ui/Dialog'
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/Select'
 import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
 import { getErrorMessage } from '@/lib/errors'
+import { Page, PageHeader } from '@/components/layout/Page'
 
 const AI_PROVIDERS = [
   { value: 'openai', label: 'OpenAI' },
@@ -299,7 +299,7 @@ export function SettingsPage() {
   }
 
   const handleRemoveMember = async (memberId: string) => {
-    const ok = await confirmDialog({ title: 'Remover este membro da agência?', variant: 'destructive', confirmLabel: 'Remover' })
+    const ok = await confirmDialog({ title: 'Remover este membro da agência?', description: 'A pessoa perde o acesso imediatamente. Os conteúdos que ela criou continuam na agência.', variant: 'destructive', confirmLabel: 'Remover' })
     if (!ok) return
     try {
       await api.delete(`/agencies/current/members/${memberId}`)
@@ -311,24 +311,22 @@ export function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-8 space-y-8">
+      <Page narrow className="max-w-5xl">
         <Skeleton className="h-8 w-1/4" />
         <Skeleton className="h-40 w-full rounded-2xl" />
         <Skeleton className="h-40 w-full rounded-2xl" />
         <Skeleton className="h-40 w-full rounded-2xl" />
         <Skeleton className="h-40 w-full rounded-2xl" />
-      </div>
+      </Page>
     )
   }
 
   return (
-    <div className="p-4 sm:p-8 space-y-8">
-      <div>
-        <h1 className="text-2xl font-extrabold text-foreground tracking-tight">Configurações da Agência</h1>
-        <p className="text-xs text-muted-foreground font-medium mt-1">
-          Gerencie os dados da organização, membros da equipe e permissões de acesso.
-        </p>
-      </div>
+    <Page narrow className="max-w-5xl">
+      <PageHeader
+        title="Configurações"
+        description="Dados da agência, membros da equipe, permissões de acesso e integrações de IA."
+      />
 
       {/* Agency Details */}
       <Card>
@@ -352,11 +350,11 @@ export function SettingsPage() {
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div className="p-4 bg-muted rounded-xl border border-border">
-              <span className="text-muted-foreground block mb-1 font-bold uppercase tracking-wider text-[11px]">País / Região:</span>
+              <span className="text-muted-foreground block mb-1 text-xs font-medium">País / região</span>
               <span className="text-foreground font-extrabold">{agency?.country || 'Não configurado'}</span>
             </div>
             <div className="p-4 bg-muted rounded-xl border border-border">
-              <span className="text-muted-foreground block mb-1 font-bold uppercase tracking-wider text-[11px]">Idioma Padrão:</span>
+              <span className="text-muted-foreground block mb-1 text-xs font-medium">Idioma padrão</span>
               <span className="text-foreground font-extrabold">{LOCALE_OPTIONS.find((l) => l.value === agency?.locale)?.label || agency?.locale || 'Não configurado'}</span>
             </div>
           </div>
@@ -365,9 +363,9 @@ export function SettingsPage() {
 
       {/* Agency Region/Timezone Modal */}
       <Dialog open={showAgencyModal} onOpenChange={setShowAgencyModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Região da Agência</DialogTitle>
+            <DialogTitle>Editar região da agência</DialogTitle>
             <DialogDescription>
               O fuso horário é usado para exibir e agendar publicações — configure certo para evitar posts saindo na hora errada.
             </DialogDescription>
@@ -375,7 +373,7 @@ export function SettingsPage() {
 
           <form onSubmit={handleSaveAgency} className="space-y-4">
             <div>
-              <Label htmlFor="agencyCountry">País / Região</Label>
+              <Label htmlFor="agencyCountry">País / região</Label>
               <Select value={agencyCountry} onValueChange={handleChangeAgencyCountry}>
                 <SelectTrigger id="agencyCountry"><SelectValue placeholder="Selecione um país" /></SelectTrigger>
                 <SelectContent>
@@ -385,7 +383,7 @@ export function SettingsPage() {
             </div>
 
             <div>
-              <Label htmlFor="agencyTimezone">Fuso Horário</Label>
+              <Label htmlFor="agencyTimezone">Fuso horário</Label>
               <Select value={agencyTimezone} onValueChange={setAgencyTimezone}>
                 <SelectTrigger id="agencyTimezone"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -395,7 +393,7 @@ export function SettingsPage() {
             </div>
 
             <div>
-              <Label htmlFor="agencyLocale">Idioma Padrão</Label>
+              <Label htmlFor="agencyLocale">Idioma padrão</Label>
               <Select value={agencyLocale} onValueChange={setAgencyLocale}>
                 <SelectTrigger id="agencyLocale"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -405,7 +403,7 @@ export function SettingsPage() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setShowAgencyModal(false)}>Cancelar</Button>
+              <Button type="button" variant="outline" onClick={() => setShowAgencyModal(false)}>Cancelar</Button>
               <Button type="submit" loading={savingAgency}>
                 {!savingAgency && <span>Salvar</span>}
               </Button>
@@ -418,18 +416,18 @@ export function SettingsPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center font-bold">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border bg-muted text-foreground/80">
               <Users size={22} />
             </div>
             <div>
-              <CardTitle>Membros da Equipe</CardTitle>
+              <CardTitle>Membros da equipe</CardTitle>
               <CardDescription>Pessoas com acesso ao painel de controle</CardDescription>
             </div>
           </div>
 
           <Button size="sm" onClick={() => setShowInviteModal(true)}>
             <Plus size={14} />
-            <span>Adicionar Membro</span>
+            <span>Adicionar membro</span>
           </Button>
         </CardHeader>
 
@@ -437,7 +435,7 @@ export function SettingsPage() {
           {members.map((member) => (
             <div
               key={member.id}
-              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors"
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3.5 transition-colors hover:border-grey-400"
             >
               <div className="flex items-center gap-3.5 min-w-0">
                 <Avatar className="h-10 w-10 shrink-0">
@@ -477,16 +475,16 @@ export function SettingsPage() {
           {availableToAdd.length > 0 && (
             <Button size="sm" variant="outline" onClick={() => openAiModal()}>
               <Plus size={14} />
-              <span>Conectar Provedor</span>
+              <span>Conectar provedor</span>
             </Button>
           )}
         </CardHeader>
 
         <CardContent className="space-y-2">
           {aiProviders.length === 0 ? (
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 rounded-2xl border border-border">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3.5">
               <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary-dark flex items-center justify-center shrink-0">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-muted text-foreground/80">
                   <Sparkles size={19} />
                 </div>
                 <div className="min-w-0">
@@ -496,17 +494,17 @@ export function SettingsPage() {
               </div>
               <Button size="sm" onClick={() => openAiModal()}>
                 <Plus size={14} />
-                <span>Conectar Provedor</span>
+                <span>Conectar provedor</span>
               </Button>
             </div>
           ) : (
             aiProviders.map((p) => (
               <div
                 key={p.provider}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-muted/60 hover:bg-muted rounded-2xl border border-border transition-colors"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3.5 transition-colors hover:border-grey-400"
               >
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 rounded-2xl bg-primary/10 text-primary-dark flex items-center justify-center shrink-0">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border bg-muted text-foreground/80">
                     <Sparkles size={19} />
                   </div>
                   <div className="min-w-0">
@@ -537,7 +535,7 @@ export function SettingsPage() {
           {aiProviders.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               <div>
-                <Label className="normal-case tracking-normal font-bold text-grey-600 mb-1">Provedor para tarefas de texto</Label>
+                <Label>Provedor para tarefas de texto</Label>
                 <Select
                   value={aiRouting.textProvider || ''}
                   onValueChange={(v) => handleChangeRouting('textProvider', v)}
@@ -553,7 +551,7 @@ export function SettingsPage() {
                 <p className="text-[11px] text-muted-foreground font-medium mt-1.5">Calendário, legendas, hooks, Brand Brain, feedback...</p>
               </div>
               <div>
-                <Label className="normal-case tracking-normal font-bold text-grey-600 mb-1">Provedor para tarefas de imagem</Label>
+                <Label>Provedor para tarefas de imagem</Label>
                 <Select
                   value={aiRouting.imageProvider || ''}
                   onValueChange={(v) => handleChangeRouting('imageProvider', v)}
@@ -577,17 +575,10 @@ export function SettingsPage() {
 
       {/* AI Integration Modal */}
       <Dialog open={showAiModal} onOpenChange={setShowAiModal}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/15 text-primary-dark flex items-center justify-center shrink-0">
-                <Sparkles size={20} />
-              </div>
-              <div>
+        <DialogContent size="lg">
+          <DialogHeader icon={<DialogIcon className="border-transparent bg-primary/10 text-primary-dark"><Sparkles size={20} /></DialogIcon>}>
                 <DialogTitle>{editingProvider ? `Editar ${AI_PROVIDERS.find((p) => p.value === editingProvider)?.label}` : 'Conectar Provedor de IA'}</DialogTitle>
                 <DialogDescription>Conecte sua própria chave de API para gerar legendas, estratégias e propostas de imagem</DialogDescription>
-              </div>
-            </div>
           </DialogHeader>
 
           <form onSubmit={handleSaveAi} className="space-y-4">
@@ -657,12 +648,12 @@ export function SettingsPage() {
             <div className="flex items-center justify-between gap-3 pt-2">
               <Button type="button" variant="outline" size="sm" disabled={!apiKeyInput.trim() || testingAi} onClick={handleTestAi}>
                 {testingAi ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                <span>Testar Conexão</span>
+                <span>Testar conexão</span>
               </Button>
               <div className="flex items-center gap-2">
                 <Button type="button" variant="ghost" onClick={() => setShowAiModal(false)}>Cancelar</Button>
                 <Button type="submit" disabled={!apiKeyInput.trim()} loading={savingAi}>
-                  {!savingAi && <span>Salvar Integração</span>}
+                  {!savingAi && <span>Salvar integração</span>}
                 </Button>
               </div>
             </div>
@@ -674,12 +665,12 @@ export function SettingsPage() {
       <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Convidar Membro para Agência</DialogTitle>
+            <DialogTitle>Convidar membro para agência</DialogTitle>
           </DialogHeader>
 
           <form onSubmit={handleInvite} className="space-y-4">
             <div>
-              <Label htmlFor="inviteEmail">Email do Usuário *</Label>
+              <Label htmlFor="inviteEmail">Email do usuário *</Label>
               <Input
                 id="inviteEmail"
                 type="email"
@@ -691,14 +682,14 @@ export function SettingsPage() {
             </div>
 
             <div>
-              <Label htmlFor="inviteRole">Cargo / Permissão *</Label>
+              <Label htmlFor="inviteRole">Cargo / permissão *</Label>
               <Select value={inviteRole} onValueChange={setInviteRole}>
                 <SelectTrigger id="inviteRole">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ADMIN">Administrador</SelectItem>
-                  <SelectItem value="MANAGER">Gestor de Contas</SelectItem>
+                  <SelectItem value="MANAGER">Gestor de contas</SelectItem>
                   <SelectItem value="DESIGNER">Designer</SelectItem>
                   <SelectItem value="COPYWRITER">Copywriter</SelectItem>
                 </SelectContent>
@@ -706,14 +697,14 @@ export function SettingsPage() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setShowInviteModal(false)}>
+              <Button type="button" variant="outline" onClick={() => setShowInviteModal(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">Salvar Membro</Button>
+              <Button type="submit">Salvar membro</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </Page>
   )
 }

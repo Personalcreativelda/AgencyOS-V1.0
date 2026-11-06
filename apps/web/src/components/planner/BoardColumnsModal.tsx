@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { DndContext, useDraggable, useDroppable, type DragEndEvent } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Eye, EyeOff } from 'lucide-react'
+import { GripVertical, Eye, EyeOff, Columns3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/Dialog'
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogFooter, DialogHeader, DialogIcon } from '@/components/ui/Dialog'
 import { EffectiveBoardColumn, KanbanColumnConfig } from './plannerUtils'
 
 interface BoardColumnsModalProps {
@@ -114,15 +114,18 @@ export function BoardColumnsModal({ open, onOpenChange, initialColumns, onSave }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogTitle>Personalizar Colunas do Kanban</DialogTitle>
+      <DialogContent size="lg">
+        <DialogHeader icon={<DialogIcon><Columns3 /></DialogIcon>}>
+          <DialogTitle>Personalizar colunas do Kanban</DialogTitle>
+          <DialogDescription>Escolha quais etapas aparecem no quadro e em que ordem.</DialogDescription>
+        </DialogHeader>
         <DialogDescription>
           Renomeie, reordene ou oculte colunas. Ocultar não apaga conteúdos — eles continuam
           disponíveis em Lista e Calendário, e a coluna pode ser restaurada a qualquer momento.
         </DialogDescription>
 
         <div className="space-y-2">
-          <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Colunas visíveis</p>
+          <p className="text-xs font-semibold text-muted-foreground">Colunas visíveis</p>
           <DndContext onDragEnd={handleDragEnd}>
             <div className="space-y-2">
               {visible.map((column) => (
@@ -139,7 +142,7 @@ export function BoardColumnsModal({ open, onOpenChange, initialColumns, onSave }
 
         {hidden.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Colunas ocultas</p>
+            <p className="text-xs font-semibold text-muted-foreground">Colunas ocultas</p>
             <div className="space-y-2">
               {hidden.map((column) => (
                 <div key={column.key} className="flex items-center justify-between gap-2 p-2 rounded-xl bg-muted/20 border border-border">
@@ -159,7 +162,7 @@ export function BoardColumnsModal({ open, onOpenChange, initialColumns, onSave }
         )}
 
         <DialogFooter>
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancelar
           </Button>
           <Button type="button" loading={saving} onClick={handleSave}>

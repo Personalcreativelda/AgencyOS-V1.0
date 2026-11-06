@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AxiosError } from 'axios'
 import {
-  Activity, ArrowUpRight, BarChart3, Facebook, Globe2, Instagram, Linkedin,
-  Megaphone, MousePointerClick, Music2, RefreshCw, Sparkles, Users, Wallet, Youtube,
+  Activity, ArrowUpRight, BarChart3, Globe2,
+  Megaphone, MousePointerClick, RefreshCw, Sparkles, Users, Wallet,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { BRAND_COLORS, BrandIcon, brandIcon } from '@/components/brand/BrandIcon'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
@@ -14,6 +15,8 @@ import { Badge } from '@/components/ui/Badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
+import { Page, PageHeader, PageIcon } from '@/components/layout/Page'
+import { Stat, StatGroup } from '@/components/ui/Stat'
 
 type Period = 'today' | '7d' | '30d' | '90d'
 type Tab = 'overview' | 'social' | 'ads' | 'website'
@@ -39,19 +42,19 @@ const periods: Record<Period, string> = {
   today: 'Hoje', '7d': 'Últimos 7 dias', '30d': 'Últimos 30 dias', '90d': 'Últimos 90 dias',
 }
 const social = [
-  { platform: 'FACEBOOK', label: 'Facebook', icon: Facebook, color: '#1877F2' },
-  { platform: 'INSTAGRAM', label: 'Instagram', icon: Instagram, color: '#E4405F' },
-  { platform: 'LINKEDIN', label: 'LinkedIn', icon: Linkedin, color: '#0A66C2' },
-  { platform: 'TIKTOK', label: 'TikTok', icon: Music2, color: '#a4aab3' },
-  { platform: 'YOUTUBE', label: 'YouTube', icon: Youtube, color: '#FF0033' },
+  { platform: 'FACEBOOK', label: 'Facebook', icon: brandIcon('FACEBOOK'), color: BRAND_COLORS.FACEBOOK },
+  { platform: 'INSTAGRAM', label: 'Instagram', icon: brandIcon('INSTAGRAM'), color: BRAND_COLORS.INSTAGRAM },
+  { platform: 'LINKEDIN', label: 'LinkedIn', icon: brandIcon('LINKEDIN'), color: BRAND_COLORS.LINKEDIN },
+  { platform: 'TIKTOK', label: 'TikTok', icon: brandIcon('TIKTOK'), color: BRAND_COLORS.TIKTOK },
+  { platform: 'YOUTUBE', label: 'YouTube', icon: brandIcon('YOUTUBE'), color: BRAND_COLORS.YOUTUBE },
 ] as const
 const integrations = [
   ...social,
-  { platform: 'META_ADS', label: 'Meta Ads', icon: Megaphone, color: '#1877F2' },
-  { platform: 'GOOGLE_ADS', label: 'Google Ads', icon: BarChart3, color: '#4285F4' },
-  { platform: 'TIKTOK_ADS', label: 'TikTok Ads', icon: Music2, color: '#a4aab3' },
-  { platform: 'LINKEDIN_ADS', label: 'LinkedIn Ads', icon: Linkedin, color: '#0A66C2' },
-  { platform: 'GOOGLE_ANALYTICS', label: 'GA4', icon: Globe2, color: '#F9AB00' },
+  { platform: 'META_ADS', label: 'Meta Ads', icon: brandIcon('META_ADS'), color: BRAND_COLORS.META_ADS },
+  { platform: 'GOOGLE_ADS', label: 'Google Ads', icon: brandIcon('GOOGLE_ADS'), color: BRAND_COLORS.GOOGLE_ADS },
+  { platform: 'TIKTOK_ADS', label: 'TikTok Ads', icon: brandIcon('TIKTOK_ADS'), color: BRAND_COLORS.TIKTOK_ADS },
+  { platform: 'LINKEDIN_ADS', label: 'LinkedIn Ads', icon: brandIcon('LINKEDIN_ADS'), color: BRAND_COLORS.LINKEDIN_ADS },
+  { platform: 'GOOGLE_ANALYTICS', label: 'GA4', icon: brandIcon('GOOGLE_ANALYTICS'), color: BRAND_COLORS.GOOGLE_ANALYTICS },
 ]
 const adPlatforms = ['META_ADS', 'GOOGLE_ADS', 'TIKTOK_ADS', 'LINKEDIN_ADS']
 const chartMetrics: Record<ChartMetric, string> = {
@@ -59,14 +62,14 @@ const chartMetrics: Record<ChartMetric, string> = {
   sessions: 'Sessões do website', views: 'Visualizações do website',
 }
 
-const number = (value: number) => new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 1 }).format(value)
-const integer = (value: number) => new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 0 }).format(value)
-const percent = (value: number) => `${new Intl.NumberFormat('pt-PT', { maximumFractionDigits: 2 }).format(value)}%`
-const dateLabel = (value: string) => new Intl.DateTimeFormat('pt-PT', { day: '2-digit', month: 'short' }).format(new Date(`${value.slice(0, 10)}T12:00:00Z`))
-const dateTime = (value: string) => new Intl.DateTimeFormat('pt-PT', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
+const number = (value: number) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)
+const integer = (value: number) => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 }).format(value)
+const percent = (value: number) => `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)}%`
+const dateLabel = (value: string) => new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(new Date(`${value.slice(0, 10)}T12:00:00Z`))
+const dateTime = (value: string) => new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
 
 function money(value: number, currency: string) {
-  try { return new Intl.NumberFormat('pt-PT', { style: 'currency', currency, maximumFractionDigits: 2 }).format(value) }
+  try { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency, maximumFractionDigits: 2 }).format(value) }
   catch { return `${currency} ${number(value)}` }
 }
 function spendLabel(reports: Report[], platform?: string) {
@@ -94,18 +97,14 @@ function SectionHeading({ title, description }: { title: string; description?: s
     {description && <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{description}</p>}</div>
 }
 function KpiCard({ item }: { item: Kpi }) {
-  const Icon = item.icon
-  return <Card className="flex min-h-[138px] min-w-0 flex-col justify-between gap-4 p-4 transition-colors hover:border-primary/30 sm:p-5">
-    <div className="flex items-start justify-between gap-3"><span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{item.label}</span><span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon size={16} /></span></div>
-    <div><p className="break-words text-xl font-bold tracking-tight text-foreground sm:text-2xl">{item.value}</p><p className="mt-1 text-[11px] text-muted-foreground">{item.note}</p></div>
-  </Card>
+  return <Stat label={item.label} value={item.value} icon={item.icon} hint={item.note} />
 }
 function IntegrationStatus({ data, allClients }: { data: Overview; allClients: boolean }) {
   const connected = integrations.filter(item => data.connections.some(row => row.platform === item.platform && row.status === 'ACTIVE')).length
-  return <Card className="p-4 sm:p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-sm font-bold text-foreground">Estado das integrações</h2><p className="mt-0.5 text-xs text-muted-foreground">{allClients ? 'Canais ligados em pelo menos um cliente' : 'Contas ligadas a este cliente'}</p></div><span className="text-[11px] font-semibold text-muted-foreground">{connected} de {integrations.length} canais ligados</span></div>
+  return <Card className="p-4 sm:p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-[15px] font-bold tracking-tight text-foreground">Status das integrações</h2><p className="mt-0.5 text-xs text-muted-foreground">{allClients ? 'Canais conectados em pelo menos um cliente' : 'Contas conectadas a este cliente'}</p></div><span className="text-[11px] font-semibold text-muted-foreground">{connected} de {integrations.length} canais conectados</span></div>
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 2xl:grid-cols-5">{integrations.map(item => {
       const count = data.connections.filter(row => row.platform === item.platform && row.status === 'ACTIVE').length
-      return <div key={item.platform} className={cn('flex min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2.5', count ? 'border-primary/20 bg-primary/5' : 'border-border bg-muted/30')}><item.icon size={15} className="shrink-0" style={{ color: item.color }} /><span className="min-w-0 flex-1 truncate text-xs font-semibold text-foreground">{item.label}</span><span className={cn('shrink-0 text-xs font-bold', count ? 'text-primary' : 'text-muted-foreground')}>{count || '—'}</span></div>
+      return <div key={item.platform} title={count ? `${count} ${count === 1 ? 'conta conectada' : 'contas conectadas'}` : 'Não conectado'} className={cn('flex min-w-0 items-center gap-2.5 rounded-xl border border-border px-3 py-2.5', count ? 'bg-card' : 'bg-muted/40')}><item.icon size={16} className={cn('shrink-0', !count && 'opacity-50 grayscale')} style={{ color: item.color }} /><span className={cn('min-w-0 flex-1 truncate text-[13px] font-medium', count ? 'text-foreground' : 'text-muted-foreground')}>{item.label}</span>{count ? <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-success-dark dark:text-success"><span aria-hidden className="size-1.5 rounded-full bg-success" />{count}</span> : <span className="shrink-0 text-xs text-muted-foreground/70">—</span>}</div>
     })}</div></Card>
 }
 function Chart({ data, metric, source }: { data: Overview; metric: ChartMetric; source: ChartSource }) {
@@ -137,10 +136,10 @@ function Evolution({ data }: { data: Overview }) {
   const sources = metric === 'sessions' || metric === 'views'
     ? [{ id: 'all' as ChartSource, label: 'Todas as propriedades GA4' }]
     : [{ id: 'all' as ChartSource, label: 'Meta Ads + Google Ads' }, { id: 'META_ADS' as ChartSource, label: 'Meta Ads' }, { id: 'GOOGLE_ADS' as ChartSource, label: 'Google Ads' }]
-  return <Card className="min-w-0 p-4 sm:p-6"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><h2 className="text-base font-bold text-foreground">Evolução da Performance</h2><p className="mt-1 text-xs text-muted-foreground">Dados diários das contas ligadas · {periods[data.range]}</p></div><div className="w-full sm:w-60"><Select value={metric} onValueChange={value => { setMetric(value as ChartMetric); setSource('all') }}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(chartMetrics) as ChartMetric[]).map(key => <SelectItem key={key} value={key}>{chartMetrics[key]}</SelectItem>)}</SelectContent></Select></div></div>
+  return <Card className="min-w-0 p-4 sm:p-6"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><h2 className="text-base font-bold text-foreground">Evolução da performance</h2><p className="mt-1 text-xs text-muted-foreground">Dados diários das contas conectadas · {periods[data.range]}</p></div><div className="w-full sm:w-60"><Select value={metric} onValueChange={value => { setMetric(value as ChartMetric); setSource('all') }}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(chartMetrics) as ChartMetric[]).map(key => <SelectItem key={key} value={key}>{chartMetrics[key]}</SelectItem>)}</SelectContent></Select></div></div>
     <div className="-mx-1 mt-5 flex gap-1 overflow-x-auto px-1 pb-2">{sources.map(item => <button key={item.id} type="button" onClick={() => setSource(item.id)} className={cn('shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40', source === item.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>{item.label}</button>)}</div>
     <div className="mt-3"><Chart data={data} metric={metric} source={source} /></div>
-    <p className="mt-4 border-t border-border pt-4 text-xs text-muted-foreground">{metric === 'impressions' || metric === 'clicks' ? 'Soma das contas de anúncios. Um clique ou impressão pode aparecer em mais de uma plataforma.' : 'Soma das propriedades GA4 ligadas. Cada propriedade usa o respetivo fuso horário.'}</p>
+    <p className="mt-4 border-t border-border pt-4 text-xs text-muted-foreground">{metric === 'impressions' || metric === 'clicks' ? 'Soma das contas de anúncios. Um clique ou impressão pode aparecer em mais de uma plataforma.' : 'Soma das propriedades GA4 conectadas. Cada propriedade usa o respetivo fuso horário.'}</p>
   </Card>
 }
 function SocialCards({ data, onDetails }: { data: Overview; onDetails: (platform: string) => void }) {
@@ -149,7 +148,7 @@ function SocialCards({ data, onDetails }: { data: Overview; onDetails: (platform
       const accounts = data.connections.filter(row => row.platform === item.platform && row.status === 'ACTIVE')
       const posts = data.posts.filter(post => post.platform === item.platform)
       return <Card key={item.platform} className="flex min-h-[190px] min-w-0 flex-col p-4 sm:p-5"><div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-2.5"><span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted"><item.icon size={19} style={{ color: item.color }} /></span><h3 className="truncate text-sm font-bold text-foreground">{item.label}</h3></div><Badge variant={accounts.length ? 'success' : 'default'} className="shrink-0 text-[10px]">{accounts.length ? 'Conectado' : 'Não conectado'}</Badge></div>
-        <div className="mt-5 grid grid-cols-2 gap-4"><div><p className="text-[11px] text-muted-foreground">Contas ligadas</p><p className="mt-0.5 text-base font-bold text-foreground">{integer(accounts.length)}</p></div><div><p className="text-[11px] text-muted-foreground">Publicações no período</p><p className="mt-0.5 text-base font-bold text-foreground">{integer(posts.length)}</p></div></div>
+        <div className="mt-5 grid grid-cols-2 gap-4"><div><p className="text-[11px] text-muted-foreground">Contas conectadas</p><p className="mt-0.5 text-base font-bold text-foreground">{integer(accounts.length)}</p></div><div><p className="text-[11px] text-muted-foreground">Publicações no período</p><p className="mt-0.5 text-base font-bold text-foreground">{integer(posts.length)}</p></div></div>
         <button type="button" onClick={() => onDetails(item.platform)} className="mt-auto self-start rounded pt-5 text-xs font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">Ver detalhes →</button>
       </Card>
     })}</div></section>
@@ -166,7 +165,7 @@ function AdsCard({ data, platform }: { data: Overview; platform: 'META_ADS' | 'G
   const clicks = total(reports, [platform], 'clicks')
   const outcomes = total(reports, [platform], isMeta ? 'results' : 'conversions')
   const ctr = impressions && clicks !== null ? percent(clicks / impressions * 100) : impressions === 0 ? '0%' : '—'
-  return <Card className="min-w-0 p-4 sm:p-6"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2.5"><span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Icon size={19} /></span><div><h3 className="text-sm font-bold text-foreground">{item.label}</h3><p className="text-xs text-muted-foreground">{connections.length} {connections.length === 1 ? 'conta ligada' : 'contas ligadas'}</p></div></div><Badge variant={errors.length ? 'warning' : connections.length ? 'success' : 'default'}>{errors.length ? 'Atenção' : connections.length ? 'Conectado' : 'Não conectado'}</Badge></div>
+  return <Card className="min-w-0 p-4 sm:p-6"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2.5"><span className="flex size-10 items-center justify-center rounded-xl bg-muted text-foreground"><Icon size={19} /></span><div><h3 className="text-sm font-bold text-foreground">{item.label}</h3><p className="text-xs text-muted-foreground">{connections.length} {connections.length === 1 ? 'conta conectada' : 'contas conectadas'}</p></div></div><Badge variant={errors.length ? 'warning' : connections.length ? 'success' : 'default'}>{errors.length ? 'Atenção' : connections.length ? 'Conectado' : 'Não conectado'}</Badge></div>
     {connections.length ? <><div className="mt-6 grid grid-cols-2 gap-4 border-t border-border pt-5 sm:grid-cols-3">{[
       ['Gasto', spendLabel(reports, platform)], ['Impressões', display(impressions)], ['Cliques', display(clicks)],
       ['CTR', ctr], [isMeta ? 'Resultados' : 'Conversões', display(outcomes)],
@@ -185,7 +184,7 @@ function AdsCard({ data, platform }: { data: Overview; platform: 'META_ADS' | 'G
   </Card>
 }
 function AdsSection({ data }: { data: Overview }) {
-  return <section className="space-y-4"><SectionHeading title="Performance de Anúncios" description="Investimento e resultados das contas ligadas. Valores de moedas diferentes são apresentados em separado." /><div className="grid gap-4 lg:grid-cols-2"><AdsCard data={data} platform="META_ADS" /><AdsCard data={data} platform="GOOGLE_ADS" /><AdsCard data={data} platform="TIKTOK_ADS" /><AdsCard data={data} platform="LINKEDIN_ADS" /></div></section>
+  return <section className="space-y-4"><SectionHeading title="Performance de Anúncios" description="Investimento e resultados das contas conectadas. Valores de moedas diferentes são apresentados em separado." /><div className="grid gap-4 lg:grid-cols-2"><AdsCard data={data} platform="META_ADS" /><AdsCard data={data} platform="GOOGLE_ADS" /><AdsCard data={data} platform="TIKTOK_ADS" /><AdsCard data={data} platform="LINKEDIN_ADS" /></div></section>
 }
 function WebsiteSection({ data }: { data: Overview }) {
   const reports = data.reports.filter(row => row.platform === 'GOOGLE_ANALYTICS')
@@ -195,7 +194,7 @@ function WebsiteSection({ data }: { data: Overview }) {
   for (const report of reports) for (const channel of report.data?.channels || []) channels.set(channel.label, (channels.get(channel.label) || 0) + channel.sessions)
   const sortedChannels = [...channels].sort((a, b) => b[1] - a[1]).slice(0, 6)
   const sessions = total(reports, ['GOOGLE_ANALYTICS'], 'sessions')
-  return <section className="space-y-4"><SectionHeading title="Website / GA4" description="Sessões e eventos dos websites com propriedades Google Analytics ligadas." /><div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]"><Card className="min-w-0 p-4 sm:p-6"><div className="flex items-center gap-2.5"><span className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary"><Globe2 size={19} /></span><div><h3 className="text-sm font-bold text-foreground">Visão do website</h3><p className="text-xs text-muted-foreground">Google Analytics 4 · {connections.length} {connections.length === 1 ? 'propriedade' : 'propriedades'}</p></div></div>
+  return <section className="space-y-4"><SectionHeading title="Website / GA4" description="Sessões e eventos dos websites com propriedades Google Analytics conectadas." /><div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]"><Card className="min-w-0 p-4 sm:p-6"><div className="flex items-center gap-2.5"><span className="flex size-10 items-center justify-center rounded-xl bg-muted"><BrandIcon platform="GOOGLE_ANALYTICS" size={19} /></span><div><h3 className="text-sm font-bold text-foreground">Visão do website</h3><p className="text-xs text-muted-foreground">Google Analytics 4 · {connections.length} {connections.length === 1 ? 'propriedade' : 'propriedades'}</p></div></div>
     {connections.length ? <><div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">{[
       ['Utilizadores ativos', 'users'], ['Sessões', 'sessions'], ['Visualizações', 'views'], ['Eventos principais', 'keyEvents'],
     ].map(([label, key]) => <div key={key} className="min-w-0 rounded-xl border border-border bg-muted/20 p-3.5"><p className="text-[11px] text-muted-foreground">{label}</p><p className="mt-1.5 break-words text-lg font-bold text-foreground">{display(total(reports, ['GOOGLE_ANALYTICS'], key))}</p></div>)}</div>{errors.length > 0 && <p className="mt-4 text-xs text-muted-foreground">{errors.length} {errors.length === 1 ? 'propriedade não pôde ser lida' : 'propriedades não puderam ser lidas'}. {errors[0].error}</p>}</> : <div className="mt-6 border-t border-border pt-5"><p className="text-sm text-muted-foreground">Ligue uma propriedade GA4 para acompanhar o website.</p><Link to="/app/google" className="mt-3 inline-flex text-xs font-bold text-primary hover:underline">Ir para Google Ads & Analytics →</Link></div>}
@@ -212,7 +211,7 @@ function RecentPosts({ data }: { data: Overview }) {
     })}</div> : <Card className="p-6 text-sm text-muted-foreground">Nenhuma publicação feita pelo AgencyOS neste período.</Card>}</section>
 }
 function AgencyTable({ data }: { data: Overview }) {
-  return <section className="space-y-4"><SectionHeading title="Performance dos Clientes" description={`${data.clients.length} clientes da agência · dados das contas ligadas`} /><Card className="overflow-hidden p-0"><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-sm"><thead className="bg-muted/50"><tr className="text-left text-[11px] font-bold uppercase tracking-wide text-muted-foreground"><th className="px-5 py-3.5">Cliente</th><th className="px-4 py-3.5 text-right">Impressões Ads</th><th className="px-4 py-3.5 text-right">Cliques Ads</th><th className="px-4 py-3.5 text-right">Sessões GA4</th><th className="px-4 py-3.5 text-right">Investimento Ads</th><th className="px-4 py-3.5 text-right">Publicações</th><th className="px-5 py-3.5">Dados</th></tr></thead><tbody>{data.clients.map(client => {
+  return <section className="space-y-4"><SectionHeading title="Performance dos Clientes" description={`${data.clients.length} clientes da agência · dados das contas conectadas`} /><Card className="overflow-hidden p-0"><div className="overflow-x-auto"><table className="w-full min-w-[820px] text-sm"><thead className="bg-muted/50"><tr className="text-left text-[11px] font-bold uppercase tracking-wide text-muted-foreground"><th className="px-5 py-3.5">Cliente</th><th className="px-4 py-3.5 text-right">Impressões Ads</th><th className="px-4 py-3.5 text-right">Cliques Ads</th><th className="px-4 py-3.5 text-right">Sessões GA4</th><th className="px-4 py-3.5 text-right">Investimento Ads</th><th className="px-4 py-3.5 text-right">Publicações</th><th className="px-5 py-3.5">Dados</th></tr></thead><tbody>{data.clients.map(client => {
     const reports = data.reports.filter(row => row.clientId === client.id)
     const connections = data.connections.filter(row => row.clientId === client.id && row.status === 'ACTIVE')
     const error = reports.some(row => row.error)
@@ -258,9 +257,9 @@ export function PerformancePage() {
   const selectedClient = data?.clients.find(client => client.id === clientId)
   const kpis: Kpi[] = data ? [
     ...(allClients ? [{ label: 'Clientes', value: integer(data.clients.length), note: 'Clientes registados na agência', icon: Users }] : []),
-    { label: 'Impressões Ads', value: display(total(data.reports, adPlatforms, 'impressions')), note: 'Contas de anúncios ligadas', icon: Activity },
-    { label: 'Cliques Ads', value: display(total(data.reports, adPlatforms, 'clicks')), note: 'Contas de anúncios ligadas', icon: MousePointerClick },
-    { label: 'Sessões GA4', value: display(total(data.reports, ['GOOGLE_ANALYTICS'], 'sessions')), note: 'Websites ligados', icon: Globe2 },
+    { label: 'Impressões Ads', value: display(total(data.reports, adPlatforms, 'impressions')), note: 'Contas de anúncios conectadas', icon: Activity },
+    { label: 'Cliques Ads', value: display(total(data.reports, adPlatforms, 'clicks')), note: 'Contas de anúncios conectadas', icon: MousePointerClick },
+    { label: 'Sessões GA4', value: display(total(data.reports, ['GOOGLE_ANALYTICS'], 'sessions')), note: 'Websites conectados', icon: Globe2 },
     { label: 'Resultados Meta', value: display(total(data.reports, ['META_ADS'], 'results')), note: 'Ação principal das campanhas', icon: Sparkles },
     { label: 'Conversões Ads', value: display(total(data.reports, ['GOOGLE_ADS', 'TIKTOK_ADS', 'LINKEDIN_ADS'], 'conversions')), note: 'Google + TikTok + LinkedIn', icon: BarChart3 },
     { label: 'Investimento Ads', value: spendLabel(data.reports), note: 'Moedas apresentadas em separado', icon: Wallet },
@@ -268,16 +267,20 @@ export function PerformancePage() {
   ] : []
   const detailItem = social.find(item => item.platform === details)
 
-  return <div className="mx-auto w-full max-w-[1640px] space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8"><header className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between"><div className="min-w-0"><div className="mb-2 flex items-center gap-2"><span className="inline-flex size-8 items-center justify-center rounded-xl bg-primary/10 text-primary"><Activity size={18} /></span><Badge variant="primary" className="normal-case">Dados reais</Badge></div><h1 className="text-2xl font-extrabold tracking-tight text-foreground sm:text-[28px]">Performance</h1><p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground">Acompanhe anúncios, websites e publicações dos seus clientes num único lugar.</p></div>
-    <div className="grid w-full gap-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] xl:w-auto xl:grid-cols-[210px_190px_auto] xl:items-end"><div className="min-w-0"><label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Cliente</label><Select value={clientId} onValueChange={setClientId}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os clientes</SelectItem>{data?.clients.map(client => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}</SelectContent></Select></div><div className="min-w-0"><label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Período</label><Select value={period} onValueChange={value => setPeriod(value as Period)}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(periods) as Period[]).map(key => <SelectItem key={key} value={key}>{periods[key]}</SelectItem>)}</SelectContent></Select></div><Button variant="subtle" className="h-10 w-full sm:self-end" onClick={() => void load(true)} disabled={refreshing || loading}><RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />Atualizar</Button></div></header>
+  return <Page><PageHeader
+      icon={<PageIcon className="bg-primary/10 text-primary"><Activity size={22} /></PageIcon>}
+      title="Performance"
+      description="Acompanhe anúncios, websites e publicações dos seus clientes em um só lugar."
+      actions={<div className="grid w-full gap-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:w-auto md:grid-cols-[200px_180px_auto] md:items-end"><div className="min-w-0"><label className="mb-1.5 block text-[13px] font-medium text-foreground/85">Cliente</label><Select value={clientId} onValueChange={setClientId}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os clientes</SelectItem>{data?.clients.map(client => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}</SelectContent></Select></div><div className="min-w-0"><label className="mb-1.5 block text-[13px] font-medium text-foreground/85">Período</label><Select value={period} onValueChange={value => setPeriod(value as Period)}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(periods) as Period[]).map(key => <SelectItem key={key} value={key}>{periods[key]}</SelectItem>)}</SelectContent></Select></div><Button variant="subtle" className="h-10 w-full sm:self-end" onClick={() => void load(true)} disabled={refreshing || loading}><RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />Atualizar</Button></div>}
+    />
     {error && <Card className="border-error/30 bg-error/5 p-4 text-sm text-foreground" role="alert">{error} <button type="button" onClick={() => void load()} className="ml-2 font-bold text-primary hover:underline">Tentar novamente</button></Card>}
-    {loading && !data ? <Card className="p-8 text-center text-sm text-muted-foreground"><RefreshCw size={18} className="mx-auto mb-3 animate-spin" />A carregar dados das contas ligadas…</Card> : data && <Tabs value={tab} onValueChange={value => setTab(value as Tab)}><TabsList className="flex w-full max-w-full justify-start overflow-x-auto whitespace-nowrap sm:w-auto">{([['overview', 'Visão Geral'], ['social', 'Redes Sociais'], ['ads', 'Publicidade'], ['website', 'Website / GA4']] as [Tab, string][]).map(([id, label]) => <TabsTrigger key={id} value={id} className="shrink-0">{label}</TabsTrigger>)}</TabsList>
-      <div className="mt-5 space-y-6"><IntegrationStatus data={data} allClients={allClients} /><section className="space-y-4"><SectionHeading title={allClients ? 'Visão da Agência' : `Indicadores de ${selectedClient?.name || 'cliente'}`} description={`Indicadores das contas ligadas · ${periods[period]}`} /><div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">{kpis.map(item => <KpiCard key={item.label} item={item} />)}</div></section></div>
+    {loading && !data ? <Card className="p-8 text-center text-sm text-muted-foreground"><RefreshCw size={18} className="mx-auto mb-3 animate-spin" />Carregando dados das contas conectadas…</Card> : data && <Tabs value={tab} onValueChange={value => setTab(value as Tab)}><TabsList className="flex w-full max-w-full justify-start overflow-x-auto whitespace-nowrap sm:w-auto">{([['overview', 'Visão Geral'], ['social', 'Redes Sociais'], ['ads', 'Publicidade'], ['website', 'Website / GA4']] as [Tab, string][]).map(([id, label]) => <TabsTrigger key={id} value={id} className="shrink-0">{label}</TabsTrigger>)}</TabsList>
+      <div className="mt-5 space-y-6"><IntegrationStatus data={data} allClients={allClients} /><section className="space-y-4"><SectionHeading title={allClients ? 'Visão da Agência' : `Indicadores de ${selectedClient?.name || 'cliente'}`} description={`Indicadores das contas conectadas · ${periods[period]}`} /><StatGroup>{kpis.map(item => <KpiCard key={item.label} item={item} />)}</StatGroup></section></div>
       <TabsContent value="overview" className="mt-6 space-y-7">{allClients && <AgencyTable data={data} />}<Evolution data={data} /><SocialCards data={data} onDetails={setDetails} /><AdsSection data={data} /><WebsiteSection data={data} /><RecentPosts data={data} /><DataStatus data={data} /></TabsContent>
       <TabsContent value="social" className="mt-6 space-y-7"><SocialCards data={data} onDetails={setDetails} /><RecentPosts data={data} /><DataStatus data={data} /></TabsContent>
       <TabsContent value="ads" className="mt-6 space-y-7"><Evolution data={data} /><AdsSection data={data} /><DataStatus data={data} /></TabsContent>
       <TabsContent value="website" className="mt-6 space-y-7"><WebsiteSection data={data} /><DataStatus data={data} /></TabsContent>
     </Tabs>}
-    <Dialog open={!!details} onOpenChange={open => { if (!open) setDetails(null) }}><DialogContent className="max-w-lg"><DialogHeader><DialogTitle>{detailItem?.label} · detalhes</DialogTitle><DialogDescription>Contas e publicações registadas no AgencyOS.</DialogDescription></DialogHeader>{details && data && <div className="space-y-3"><div className="grid grid-cols-2 gap-3">{[['Contas ligadas', data.connections.filter(row => row.platform === details && row.status === 'ACTIVE').length], ['Publicações no período', data.posts.filter(post => post.platform === details).length]].map(([label, value]) => <div key={label} className="rounded-xl border border-border bg-muted/30 p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-lg font-bold text-foreground">{value}</p></div>)}</div><p className="text-xs text-muted-foreground">As permissões atuais de publicação desta rede não incluem métricas orgânicas de alcance, interações ou seguidores.</p><Link to="/app/social" className="inline-flex text-xs font-bold text-primary hover:underline">Gerir ligações →</Link></div>}</DialogContent></Dialog>
-  </div>
+    <Dialog open={!!details} onOpenChange={open => { if (!open) setDetails(null) }}><DialogContent size="lg"><DialogHeader><DialogTitle>{detailItem?.label} · detalhes</DialogTitle><DialogDescription>Contas e publicações registadas no AgencyOS.</DialogDescription></DialogHeader>{details && data && <div className="space-y-3"><div className="grid grid-cols-2 gap-4">{[['Contas conectadas', data.connections.filter(row => row.platform === details && row.status === 'ACTIVE').length], ['Publicações no período', data.posts.filter(post => post.platform === details).length]].map(([label, value]) => <div key={label} className="rounded-xl border border-border bg-muted/30 p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-lg font-bold text-foreground">{value}</p></div>)}</div><p className="text-xs text-muted-foreground">As permissões atuais de publicação desta rede não incluem métricas orgânicas de alcance, interações ou seguidores.</p><Link to="/app/social" className="inline-flex text-xs font-bold text-primary hover:underline">Gerir ligações →</Link></div>}</DialogContent></Dialog>
+  </Page>
 }
