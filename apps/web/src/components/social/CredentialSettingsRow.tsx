@@ -98,16 +98,16 @@ export function CredentialSettingsRow({
 
   return (
     <>
-      <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3.5">
+      <div className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:px-5 sm:py-4">
+        <div className="flex min-w-0 flex-1 items-center gap-3.5">
           <div className={iconClassName || 'flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground/80'} style={iconStyle}>{icon}</div>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">{title}</p>
             <p className="truncate text-xs text-muted-foreground">{configured ? summary(data) : emptyHint}</p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {data === null ? null : configured ? <Badge variant="success">Configurado</Badge> : <Badge variant="default">Não configurado</Badge>}
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          {data === null ? null : configured ? <Badge variant="success" className="hidden sm:inline-flex">Configurado</Badge> : <Badge variant="default" className="hidden sm:inline-flex">Não configurado</Badge>}
           <Button type="button" variant="outline" size="sm" onClick={openModal}>{configured ? 'Editar' : 'Configurar'}</Button>
           {configured && (
             <button type="button" onClick={remove} title="Remover" aria-label={`Remover ${title}`} className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:text-error">

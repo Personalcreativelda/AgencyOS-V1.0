@@ -5,6 +5,10 @@
 
 @layer base {
   :root {
+    /* Safe areas (status bar / gesture bar). The Android app draws edge to edge
+       (viewport-fit=cover); Capacitor injects --safe-area-inset-* there, browsers expose env(). */
+    --sat: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+    --sab: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
     /* Windows-style neutral light: canvas #F3F3F3, surface #FFFFFF, text #1A1A1A. */
     --grey-0: 255 255 255;
     --grey-100: 250 250 250;
@@ -101,7 +105,8 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-feature-settings: 'cv11', 'ss01';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

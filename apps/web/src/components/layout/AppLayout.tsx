@@ -128,7 +128,7 @@ export function AppLayout() {
         {/* Minimals Header */}
         {/* Phones: header sits on the page background (no divider) like a native app bar;
             the menu lives in the bottom tab bar's "Mais". Desktop keeps the card header. */}
-        <header className="flex flex-col isolate shrink-0 z-20 bg-background lg:border-b lg:border-border lg:bg-card">
+        <header className="flex flex-col isolate shrink-0 z-20 bg-background pt-[var(--sat)] lg:border-b lg:border-border lg:bg-card lg:pt-0">
           <div className="flex items-center justify-between h-14 px-4 sm:px-6 lg:h-16 lg:px-8">
             <div className="hidden min-w-0 flex-1 items-center lg:flex">
               <HeaderSearch />
@@ -241,7 +241,7 @@ export function AppLayout() {
         {/* Page View */}
         <div ref={scrollRef} className="flex-1 overflow-auto bg-background">
           {/* Bottom padding keeps the last item clear of the floating tab bar on phones. */}
-          <div id="page-content" tabIndex={-1} className="min-w-0 pb-[calc(5.5rem+env(safe-area-inset-bottom))] outline-none lg:pb-0"><Outlet /></div>
+          <div id="page-content" tabIndex={-1} className="min-w-0 pb-[calc(5.5rem+var(--sab))] outline-none lg:pb-0"><Outlet /></div>
         </div>
       </main>
 

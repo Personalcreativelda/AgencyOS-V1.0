@@ -373,7 +373,7 @@ export function SettingsPage() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-5 border-t border-border/70 pt-5 md:grid-cols-[200px_1fr]">
-            <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/30 p-5 text-center">
+            <div className="flex items-center gap-4 rounded-2xl border border-dashed border-border bg-muted/30 p-4 md:flex-col md:justify-center md:gap-2 md:p-5 md:text-center">
               <UploadableAvatar
                 src={agency?.logoUrl}
                 rounded="rounded-2xl"
@@ -381,8 +381,10 @@ export function SettingsPage() {
                 fallback={<Building size={26} className="text-primary-dark" />}
                 onUpload={handleUploadAgencyLogo}
               />
-              <p className="text-sm font-semibold text-foreground">Logo da agência</p>
-              <p className="text-xs text-muted-foreground">Toque na imagem para alterar · PNG ou SVG</p>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">Logo da agência</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Toque na imagem para alterar · PNG ou SVG</p>
+              </div>
             </div>
             <dl className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="Nome da agência"><span className="truncate">{agency?.name}</span></Field>
@@ -492,9 +494,9 @@ export function SettingsPage() {
                       <span className="truncate">{member.user?.name}</span>
                       {isMe && <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">Você</span>}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">{member.user?.email}</p>
+                    <p className="truncate text-xs text-muted-foreground">{member.user?.email}<span className="sm:hidden"> · {ROLE_LABELS[member.role] || member.role}</span></p>
                   </div>
-                  <Badge dot variant={member.role === 'OWNER' ? 'success' : 'default'} className="shrink-0">{ROLE_LABELS[member.role] || member.role}</Badge>
+                  <Badge dot variant={member.role === 'OWNER' ? 'success' : 'default'} className="hidden shrink-0 sm:inline-flex">{ROLE_LABELS[member.role] || member.role}</Badge>
                   {member.role !== 'OWNER' && user?.role === 'OWNER' ? (
                     <button
                       type="button"
@@ -505,7 +507,7 @@ export function SettingsPage() {
                     >
                       <Trash2 size={15} />
                     </button>
-                  ) : <span className="w-[31px] shrink-0" aria-hidden />}
+                  ) : <span className="hidden w-[31px] shrink-0 sm:block" aria-hidden />}
                 </li>
               )
             })}

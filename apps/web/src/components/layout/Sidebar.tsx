@@ -241,7 +241,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         aria-modal={!isDesktop && mobileOpen ? true : undefined}
         aria-label="Navegação principal"
         className={cn(
-          'fixed inset-y-0 left-0 z-40 isolate flex w-[280px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar',
+          'fixed inset-y-0 left-0 z-40 isolate flex w-[280px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar pb-[var(--sab)] pt-[var(--sat)] lg:pb-0 lg:pt-0',
           'transition-[width,transform] duration-200 ease-out motion-reduce:transition-none lg:relative lg:translate-x-0',
           rail ? 'lg:w-[76px]' : 'lg:w-[264px]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full invisible lg:visible'

@@ -62,7 +62,7 @@ export function Stat({ label, value, icon: Icon, hint, tone = 'default', to, tit
       <div className={cn('mt-2 break-words text-[22px] font-semibold leading-7 tabular-nums tracking-tight sm:text-2xl sm:leading-8', active ? TONE_TEXT[tone] : 'text-foreground')}>
         {value}
       </div>
-      {hint && <div className="mt-1 break-words text-xs text-muted-foreground">{hint}</div>}
+      {hint && <div className="mt-1 hidden break-words text-xs text-muted-foreground sm:block">{hint}</div>}
     </>
   )
   const base = cn('group/stat min-w-0 bg-card p-4', className)

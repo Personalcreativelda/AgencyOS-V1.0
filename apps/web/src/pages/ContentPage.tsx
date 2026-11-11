@@ -8,7 +8,7 @@ import { ptBR } from 'date-fns/locale'
 import {
   Plus, Sparkles, ChevronRight, ChevronLeft, AlertCircle, Settings2, FilePlus2 } from 'lucide-react'
 import api from '@/lib/api'
-import { PLATFORM_LABELS, STATUS_LABELS } from '@/lib/utils'
+import { PLATFORM_LABELS, STATUS_LABELS, cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { DateTimeField } from '@/components/ui/DateTimeField'
@@ -296,6 +296,41 @@ export function ContentPage({ view }: ContentPageProps) {
   const goNext = () => setCurrentDate((d) => addMonths(d, 1))
   const goToday = () => setCurrentDate(new Date())
 
+  const filtersMenu = (
+<FilterMenu
+      active={[selectedClient, selectedStatus, selectedPlatform].filter(Boolean).length}
+      onClear={() => { setSelectedClient(''); setSelectedStatus(''); setSelectedPlatform('') }}
+    >
+      <FilterField label="Cliente">
+        <Select value={selectedClient || ALL_CLIENTS} onValueChange={(v) => setSelectedClient(v === ALL_CLIENTS ? '' : v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_CLIENTS}>Todos os clientes</SelectItem>
+            {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </FilterField>
+      <FilterField label="Status">
+        <Select value={selectedStatus || ALL_STATUS} onValueChange={(v) => setSelectedStatus(v === ALL_STATUS ? '' : v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_STATUS}>Todos os status</SelectItem>
+            {FILTER_STATUSES.map((status) => <SelectItem key={status} value={status}>{STATUS_LABELS[status]}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </FilterField>
+      <FilterField label="Rede social">
+        <Select value={selectedPlatform || ALL_PLATFORMS} onValueChange={(v) => setSelectedPlatform(v === ALL_PLATFORMS ? '' : v)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_PLATFORMS}>Todas as redes</SelectItem>
+            {Object.keys(PLATFORM_LABELS).map((p) => <SelectItem key={p} value={p}>{PLATFORM_LABELS[p]}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </FilterField>
+    </FilterMenu>
+  )
+
   const dateLabel = capitalize(format(currentDate, 'MMMM yyyy', { locale: ptBR }))
 
   return (
@@ -309,13 +344,15 @@ export function ContentPage({ view }: ContentPageProps) {
               <Sparkles size={16} />
               <span className="sm:hidden">Gerar mês</span><span className="hidden sm:inline">Gerar mês com Brand Brain</span>
             </Button>
+            {/* Planner on phones: filters live in the header instead of a row of their own */}
+            {view === 'calendar' && <div className="md:hidden">{filtersMenu}</div>}
           </>
         }
       />
 
       {/* Planner / Kanban toolbar: period (Planner) or columns (Kanban) on the left, filters on the right */}
       {view !== 'list' && (
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className={cn('flex-wrap items-center gap-2.5', view === 'calendar' ? 'hidden md:flex' : 'flex')}>
           {view === 'calendar' && (
             <div className="hidden items-center gap-1 md:flex">
               <Button variant="ghost" size="icon" onClick={goPrev} aria-label="Mês anterior"><ChevronLeft size={18} /></Button>
@@ -331,38 +368,7 @@ export function ContentPage({ view }: ContentPageProps) {
             </Button>
           )}
           <div className="ml-auto">
-            <FilterMenu
-              active={[selectedClient, selectedStatus, selectedPlatform].filter(Boolean).length}
-              onClear={() => { setSelectedClient(''); setSelectedStatus(''); setSelectedPlatform('') }}
-            >
-              <FilterField label="Cliente">
-                <Select value={selectedClient || ALL_CLIENTS} onValueChange={(v) => setSelectedClient(v === ALL_CLIENTS ? '' : v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_CLIENTS}>Todos os clientes</SelectItem>
-                    {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </FilterField>
-              <FilterField label="Status">
-                <Select value={selectedStatus || ALL_STATUS} onValueChange={(v) => setSelectedStatus(v === ALL_STATUS ? '' : v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_STATUS}>Todos os status</SelectItem>
-                    {FILTER_STATUSES.map((status) => <SelectItem key={status} value={status}>{STATUS_LABELS[status]}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </FilterField>
-              <FilterField label="Rede social">
-                <Select value={selectedPlatform || ALL_PLATFORMS} onValueChange={(v) => setSelectedPlatform(v === ALL_PLATFORMS ? '' : v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_PLATFORMS}>Todas as redes</SelectItem>
-                    {Object.keys(PLATFORM_LABELS).map((p) => <SelectItem key={p} value={p}>{PLATFORM_LABELS[p]}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </FilterField>
-            </FilterMenu>
+            {filtersMenu}
           </div>
         </div>
       )}

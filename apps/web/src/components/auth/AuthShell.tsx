@@ -15,7 +15,7 @@ const POINTS = [
  */
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh bg-background font-sans">
+    <div className="flex min-h-dvh bg-background pb-[var(--sab)] pt-[var(--sat)] font-sans">
       {/* Brand panel */}
       <aside
         className="relative hidden w-[45%] max-w-[640px] shrink-0 flex-col justify-between overflow-hidden px-14 py-12 text-[#fff] lg:flex"

@@ -872,8 +872,8 @@ export function SocialConnectionsPage() {
 
             <CardContent className="-mx-5 -mb-5 space-y-0 divide-y divide-border">
               {/* Meta App row */}
-              <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3.5 min-w-0">
+              <div className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:px-5 sm:py-4">
+                <div className="flex min-w-0 flex-1 items-center gap-3.5">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#0467DF]/10 text-[#0467DF]">
                     <SiMeta size={19} />
                   </div>
@@ -884,8 +884,8 @@ export function SocialConnectionsPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {metaSettings?.configured ? <Badge variant="success">Configurado</Badge> : <Badge variant="default">Não configurado</Badge>}
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                  {metaSettings?.configured ? <Badge variant="success" className="hidden sm:inline-flex">Configurado</Badge> : <Badge variant="default" className="hidden sm:inline-flex">Não configurado</Badge>}
                   <Button type="button" variant="outline" size="sm" onClick={openMetaModal}>
                     <span>{metaSettings?.configured ? 'Editar' : 'Configurar'}</span>
                   </Button>
@@ -902,8 +902,8 @@ export function SocialConnectionsPage() {
               </div>
 
               {/* LinkedIn App row */}
-              <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3.5 min-w-0">
+              <div className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:px-5 sm:py-4">
+                <div className="flex min-w-0 flex-1 items-center gap-3.5">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#0A66C2]/10 text-[#0A66C2]">
                     <FaLinkedin size={19} />
                   </div>
@@ -914,8 +914,8 @@ export function SocialConnectionsPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {linkedinSettings?.configured ? <Badge variant="success">Configurado</Badge> : <Badge variant="default">Não configurado</Badge>}
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                  {linkedinSettings?.configured ? <Badge variant="success" className="hidden sm:inline-flex">Configurado</Badge> : <Badge variant="default" className="hidden sm:inline-flex">Não configurado</Badge>}
                   <Button type="button" variant="outline" size="sm" onClick={openLinkedinModal}>
                     <span>{linkedinSettings?.configured ? 'Editar' : 'Configurar'}</span>
                   </Button>
@@ -932,8 +932,8 @@ export function SocialConnectionsPage() {
               </div>
 
               {/* TikTok App row */}
-              <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3.5 min-w-0">
+              <div className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:px-5 sm:py-4">
+                <div className="flex min-w-0 flex-1 items-center gap-3.5">
                   <div
                     className="flex size-10 shrink-0 items-center justify-center rounded-xl text-[#fff]"
                     style={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}
@@ -947,8 +947,8 @@ export function SocialConnectionsPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {tiktokSettings?.configured ? <Badge variant="success">Configurado</Badge> : <Badge variant="default">Não configurado</Badge>}
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                  {tiktokSettings?.configured ? <Badge variant="success" className="hidden sm:inline-flex">Configurado</Badge> : <Badge variant="default" className="hidden sm:inline-flex">Não configurado</Badge>}
                   <Button type="button" variant="outline" size="sm" onClick={openTiktokModal}>
                     <span>{tiktokSettings?.configured ? 'Editar' : 'Configurar'}</span>
                   </Button>
@@ -984,8 +984,8 @@ export function SocialConnectionsPage() {
               />
 
               {/* YouTube App row */}
-              <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3.5 min-w-0">
+              <div className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:px-5 sm:py-4">
+                <div className="flex min-w-0 flex-1 items-center gap-3.5">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#FF0000]/10 text-[#FF0000]">
                     <SiYoutube size={19} />
                   </div>
@@ -996,8 +996,8 @@ export function SocialConnectionsPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {youtubeSettings?.configured ? <Badge variant="success">Configurado</Badge> : <Badge variant="default">Não configurado</Badge>}
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                  {youtubeSettings?.configured ? <Badge variant="success" className="hidden sm:inline-flex">Configurado</Badge> : <Badge variant="default" className="hidden sm:inline-flex">Não configurado</Badge>}
                   <Button type="button" variant="outline" size="sm" onClick={openYoutubeModal}>
                     <span>{youtubeSettings?.configured ? 'Editar' : 'Configurar'}</span>
                   </Button>
@@ -1029,8 +1029,8 @@ export function SocialConnectionsPage() {
               />
 
               {/* WhatsApp row */}
-              <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3.5 min-w-0">
+              <div className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:px-5 sm:py-4">
+                <div className="flex min-w-0 flex-1 items-center gap-3.5">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#25D366]/10 text-[#25D366]">
                     <SiWhatsapp size={19} />
                   </div>
@@ -1043,8 +1043,8 @@ export function SocialConnectionsPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {waSettings?.configured ? <Badge variant="success">Conectado</Badge> : <Badge variant="default">Não conectado</Badge>}
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                  {waSettings?.configured ? <Badge variant="success" className="hidden sm:inline-flex">Conectado</Badge> : <Badge variant="default" className="hidden sm:inline-flex">Não conectado</Badge>}
                   {waSettings?.configured ? (
                     <button
                       onClick={handleDisconnectWhatsapp}
@@ -1062,8 +1062,8 @@ export function SocialConnectionsPage() {
               </div>
 
               {/* Email (SMTP) row */}
-              <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3.5 min-w-0">
+              <div className="flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:px-5 sm:py-4">
+                <div className="flex min-w-0 flex-1 items-center gap-3.5">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-info/10 text-info-dark">
                     <Mail size={19} />
                   </div>
@@ -1074,8 +1074,8 @@ export function SocialConnectionsPage() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {smtpSettings?.configured ? <Badge variant="success">Conectado</Badge> : <Badge variant="default">Não configurado</Badge>}
+                <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                  {smtpSettings?.configured ? <Badge variant="success" className="hidden sm:inline-flex">Conectado</Badge> : <Badge variant="default" className="hidden sm:inline-flex">Não configurado</Badge>}
                   <Button type="button" variant="outline" size="sm" onClick={openSmtpModal}>
                     <span>{smtpSettings?.configured ? 'Editar' : 'Configurar'}</span>
                   </Button>
@@ -1124,50 +1124,51 @@ export function SocialConnectionsPage() {
                     </Select>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Conectar rede</h4>
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3">
                     <Button type="button" variant="outline" onClick={handleConnectMeta} loading={connectingMeta} disabled={!metaSettings?.configured} className="h-11 justify-center gap-2 rounded-xl">
                       {!connectingMeta && (
                         <>
-                          <SiFacebook size={14} className="text-[#0866FF]" />
-                          <span>Conectar Facebook</span>
+                          <SiFacebook size={16} className="shrink-0 text-[#0866FF]" />
+                          <span className="truncate">Facebook</span>
                         </>
                       )}
                     </Button>
                     <Button type="button" variant="outline" onClick={handleConnectMeta} loading={connectingMeta} disabled={!metaSettings?.configured} className="h-11 justify-center gap-2 rounded-xl">
                       {!connectingMeta && (
                         <>
-                          <BrandIcon platform="INSTAGRAM" size={14} />
-                          <span>Conectar Instagram</span>
+                          <BrandIcon platform="INSTAGRAM" size={16} className="shrink-0" />
+                          <span className="truncate">Instagram</span>
                         </>
                       )}
                     </Button>
                     <Button type="button" variant="outline" onClick={handleConnectLinkedin} loading={connectingLinkedin} disabled={!linkedinSettings?.configured} className="h-11 justify-center gap-2 rounded-xl">
                       {!connectingLinkedin && (
                         <>
-                          <FaLinkedin size={14} className="text-[#0A66C2]" />
-                          <span>Conectar LinkedIn</span>
+                          <FaLinkedin size={16} className="shrink-0 text-[#0A66C2]" />
+                          <span className="truncate">LinkedIn</span>
                         </>
                       )}
                     </Button>
                     <Button type="button" variant="outline" onClick={handleConnectTiktok} loading={connectingTiktok} disabled={!tiktokSettings?.configured} className="h-11 justify-center gap-2 rounded-xl">
                       {!connectingTiktok && (
                         <>
-                          <SiTiktok size={14} className="shrink-0 text-foreground" />
-                          <span>Conectar TikTok</span>
+                          <SiTiktok size={16} className="shrink-0 text-foreground" />
+                          <span className="truncate">TikTok</span>
                         </>
                       )}
                     </Button>
                     <Button type="button" variant="outline" onClick={handleConnectYoutube} loading={connectingYoutube} disabled={!youtubeSettings?.configured} className="h-11 justify-center gap-2 rounded-xl">
                       {!connectingYoutube && (
                         <>
-                          <SiYoutube size={14} className="text-[#FF0000]" />
-                          <span>Conectar YouTube</span>
+                          <SiYoutube size={16} className="shrink-0 text-[#FF0000]" />
+                          <span className="truncate">YouTube</span>
                         </>
                       )}
                     </Button>
                     <Button type="button" variant="outline" onClick={openWhatsappConnectModal} disabled={!socialClientId} className="h-11 justify-center gap-2 rounded-xl">
-                      <SiWhatsapp size={14} className="text-[#25D366]" />
-                      <span>Conectar WhatsApp</span>
+                      <SiWhatsapp size={16} className="shrink-0 text-[#25D366]" />
+                      <span className="truncate">WhatsApp</span>
                     </Button>
                   </div>
                   {(!metaSettings?.configured || !linkedinSettings?.configured || !tiktokSettings?.configured || !youtubeSettings?.configured) && (
@@ -1197,11 +1198,10 @@ export function SocialConnectionsPage() {
                                 <BrandIcon platform={conn.platform} size={20} />
                               </span>
                               <div className="min-w-0 flex-1">
-                                <p className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-sm">
-                                  <span className="truncate font-semibold text-foreground">{conn.accountName || PLATFORM_NAMES[conn.platform] || conn.platform}</span>
-                                  <span className="text-xs text-muted-foreground">· {PLATFORM_NAMES[conn.platform] || conn.platform}</span>
-                                </p>
+                                <p className="truncate text-sm font-semibold text-foreground">{conn.accountName || PLATFORM_NAMES[conn.platform] || conn.platform}</p>
                                 <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                                  <span>{PLATFORM_NAMES[conn.platform] || conn.platform}</span>
+                                  <span aria-hidden>·</span>
                                   <span className={cn('inline-flex items-center gap-1 font-medium', active ? 'text-success-dark dark:text-success' : 'text-warning-dark dark:text-warning')}>
                                     <span className={cn('size-1.5 rounded-full', active ? 'bg-success' : 'bg-warning')} />
                                     {active ? 'Ativa' : conn.status === 'PENDING' ? 'Aguardando' : 'Desconectada'}

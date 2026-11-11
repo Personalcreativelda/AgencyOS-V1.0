@@ -22,7 +22,7 @@ const STATUS_DOT: Record<string, string> = {
 }
 
 /** Kanban card: client chip, title, thumbnail, date + format, networks. Same drag behaviour as before. */
-function KanbanCard({ content, onClick }: { content: any; onClick: () => void }) {
+function KanbanCard({ content, onClick, showStatus }: { content: any; onClick: () => void; showStatus: boolean }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: content.id, data: { content } })
   const image = getPrimaryImage(content)
   const when = content.scheduledAt
@@ -47,7 +47,8 @@ function KanbanCard({ content, onClick }: { content: any; onClick: () => void })
         <span className="max-w-[70%] truncate rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary-dark dark:text-primary-light">
           {content.client?.name || 'Cliente'}
         </span>
-        <StatusBadge status={content.status} className="gap-1 px-1.5 py-0 text-[10px] leading-4" />
+        {/* The column already names the status — only show it when a column groups several. */}
+        {showStatus && <StatusBadge status={content.status} className="gap-1 px-1.5 py-0 text-[10px] leading-4" />}
       </div>
 
       <div className="mt-2.5 flex items-start gap-3">
@@ -98,7 +99,7 @@ function BoardColumn({ column, items, onOpenContent, onCreate }: { column: Effec
       </header>
       <div ref={setNodeRef} className="flex min-h-[220px] flex-1 flex-col gap-2.5">
         {items.map((item) => (
-          <KanbanCard key={item.id} content={item} onClick={() => onOpenContent(item.id)} />
+          <KanbanCard key={item.id} content={item} onClick={() => onOpenContent(item.id)} showStatus={column.statuses.length > 1} />
         ))}
         {items.length === 0 && (
           <p className="rounded-2xl border border-dashed border-border py-8 text-center text-[13px] text-muted-foreground">Sem conteúdos</p>

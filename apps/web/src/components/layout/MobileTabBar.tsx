@@ -56,7 +56,7 @@ export function MobileTabBar({ onOpenMenu, menuOpen, unread = 0 }: { onOpenMenu:
     <nav
       aria-label="Navegação principal"
       className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur-md lg:hidden"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      style={{ paddingBottom: 'var(--sab)' }}
     >
       <div className="mx-auto flex h-16 max-w-xl items-stretch px-1">
         {LEFT.map((tab) => renderTab(tab))}
@@ -67,9 +67,9 @@ export function MobileTabBar({ onOpenMenu, menuOpen, unread = 0 }: { onOpenMenu:
             type="button"
             onClick={() => navigate('/app/content?novo=1')}
             aria-label="Novo conteúdo"
-            className="-mt-5 flex size-[58px] items-center justify-center rounded-[18px] bg-primary text-[#fff] shadow-[0_10px_24px_-8px_rgba(0,120,103,0.6)] ring-4 ring-card transition-transform hover:bg-primary-dark active:scale-95 focus-visible:outline-none focus-visible:ring-primary/40"
+            className="-mt-3 flex size-12 items-center justify-center rounded-2xl bg-primary text-[#fff] shadow-[0_8px_18px_-8px_rgba(0,120,103,0.55)] ring-[3px] ring-card transition-transform hover:bg-primary-dark active:scale-95 focus-visible:outline-none focus-visible:ring-primary/40"
           >
-            <Plus size={28} strokeWidth={2.4} />
+            <Plus size={24} strokeWidth={2.4} />
           </button>
         </div>
 

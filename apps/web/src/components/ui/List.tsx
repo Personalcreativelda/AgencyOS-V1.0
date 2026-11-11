@@ -20,13 +20,15 @@ export const listRowClass = (interactive = true) =>
 export function Meta({ items, className }: { items: React.ReactNode[]; className?: string }) {
   const visible = items.filter((item) => item !== null && item !== undefined && item !== false && item !== '')
   return (
-    <div className={cn('flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground', className)}>
-      {visible.map((item, i) => (
-        <React.Fragment key={i}>
-          {i > 0 && <span aria-hidden className="text-muted-foreground/50">·</span>}
-          <span className="inline-flex min-w-0 items-center gap-1">{item}</span>
-        </React.Fragment>
-      ))}
+    // Every item carries its own leading "·" and the row is shifted left by that width inside a
+    // clipped box, so a separator that lands at the start of a line (after wrapping) is hidden
+    // instead of dangling at the end of the previous one.
+    <div className={cn('min-w-0 overflow-hidden text-xs text-muted-foreground', className)}>
+      <div className="-ml-3 flex min-w-0 flex-wrap items-center gap-y-0.5">
+        {visible.map((item, i) => (
+          <span key={i} className="inline-flex min-w-0 items-center gap-1 before:inline-block before:w-3 before:shrink-0 before:text-center before:text-muted-foreground/50 before:content-['·']">{item}</span>
+        ))}
+      </div>
     </div>
   )
 }

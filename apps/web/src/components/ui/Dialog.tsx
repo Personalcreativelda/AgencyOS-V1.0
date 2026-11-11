@@ -109,7 +109,7 @@ export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLD
   return (
     <div
       className={cn(
-        'sticky -bottom-5 z-10 -mx-5 -mb-5 mt-1 flex flex-col-reverse gap-2 border-t border-border bg-card px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]',
+        'sticky -bottom-5 z-10 -mx-5 -mb-5 mt-1 flex flex-col-reverse gap-2 border-t border-border bg-card px-5 py-4 pb-[max(1rem,var(--sab))]',
         'sm:-bottom-6 sm:-mx-6 sm:-mb-6 sm:flex-row sm:items-center sm:justify-end sm:gap-2.5 sm:px-6 sm:pb-4',
         '[&>*]:w-full sm:[&>*]:w-auto',
         className
