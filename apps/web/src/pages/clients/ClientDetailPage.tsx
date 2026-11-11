@@ -4,6 +4,7 @@ import {
   Sparkles, Plus, Trash2,
   CheckCircle2, ArrowLeft, Send, Mail, Phone, Globe, Pencil, X, ImagePlus, Loader2,
   Brain, Shield, BarChart3, Palette, MessageCircle, User,
+  AlertTriangle, ArrowRight, CalendarRange, CircleDashed, Info,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { uploadFile } from '@/lib/upload'
@@ -30,6 +31,87 @@ const TABS = [
   { id: 'colors', label: 'Cores, Estilo & Referências', icon: Palette },
   { id: 'feedback', label: 'Memória de Feedback', icon: MessageCircle },
 ]
+
+const CALIBRATION_TABS: Record<string, string> = { personas: 'personas', rules: 'rules', pillars: 'pillars', colors: 'colors' }
+
+/** Brand Brain readiness for this client, computed from what is actually filled in. */
+function BrandBrainCalibration({ profile, counts, onOpenTab }: {
+  profile: any
+  counts: { personas: number; rules: number; pillars: number; colors: number; feedback: number }
+  onOpenTab: (tab: string) => void
+}) {
+  const filled = (v?: string) => Boolean(v && String(v).trim().length > 0)
+  const modules = [
+    { key: 'summary', label: 'Resumo & posicionamento', value: ((filled(profile.brandSummary) ? 1 : 0) + (filled(profile.positioning) ? 1 : 0)) / 2 },
+    { key: 'voice', label: 'Tom de voz & personalidade', value: ((filled(profile.toneOfVoice) ? 1 : 0) + (filled(profile.brandPersonality) ? 1 : 0)) / 2 },
+    { key: 'audience', label: 'Público & CTA', value: ((filled(profile.targetAudience) ? 1 : 0) + (filled(profile.defaultCta) ? 1 : 0)) / 2 },
+    { key: 'personas', label: 'Personas mapeadas', value: Math.min(counts.personas / 2, 1) },
+    { key: 'rules', label: 'Regras DO / DONT', value: Math.min(counts.rules / 4, 1) },
+    { key: 'pillars', label: 'Pilares de conteúdo', value: Math.min(counts.pillars / 3, 1) },
+    { key: 'colors', label: 'Cores & referências', value: Math.min(counts.colors / 3, 1) },
+  ]
+  const score = Math.round((modules.reduce((sum, m) => sum + m.value, 0) / modules.length) * 100)
+  const level = score >= 85 ? 'Excelente' : score >= 60 ? 'Bom' : score >= 30 ? 'Em construção' : 'Inicial'
+  const missing = modules.filter((m) => m.value < 1 && CALIBRATION_TABS[m.key]).slice(0, 2)
+
+  return (
+    <aside className="space-y-5 rounded-[20px] border border-border/70 bg-card p-5 shadow-card sm:p-6 xl:sticky xl:top-6">
+      <div className="flex items-center gap-3">
+        <span className="flex size-11 items-center justify-center rounded-2xl bg-primary/10 text-primary-dark dark:text-primary-light"><Brain size={21} /></span>
+        <div className="min-w-0 flex-1">
+          <p className="text-base font-semibold text-foreground">Brand Brain</p>
+          <p className="text-[13px] text-muted-foreground">Memória desta marca</p>
+        </div>
+        <Badge dot variant={score >= 60 ? 'success' : 'warning'}>{score >= 60 ? 'Calibrado' : 'Aprendendo'}</Badge>
+      </div>
+
+      <div className="rounded-2xl border border-border/70 bg-muted/40 p-4">
+        <div className="flex items-baseline justify-between">
+          <span className="text-sm font-medium text-foreground/85">Nível de calibração</span>
+          <span className="text-2xl font-bold tabular-nums text-primary-dark dark:text-primary-light">{score}%</span>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-border/70">
+          <div className="h-full rounded-full bg-primary transition-[width] duration-500" style={{ width: `${score}%` }} />
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">Qualidade estimada: <span className="font-semibold text-foreground">{level}</span></p>
+      </div>
+
+      <div>
+        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">Status dos módulos</p>
+        <ul className="space-y-2.5">
+          {modules.map((m) => {
+            const pct = Math.round(m.value * 100)
+            return (
+              <li key={m.key} className="flex items-center gap-2.5 text-sm">
+                {pct === 100 ? <CheckCircle2 size={16} className="shrink-0 text-success" /> : pct > 0 ? <CircleDashed size={16} className="shrink-0 text-warning" /> : <AlertTriangle size={16} className="shrink-0 text-error" />}
+                <span className="min-w-0 flex-1 truncate text-foreground/85">{m.label}</span>
+                <span className="text-xs font-semibold tabular-nums text-muted-foreground">{pct}%</span>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+
+      {missing.length > 0 && (
+        <div className="space-y-2.5 border-t border-border/70 pt-5">
+          <p className="text-sm font-semibold text-foreground">Próximos passos sugeridos</p>
+          {missing.map((m) => (
+            <button key={m.key} type="button" onClick={() => onOpenTab(CALIBRATION_TABS[m.key])}
+              className="group block w-full rounded-xl border border-border/70 p-3.5 text-left transition-colors hover:border-grey-400 hover:bg-muted/40">
+              <span className="block text-[13px] font-medium text-foreground">Completar “{m.label}”</span>
+              <span className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary-dark dark:text-primary-light">Preencher agora <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" /></span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <p className="flex items-start gap-2 rounded-xl bg-info/[0.06] p-3 text-xs leading-relaxed text-foreground/75">
+        <Info size={14} className="mt-0.5 shrink-0 text-info-dark dark:text-info" />
+        Quanto maior a calibração, mais assertivas são as legendas e os planos gerados para este cliente.
+      </p>
+    </aside>
+  )
+}
 
 export function ClientDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -336,43 +418,45 @@ export function ClientDetailPage() {
 
   return (
     <Page>
-      <PageHeader
-        icon={
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Button asChild variant="ghost" size="icon" className="-ml-2 shrink-0">
-              <Link to="/app/clients" aria-label="Voltar para clientes">
-                <ArrowLeft size={20} />
-              </Link>
-            </Button>
-            <UploadableAvatar
-              src={client.logoUrl}
-              rounded="rounded-2xl"
-              className="size-12 bg-primary/10 sm:size-14"
-              fallback={<span className="text-primary-dark font-extrabold text-lg">{getInitials(client.name)}</span>}
-              onUpload={handleUploadLogo}
-            />
+      <Link to="/app/clients" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+        <ArrowLeft size={16} aria-hidden />Voltar para Clientes
+      </Link>
+
+      <section className="flex flex-col gap-5 rounded-[20px] border border-border/70 bg-card p-5 shadow-card sm:p-6 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 flex-1 items-center gap-4">
+          <UploadableAvatar
+            src={client.logoUrl}
+            rounded="rounded-2xl"
+            className="size-16 shrink-0 bg-primary/10"
+            fallback={<span className="text-xl font-bold text-primary-dark dark:text-primary-light">{getInitials(client.name)}</span>}
+            onUpload={handleUploadLogo}
+          />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="truncate text-[26px] font-bold tracking-[-0.02em] text-foreground">{client.name}</h1>
+              <Badge dot variant={client.status === 'ACTIVE' ? 'success' : client.status === 'PAUSED' ? 'warning' : 'default'}>{client.status === 'ACTIVE' ? 'Ativo' : client.status === 'PAUSED' ? 'Pausado' : client.status}</Badge>
+            </div>
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+              <span>{client.industry || 'Setor não informado'}</span>
+              <span aria-hidden className="text-muted-foreground/50">·</span>
+              <span>Cliente desde {new Date(client.createdAt).toLocaleDateString('pt-BR')}</span>
+              {client.accountManager?.name && <><span aria-hidden className="text-muted-foreground/50">·</span><span>Gestor: {client.accountManager.name}</span></>}
+            </p>
           </div>
-        }
-        title={client.name}
-        description={`${client.industry || 'Setor não informado'} • Cliente desde ${new Date(client.createdAt).toLocaleDateString('pt-BR')}`}
-        actions={
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button asChild variant="outline"><Link to="/app/content/calendar" state={{ clientId: client.id }}><CalendarRange size={16} aria-hidden />Planner do cliente</Link></Button>
           <Button onClick={handleAIBrandAnalysis} loading={analyzingBrand}>
             {analyzingBrand ? <span>Analisando...</span> : <><Sparkles size={16} /><span>Análise de marca com Brand Brain</span></>}
           </Button>
-        }
-      />
+        </div>
+      </section>
 
       {/* Contact Info — email/phone (WhatsApp) used for approval-request notifications */}
-      <Card className="space-y-3">
-        <div className="flex items-center justify-between">
+      <Card className={editingContact ? 'space-y-3 rounded-[20px]' : 'rounded-[20px] px-5 py-4'}>
+        {editingContact && (
           <h3 className="text-[15px] font-bold tracking-tight text-foreground">Dados de contato</h3>
-          {!editingContact && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => setEditingContact(true)}>
-              <Pencil size={13} />
-              <span>Editar</span>
-            </Button>
-          )}
-        </div>
+        )}
 
         {editingContact ? (
           <form onSubmit={handleSaveContact} className="space-y-3">
@@ -401,18 +485,27 @@ export function ClientDetailPage() {
             </div>
           </form>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            <div className="flex items-center gap-2">
-              <Mail size={14} className="text-muted-foreground shrink-0" />
-              {client.email ? <span className="text-foreground font-semibold truncate">{client.email}</span> : <span className="text-muted-foreground italic">Email não cadastrado</span>}
+          <div className="flex flex-col gap-3 text-sm lg:flex-row lg:items-center lg:gap-0 lg:divide-x lg:divide-border/70">
+            <div className="flex min-w-0 items-center gap-2 lg:flex-1 lg:pr-5">
+              <Mail size={16} className="shrink-0 text-muted-foreground" />
+              <span className="shrink-0 text-muted-foreground">Email:</span>
+              {client.email ? <span className="truncate font-semibold text-foreground">{client.email}</span> : <span className="italic text-muted-foreground">não cadastrado</span>}
             </div>
-            <div className="flex items-center gap-2">
-              <Phone size={14} className="text-muted-foreground shrink-0" />
-              {client.phone ? <span className="text-foreground font-semibold truncate">{client.phone}</span> : <span className="text-muted-foreground italic">Telefone não cadastrado — necessário para enviar aprovações por WhatsApp</span>}
+            <div className="flex min-w-0 items-center gap-2 lg:flex-1 lg:px-5" title={client.phone ? undefined : 'Necessário para enviar aprovações por WhatsApp'}>
+              <Phone size={16} className="shrink-0 text-muted-foreground" />
+              <span className="shrink-0 text-muted-foreground">WhatsApp:</span>
+              {client.phone ? <span className="truncate font-semibold text-foreground">{client.phone}</span> : <span className="italic text-warning-dark dark:text-warning">não cadastrado</span>}
             </div>
-            <div className="flex items-center gap-2">
-              <Globe size={14} className="text-muted-foreground shrink-0" />
-              {client.website ? <span className="text-foreground font-semibold truncate">{client.website}</span> : <span className="text-muted-foreground italic">Website não cadastrado</span>}
+            <div className="flex min-w-0 items-center gap-2 lg:flex-1 lg:px-5">
+              <Globe size={16} className="shrink-0 text-muted-foreground" />
+              <span className="shrink-0 text-muted-foreground">Website:</span>
+              {client.website ? <span className="truncate font-semibold text-foreground">{client.website}</span> : <span className="italic text-muted-foreground">não cadastrado</span>}
+            </div>
+            <div className="lg:pl-4">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setEditingContact(true)}>
+                <Pencil size={13} />
+                <span>Editar</span>
+              </Button>
             </div>
           </div>
         )}
@@ -451,31 +544,39 @@ export function ClientDetailPage() {
       )}
 
       {/* Minimals Tabs */}
-      <div className="flex items-center gap-2 border-b border-border overflow-x-auto">
-        {TABS.map((tab) => (
-          <Button
-            key={tab.id}
-            variant="ghost"
-            onClick={() => setActiveTab(tab.id)}
-            className={`rounded-none px-4 py-3 border-b-2 whitespace-nowrap hover:bg-transparent gap-1.5 ${
-              activeTab === tab.id
-                ? 'border-primary text-primary hover:text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <tab.icon size={15} />
-            <span>{tab.label}</span>
-          </Button>
-        ))}
+      <div role="tablist" aria-label="Brand Brain do cliente" className="-mx-4 flex items-center gap-1 overflow-x-auto border-b border-border px-4 sm:mx-0 sm:px-0">
+        {TABS.map((tab) => {
+          const count = ({ personas: personas.length, rules: rules.length, pillars: pillars.length, colors: colors.length + referenceImages.length, feedback: feedbackList.length } as Record<string, number>)[tab.id]
+          const active = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setActiveTab(tab.id)}
+              className={`-mb-px inline-flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3.5 py-3.5 text-sm font-semibold transition-colors ${
+                active ? 'border-primary text-primary-dark dark:text-primary-light' : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <tab.icon size={16} />
+              <span>{tab.label}</span>
+              {count !== undefined && count > 0 && (
+                <span className={`rounded-md px-1.5 py-px text-[11px] tabular-nums ${active ? 'bg-primary/10' : 'bg-muted'}`}>{count}</span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {/* TAB 1: Brand Profile */}
       {activeTab === 'brand' && (
-        <form onSubmit={handleUpdateProfile} className="card-minimals p-5 sm:p-8 space-y-6">
-          <div className="flex items-center justify-between border-b border-border pb-4">
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <form onSubmit={handleUpdateProfile} className="space-y-6 rounded-[20px] border border-border/70 bg-card p-5 shadow-card sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border/70 pb-5">
             <div>
-              <h2 className="text-base font-bold text-foreground">Identidade da marca</h2>
-              <p className="text-xs text-muted-foreground font-medium">Informações mestras que alimentam o gerador de copies e estratégias do Brand Brain.</p>
+              <h2 className="text-[17px] font-semibold tracking-tight text-foreground">Diretrizes fundamentais da marca</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Informações que o Brand Brain usa para calibrar legendas, roteiros e estratégias.</p>
             </div>
             <Button type="submit">Salvar alterações</Button>
           </div>
@@ -552,6 +653,12 @@ export function ClientDetailPage() {
             </div>
           </div>
         </form>
+        <BrandBrainCalibration
+          profile={profile}
+          counts={{ personas: personas.length, rules: rules.length, pillars: pillars.length, colors: colors.length + referenceImages.length, feedback: feedbackList.length }}
+          onOpenTab={setActiveTab}
+        />
+        </div>
       )}
 
       {/* TAB: Personas */}

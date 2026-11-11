@@ -1,13 +1,12 @@
+import { AuthShell } from '@/components/auth/AuthShell'
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { ArrowRight, Lock, Mail, AlertCircle, Eye, EyeOff } from 'lucide-react'
-import { Logo } from '@/components/brand/Logo'
 import { useAuthStore } from '@/stores/authStore'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
-import { ThemeMenu } from '@/components/ui/ThemeMenu'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -35,15 +34,11 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4 pt-16 sm:p-6 font-sans relative">
-      <div className="absolute right-4 top-4"><ThemeMenu /></div>
-      <div className="w-full max-w-md bg-card rounded-3xl p-6 sm:p-10 shadow-dialog border border-border space-y-6">
-        {/* Brand Header */}
-        <Logo size={48} tagline="Sistema Operacional de Agências" wordmarkClassName="text-xl" />
-
+    <AuthShell>
+      <div className="space-y-7">
         <div>
-          <h2 className="text-xl font-extrabold text-foreground tracking-tight">Entrar na sua agência</h2>
-          <p className="text-xs text-muted-foreground font-medium mt-1">
+          <h2 className="text-[28px] font-bold tracking-[-0.02em] text-foreground">Entrar na sua agência</h2>
+          <p className="mt-2 text-[15px] text-muted-foreground">
             Novo usuário?{' '}
             <Link to="/register" className="text-primary hover:underline font-bold">
               Criar uma agência
@@ -94,7 +89,7 @@ export function LoginPage() {
             />
           </div>
 
-          <Button type="submit" variant="dark" size="lg" loading={loading} className="w-full mt-2">
+          <Button type="submit" size="lg" loading={loading} className="w-full mt-2">
             {!loading && (
               <>
                 <span>Acessar painel</span>
@@ -104,6 +99,6 @@ export function LoginPage() {
           </Button>
         </form>
       </div>
-    </div>
+    </AuthShell>
   )
 }

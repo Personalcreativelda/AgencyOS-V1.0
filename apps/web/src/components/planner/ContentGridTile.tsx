@@ -75,19 +75,32 @@ export function ContentListRow(props: CreativeItemProps) {
   const { content, onPreview } = props
   const media = getCreativeMedia(content)
   const video = media[0]?.mimeType.startsWith('video/')
+  const format = `${CONTENT_TYPE_LABELS[content.contentType] || content.contentType}${content.contentType === 'CAROUSEL' && media.length > 0 ? ` · ${media.length}` : ''}`
   return (
-    <article className="group relative flex min-w-0 items-center gap-3 px-3 py-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 sm:gap-4 sm:px-5 motion-reduce:transition-none">
-      <button type="button" onClick={onPreview} aria-label={`Pré-visualizar ${content.title}`} className={cn('relative z-10 size-16 shrink-0 overflow-hidden rounded-lg border border-border bg-muted', focus)}>
-        <CreativeThumbnail content={content} />
-        {(video || (content.contentType === 'CAROUSEL' && media.length > 0)) && <span className="absolute bottom-0 right-0 inline-flex items-center gap-0.5 rounded-tl-md bg-[#000]/70 px-1 py-0.5 text-[10px] text-[#fff]">{video ? <Play size={10} aria-hidden /> : <><Layers size={10} aria-hidden />{media.length}</>}</span>}
-      </button>
-      <div className="min-w-0 flex-1 space-y-1">
-        <h3 className="line-clamp-2 text-[13px] font-semibold leading-5 sm:text-sm"><Link to={`/app/content/${content.id}`} aria-label={`Abrir Workspace de ${content.title}`} className="outline-none after:absolute after:inset-0 after:rounded-md focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary/60">{content.title}</Link></h3>
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5 text-muted-foreground"><span className="max-w-full truncate">{content.client?.name || 'Cliente não disponível'}</span><span aria-hidden>·</span><span>{CONTENT_TYPE_LABELS[content.contentType] || content.contentType}{content.contentType === 'CAROUSEL' && media.length > 0 ? ` · ${media.length} ${media.length === 1 ? 'mídia' : 'mídias'}` : ''}</span><Platforms content={content} /></div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1"><ScheduledDate content={content} /><StatusBadge status={content.status} className="rounded-md px-2 py-0.5 text-xs font-medium sm:hidden" /></div>
+    <article className="group relative flex min-w-0 items-center gap-3 px-3 py-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 sm:gap-4 sm:px-5 md:grid md:grid-cols-[minmax(0,1fr)_12rem_9rem_9.5rem_5.5rem] md:gap-5 md:items-center md:px-6 motion-reduce:transition-none">
+      <div className="flex min-w-0 flex-1 items-center gap-3.5 sm:gap-4">
+        <button type="button" onClick={onPreview} aria-label={`Pré-visualizar ${content.title}`} className={cn('relative z-10 size-14 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted', focus)}>
+          <CreativeThumbnail content={content} />
+          {(video || (content.contentType === 'CAROUSEL' && media.length > 0)) && <span className="absolute bottom-0 right-0 inline-flex items-center gap-0.5 rounded-tl-md bg-[#000]/70 px-1 py-0.5 text-[10px] text-[#fff]">{video ? <Play size={10} aria-hidden /> : <><Layers size={10} aria-hidden />{media.length}</>}</span>}
+        </button>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground"><Link to={`/app/content/${content.id}`} aria-label={`Abrir Workspace de ${content.title}`} className="outline-none after:absolute after:inset-0 after:rounded-md focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary/60">{content.title}</Link></h3>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5 text-muted-foreground">
+            <span className="max-w-full truncate rounded-md bg-primary/10 px-1.5 py-px font-semibold text-primary-dark dark:text-primary-light">{content.client?.name || 'Cliente não disponível'}</span>
+            <span className="md:hidden">{format}</span>
+            <span className="md:hidden"><Platforms content={content} /></span>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 md:hidden"><ScheduledDate content={content} /><StatusBadge status={content.status} className="rounded-md px-2 py-0.5 text-xs font-medium sm:hidden" /></div>
+        </div>
       </div>
-      <StatusBadge status={content.status} className="hidden rounded-md px-2 py-0.5 text-xs font-medium sm:inline-flex" />
-      <ContentActions {...props} />
+      <div className="hidden min-w-0 space-y-1 md:block">
+        <p className="truncate text-[13px] font-medium text-foreground/85">{format}</p>
+        <Platforms content={content} />
+      </div>
+      <div className="hidden text-[13px] md:block"><ScheduledDate content={content} /></div>
+      <div className="hidden sm:block"><StatusBadge status={content.status} className="rounded-md px-2 py-0.5 text-xs font-medium" /></div>
+      <div className="md:flex md:justify-end"><ContentActions {...props} /></div>
     </article>
   )
 }
+

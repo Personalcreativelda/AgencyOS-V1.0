@@ -4,7 +4,7 @@ export type DashboardOverview = {
 }
 
 export type DashboardContent = {
-  id: string; title: string; status: string; scheduledAt: string | null
+  id: string; title: string; status: string; scheduledAt: string | null; contentType?: string
   client?: { id: string; name: string; logoUrl?: string | null }
   platforms: { id: string; platform: string; status: string }[]
   assets?: { role: string; sortOrder?: number; asset: { publicUrl: string; mimeType: string } }[]

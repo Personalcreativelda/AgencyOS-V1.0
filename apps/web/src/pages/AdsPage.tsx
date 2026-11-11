@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
-  Megaphone, Plus, RefreshCw, Sparkles, TrendingUp, TrendingDown, Eye as EyeIcon,
+  Info, Megaphone, Plus, RefreshCw, Sparkles, TrendingUp, TrendingDown, Eye as EyeIcon,
   MousePointerClick, Wallet, Target, Check, X, Trash2, Loader2, Pause, Play,
   MapPin, Users, MessageCircle, Radio,
 } from 'lucide-react'
@@ -511,11 +511,42 @@ export function AdsPage() {
           {/* KPIs */}
           {loadingInsights ? (
             <Skeleton className="h-[236px] rounded-2xl min-[1440px]:h-[118px]" />
-          ) : insights && (
-            <StatGroup className="min-[1440px]:grid-cols-7">
+          ) : insights && (<>
+            {/* Phones: Meta Business Suite style summary — one sentence + 2-column metric tiles */}
+            <section aria-label="Resumo dos anúncios" className="space-y-3 md:hidden">
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="text-lg font-bold tracking-tight text-foreground">Resumo dos anúncios</h2>
+              </div>
+              <p className="text-[15px] leading-relaxed text-foreground/85">
+                <span className="font-semibold text-foreground">{clients.find((c) => c.id === clientId)?.name || account?.accountName || 'Esta conta'}</span>
+                {' '}investiu <span className="font-semibold text-foreground">{formatCurrency(insights.totals.spend, account?.currency)}</span>
+                {' '}em {insights.campaigns?.length || 0} {(insights.campaigns?.length || 0) === 1 ? 'campanha' : 'campanhas'}
+                {' '}{range === 'today' ? 'hoje' : range === '7d' ? 'nos últimos 7 dias' : 'nos últimos 30 dias'}.
+              </p>
+              <div className="grid grid-cols-2 gap-2.5">
+                {kpis.map((k: any, i: number) => (
+                  <div key={k.label} className={cn('flex min-h-[124px] flex-col rounded-2xl bg-muted/70 p-4 dark:bg-muted', kpis.length % 2 === 1 && i === kpis.length - 1 && 'col-span-2 min-h-0')}>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-[15px] leading-snug text-foreground/85">{k.label}</span>
+                      <button
+                        type="button"
+                        aria-label={`Sobre ${k.label}`}
+                        title={k.hint || `${k.label} no período selecionado`}
+                        onClick={() => toast.info(k.label, k.hint || `${k.label} no período selecionado.`)}
+                        className="-mr-1 -mt-1 flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground"
+                      >
+                        <Info size={17} />
+                      </button>
+                    </div>
+                    <p className="mt-auto pt-3 text-[26px] font-bold leading-none tracking-[-0.02em] tabular-nums text-foreground">{k.value}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+            <StatGroup className="hidden min-[1440px]:grid-cols-7 md:grid">
               {kpis.map((k: any) => <Stat key={k.label} label={k.label} value={k.value} icon={k.icon} title={k.hint} />)}
             </StatGroup>
-          )}
+          </>)}
 
           {/* Live Meta breakdowns are aggregate estimates, never individual locations. */}
           <Card className="min-w-0 p-4 sm:p-5 lg:p-6">

@@ -20,3 +20,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </React.StrictMode>,
 )
+
+// Android app (Capacitor): the native launch screen stays up until the first real frame is
+// painted, then fades out — no white flash while the page loads. No-op in a normal browser.
+const capacitor = (window as any).Capacitor
+if (capacitor?.isNativePlatform?.()) {
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    capacitor.nativePromise?.('SplashScreen', 'hide', { fadeOutDuration: 250 }).catch(() => {})
+  }))
+}

@@ -7,5 +7,6 @@ router.use(authenticate);
 
 router.get('/overview', ctrl.overview);
 router.get('/attention', ctrl.attention);
+router.get('/insights', ctrl.insights);
 
 export default router;

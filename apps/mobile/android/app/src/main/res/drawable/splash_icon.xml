@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- AgencyOS mark for the system launch screen. Kept inside the central 2/3 so the
+     Android 12+ circular mask never clips it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="40"
+    android:viewportHeight="40">
+    <group android:pivotX="20" android:pivotY="20" android:scaleX="0.62" android:scaleY="0.62">
+        <path
+            android:pathData="M11.5,29 L20,11 L28.5,29"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="3.6"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+        <path
+            android:fillColor="#C8FAD6"
+            android:pathData="M20,23.6m-2.4,0a2.4,2.4 0,1 1,4.8 0a2.4,2.4 0,1 1,-4.8 0" />
+    </group>
+</vector>

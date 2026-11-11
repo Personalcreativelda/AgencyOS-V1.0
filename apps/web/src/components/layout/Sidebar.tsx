@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Activity, Users, BadgeCheck, FileBarChart, LayoutList,
-  CalendarRange, Kanban, Share2, Settings, ChevronDown, ChevronsLeft, X,
+  LayoutDashboard, Activity, Users, BadgeCheck, FileBarChart, PanelsTopLeft,
+  CalendarRange, Kanban, Plus, Share2, Settings, ChevronDown, ChevronsLeft, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { brandIcon } from '@/components/brand/BrandIcon'
 import { Logo, LogoMark } from '@/components/brand/Logo'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/Tooltip'
 import { useSidebarStore } from '@/stores/sidebarStore'
+import { useNavCounts } from '@/hooks/useNavCounts'
+import { BrandBrainCard } from '@/components/layout/BrandBrainCard'
 
 type IconComponent = ComponentType<{ size?: number | string; className?: string }>
 
@@ -20,6 +22,8 @@ type NavItem = {
   match?: (pathname: string) => boolean
   /** Full page load (pages that need a fresh OAuth/session state). */
   reload?: boolean
+  /** Live counter shown on the right of the item. */
+  count?: 'approvals' | 'clients'
 }
 type NavSection = { id: string; label: string; items: NavItem[] }
 
@@ -36,8 +40,8 @@ const NAV: NavSection[] = [
     id: 'clients',
     label: 'Clientes',
     items: [
-      { label: 'Clientes', href: '/app/clients', icon: Users },
-      { label: 'Aprovações', href: '/app/approvals', icon: BadgeCheck },
+      { label: 'Clientes', href: '/app/clients', icon: Users, count: 'clients' },
+      { label: 'Aprovações', href: '/app/approvals', icon: BadgeCheck, count: 'approvals' },
       { label: 'Relatórios mensais', href: '/app/reports', icon: FileBarChart },
     ],
   },
@@ -46,9 +50,9 @@ const NAV: NavSection[] = [
     label: 'Conteúdo',
     items: [
       {
-        label: 'Criativos',
+        label: 'Conteúdos',
         href: '/app/content',
-        icon: LayoutList,
+        icon: PanelsTopLeft,
         // Also covers the content detail page (/app/content/:id).
         match: (p) => p.startsWith('/app/content') && !p.startsWith('/app/content/calendar') && !p.startsWith('/app/content/board'),
       },
@@ -91,10 +95,10 @@ function useIsDesktop() {
 
 const itemClass = (active: boolean) =>
   cn(
-    'group/item relative flex items-center gap-2.5 rounded-md text-[13px] font-medium outline-none transition-colors duration-150',
+    'group/item relative flex items-center gap-3 rounded-lg text-sm font-medium outline-none transition-colors duration-150',
     'focus-visible:ring-2 focus-visible:ring-primary/40 motion-reduce:transition-none',
     active
-      ? 'bg-primary/10 text-foreground font-semibold before:absolute before:left-0 before:h-4 before:w-0.5 before:rounded-full before:bg-primary'
+      ? 'bg-primary/10 font-semibold text-primary-dark dark:text-primary-light before:absolute before:-left-3 before:h-5 before:w-[3px] before:rounded-r-full before:bg-primary'
       : 'text-sidebar-foreground hover:bg-muted hover:text-foreground focus-visible:bg-muted'
   )
 
@@ -134,6 +138,8 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
   const isDesktop = useIsDesktop()
   const { collapsed, closed, toggleCollapsed, toggleGroup, openGroup } = useSidebarStore()
   const rail = collapsed && isDesktop
+  const counts = useNavCounts()
+  const navigate = useNavigate()
 
   // Collapsible descendants can override visibility; inert also removes hidden links from keyboard navigation.
   useEffect(() => {
@@ -191,10 +197,25 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         onClick={onClose}
         aria-label={rail ? item.label : undefined}
         aria-current={active ? 'page' : undefined}
-        className={cn(itemClass(active), rail ? 'mx-auto size-9 justify-center' : 'px-2.5 py-2')}
+        className={cn(itemClass(active), rail ? 'mx-auto size-10 justify-center' : 'h-10 px-3')}
       >
-        <Icon size={16} className="shrink-0 opacity-80 transition-opacity duration-150 group-hover/item:opacity-100 group-focus-visible/item:opacity-100" />
+        <span className="relative shrink-0">
+          <Icon size={18} className="shrink-0" />
+          {rail && item.count === 'approvals' && counts.pendingApprovals > 0 && (
+            <span aria-hidden className="absolute -right-1 -top-1 size-2 rounded-full bg-warning ring-2 ring-sidebar" />
+          )}
+        </span>
         {!rail && <span className="truncate">{item.label}</span>}
+        {!rail && item.count && (() => {
+          const value = item.count === 'approvals' ? counts.pendingApprovals : counts.activeClients
+          if (!value) return null
+          return (
+            <span className={cn('ml-auto min-w-[22px] rounded-md px-1.5 py-0.5 text-center text-xs font-semibold tabular-nums',
+              item.count === 'approvals' ? 'bg-warning/15 text-warning-dark dark:text-warning' : 'bg-muted text-muted-foreground')}>
+              {value}
+            </span>
+          )
+        })()}
       </NavLink>
     )
     return rail ? <RailTooltip key={item.href} label={item.label}>{link}</RailTooltip> : link
@@ -205,9 +226,9 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       to="/app/settings"
       onClick={onClose}
       aria-label={rail ? 'Configurações' : undefined}
-      className={cn(itemClass(matches(pathname, '/app/settings')), rail ? 'mx-auto size-9 justify-center' : 'w-full px-2.5 py-2')}
+      className={cn(itemClass(matches(pathname, '/app/settings')), rail ? 'mx-auto size-10 justify-center' : 'h-10 w-full px-3')}
     >
-      <Settings size={16} className="shrink-0" />
+      <Settings size={18} strokeWidth={1.9} className="shrink-0" />
       {!rail && <span className="truncate">Configurações</span>}
     </NavLink>
   )
@@ -222,13 +243,13 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         className={cn(
           'fixed inset-y-0 left-0 z-40 isolate flex w-[280px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar',
           'transition-[width,transform] duration-200 ease-out motion-reduce:transition-none lg:relative lg:translate-x-0',
-          rail ? 'lg:w-[64px]' : 'lg:w-[232px]',
+          rail ? 'lg:w-[76px]' : 'lg:w-[264px]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full invisible lg:visible'
         )}
       >
         {/* Brand */}
-        <div className={cn('flex h-14 shrink-0 items-center', rail ? 'justify-center px-0' : 'justify-between gap-3 px-5')}>
-          {rail ? <LogoMark size={28} /> : <Logo size={28} tagline={null} />}
+        <div className={cn('flex h-16 shrink-0 items-center', rail ? 'justify-center px-0' : 'justify-between gap-3 px-6')}>
+          {rail ? <LogoMark size={34} /> : <Logo size={34} tagline={null} wordmarkClassName="text-[19px] font-bold" />}
           <button
             onClick={onClose}
             aria-label="Fechar menu"
@@ -238,24 +259,41 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
+        {/* Primary action, always one click away (Stitch dashboard) */}
+        <div className={cn('shrink-0 pb-3', rail ? 'px-0' : 'px-4')}>
+          {rail ? (
+            <RailTooltip label="Criar conteúdo">
+              <button type="button" aria-label="Criar conteúdo" onClick={() => { onClose(); navigate('/app/content?novo=1') }}
+                className="mx-auto flex size-10 items-center justify-center rounded-xl bg-primary text-[#fff] shadow-[0_6px_14px_-6px_rgba(0,120,103,0.6)] transition-colors hover:bg-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                <Plus size={19} strokeWidth={2.4} />
+              </button>
+            </RailTooltip>
+          ) : (
+            <button type="button" onClick={() => { onClose(); navigate('/app/content?novo=1') }}
+              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-[#fff] shadow-[0_8px_18px_-8px_rgba(0,120,103,0.6)] transition-colors hover:bg-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+              <Plus size={18} strokeWidth={2.4} />Criar conteúdo
+            </button>
+          )}
+        </div>
+
         {/* Desktop collapse handle, sitting on the sidebar's edge */}
         <button
           type="button"
           onClick={toggleCollapsed}
           aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
           title={`${collapsed ? 'Expandir' : 'Recolher'} menu (Ctrl+B)`}
-          className="absolute -right-3 top-[17px] z-10 hidden size-6 items-center justify-center rounded-full border border-sidebar-border bg-card text-muted-foreground shadow-z4 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:flex"
+          className="absolute -right-3 top-[20px] z-10 hidden size-6 items-center justify-center rounded-full border border-sidebar-border bg-card text-muted-foreground shadow-z4 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:flex"
         >
           <ChevronsLeft size={14} className={cn('transition-transform duration-300', collapsed && 'rotate-180')} />
         </button>
 
         {/* Navigation */}
-        <nav className="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4">
+        <nav className="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4 pt-2">
           {NAV.map((section, index) => {
             if (rail) {
               return (
                 <div key={section.id} className="space-y-1">
-                  {index > 0 && <div className="mx-auto my-3 h-px w-8 bg-border" />}
+                  {index > 0 && <div className="mx-auto my-3 h-px w-9 bg-border" />}
                   {section.items.map(navItem)}
                 </div>
               )
@@ -264,13 +302,13 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
             const open = !closed[section.id]
             const holdsActive = section.items.some((item) => isActive(pathname, item))
             return (
-              <div key={section.id} className={cn(index > 0 && 'mt-5')}>
+              <div key={section.id} className={cn(index > 0 && 'mt-6')}>
                 <button
                   type="button"
                   onClick={() => toggleGroup(section.id)}
                   aria-expanded={open}
                   aria-controls={`sidebar-section-${section.id}`}
-                  className="group/section flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="group/section mb-1 flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground/80 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <span className="truncate">{section.label}</span>
                   {!open && holdsActive && <span className="size-1.5 shrink-0 rounded-full bg-primary" />}
@@ -284,7 +322,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                   />
                 </button>
                 <Collapse id={`sidebar-section-${section.id}`} open={open}>
-                  <div className="space-y-0.5 pt-1">
+                  <div className="space-y-1">
                     {section.items.map(navItem)}
                   </div>
                 </Collapse>
@@ -294,7 +332,8 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-sidebar-border p-3">
+        <div className="shrink-0 space-y-3 border-t border-sidebar-border p-3">
+          <BrandBrainCard rail={rail} onNavigate={onClose} />
           {rail ? <RailTooltip label="Configurações">{settingsLink}</RailTooltip> : settingsLink}
         </div>
       </aside>

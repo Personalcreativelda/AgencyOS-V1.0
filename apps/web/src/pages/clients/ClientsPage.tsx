@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Plus, Search, Building2, User, ChevronRight, FileText, RefreshCw, AlertCircle } from 'lucide-react'
+import { Plus, Search, Building2, User, ChevronRight, FileText, RefreshCw, AlertCircle, LayoutGrid, List } from 'lucide-react'
 import api from '@/lib/api'
 import { getInitials } from '@/lib/utils'
 import { getErrorMessage } from '@/lib/errors'
@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { Page, PageHeader } from '@/components/layout/Page'
+import { FilterMenu, FilterField } from '@/components/ui/FilterMenu'
 
 type Client = {
   id: string; name: string; industry?: string | null; description?: string | null
@@ -25,7 +26,40 @@ type Client = {
 type ClientPage = { data: Client[]; total: number; page: number; limit: number }
 const statusLabels: Record<string, string> = { ACTIVE: 'Ativo', PAUSED: 'Pausado', INACTIVE: 'Inativo', ARCHIVED: 'Arquivado', CHURNED: 'Encerrado' }
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt')
-const gridClass = 'grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3'
+const gridClass = 'grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3 lg:gap-5'
+// Soft tinted tiles for clients without a logo (stable per name).
+const INITIAL_TONES = [
+  'bg-primary/10 text-primary-dark dark:text-primary-light',
+  'bg-info/10 text-info-dark dark:text-info-light',
+  'bg-secondary/10 text-secondary-dark dark:text-secondary-light',
+  'bg-warning/15 text-warning-dark dark:text-warning-light',
+  'bg-error/10 text-error-dark dark:text-error-light',
+]
+const toneFor = (name: string) => INITIAL_TONES[[...name].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % INITIAL_TONES.length]
+const STATUS_FILTERS = [
+  { value: 'all', label: 'Todos' },
+  { value: 'ACTIVE', label: 'Ativos' },
+  { value: 'PAUSED', label: 'Pausados' },
+]
+
+function ClientLogo({ client, className = 'size-12' }: { client: Client; className?: string }) {
+  return (
+    <Avatar className={`${className} shrink-0 rounded-xl border border-border/70`}>
+      {client.logoUrl && <AvatarImage src={client.logoUrl} alt="" className="object-contain" />}
+      <AvatarFallback className={`rounded-none text-[15px] font-bold ${toneFor(client.name)}`}>{getInitials(client.name)}</AvatarFallback>
+    </Avatar>
+  )
+}
+
+function StatusText({ status }: { status: string }) {
+  const tone = status === 'ACTIVE' ? 'text-success-dark dark:text-success' : status === 'PAUSED' ? 'text-warning-dark dark:text-warning' : 'text-muted-foreground'
+  const dot = status === 'ACTIVE' ? 'bg-success' : status === 'PAUSED' ? 'bg-warning' : 'bg-muted-foreground/60'
+  return (
+    <span className={`inline-flex shrink-0 items-center gap-1.5 text-[13px] font-semibold ${tone}`}>
+      <span aria-hidden className={`size-2 rounded-full ${dot}`} />{statusLabels[status] || status || 'Não informado'}
+    </span>
+  )
+}
 
 function ClientCard({ client, onDescription }: { client: Client; onDescription: (client: Client) => void }) {
   const description = useRef<HTMLParagraphElement>(null)
@@ -40,38 +74,52 @@ function ClientCard({ client, onDescription }: { client: Client; onDescription: 
     return () => observer.disconnect()
   }, [text])
   return (
-    <article className="group relative flex h-full min-h-[224px] min-w-0 flex-col gap-4 rounded-xl border border-border bg-card p-5 transition-colors duration-150 hover:border-muted-foreground/50 hover:bg-muted/20 focus-within:border-primary/60 motion-reduce:transition-none">
-      <div className="flex items-start gap-3">
-        <Avatar className="size-11 rounded-lg border border-border bg-muted">
-          {client.logoUrl && <AvatarImage src={client.logoUrl} alt="" className="object-contain" />}
-          <AvatarFallback className="rounded-none bg-muted text-sm font-semibold text-foreground">{getInitials(client.name)}</AvatarFallback>
-        </Avatar>
+    <article className="group relative flex h-full min-h-[232px] min-w-0 flex-col gap-4 rounded-[20px] border border-border/70 bg-card p-5 shadow-card transition-[border-color,box-shadow] duration-200 hover:border-grey-400 hover:shadow-card-hover focus-within:border-primary/60 motion-reduce:transition-none sm:p-6">
+      <div className="flex items-start gap-3.5">
+        <ClientLogo client={client} />
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-[15px] font-semibold leading-6">
+          <h2 className="truncate text-base font-semibold leading-6 text-foreground">
             <Link to={`/app/clients/${client.id}`} aria-label={`Abrir cliente ${client.name}`} title={client.name}
               className="outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-2 focus-visible:after:ring-primary focus-visible:after:ring-offset-2 focus-visible:after:ring-offset-background">
               {client.name}
             </Link>
           </h2>
-          <p className="mt-0.5 truncate text-xs leading-5 text-muted-foreground" title={client.industry || undefined}>{client.industry?.trim() || 'Setor não informado'}</p>
+          <p className="mt-0.5 line-clamp-2 text-[13px] leading-5 text-muted-foreground" title={client.industry || undefined}>{client.industry?.trim() || 'Setor não informado'}</p>
         </div>
-        <Badge dot variant={client.status === 'ACTIVE' ? 'success' : client.status === 'PAUSED' ? 'warning' : 'default'} className="mt-0.5 rounded-md px-2 py-0.5">
-          {statusLabels[client.status] || client.status || 'Não informado'}
-        </Badge>
+        <span className="mt-0.5"><StatusText status={client.status} /></span>
       </div>
       <div className="min-h-16">
-        <p ref={description} className={`line-clamp-2 break-words text-[13px] leading-5 ${text ? 'text-foreground/85' : 'text-muted-foreground'}`}>
+        <p ref={description} className={`line-clamp-2 break-words text-sm leading-relaxed ${text ? 'text-foreground/80' : 'text-muted-foreground'}`}>
           {text || 'Descrição não adicionada.'}
         </p>
         {truncated && <button type="button" onClick={() => onDescription(client)} aria-label={`Ler descrição completa de ${client.name}`}
           className="relative z-10 -ml-1 mt-0.5 min-h-6 rounded px-1 text-xs font-medium text-primary-dark underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:text-primary-light motion-reduce:transition-none">Ver mais</button>}
       </div>
-      <div className="mt-auto flex min-w-0 items-center gap-3 border-t border-border pt-3 text-xs leading-5 text-muted-foreground">
-        <span className="inline-flex shrink-0 items-center gap-1.5"><FileText size={14} aria-hidden /><span className="tabular-nums">{contents === 0 ? 'Sem conteúdos' : `${contents} ${contents === 1 ? 'conteúdo' : 'conteúdos'}`}</span></span>
+      <div className="mt-auto flex min-w-0 items-center gap-3 border-t border-border/70 pt-4 text-[13px] leading-5 text-muted-foreground">
+        <span className="inline-flex shrink-0 items-center gap-1.5 font-medium text-foreground/80"><FileText size={14} aria-hidden /><span className="tabular-nums">{contents === 0 ? 'Sem conteúdos' : `${contents} ${contents === 1 ? 'conteúdo' : 'conteúdos'}`}</span></span>
         <span className="inline-flex min-w-0 items-center gap-1.5" title={client.accountManager?.name || 'Gestor não atribuído'}><User size={14} className="shrink-0" aria-hidden /><span className="truncate">{client.accountManager?.name || 'Sem gestor'}</span></span>
         <ChevronRight size={15} aria-hidden className="ml-auto shrink-0 transition-colors group-hover:text-foreground group-focus-within:text-foreground motion-reduce:transition-none" />
       </div>
     </article>
+  )
+}
+
+function ClientRow({ client }: { client: Client }) {
+  const contents = client._count?.contents ?? 0
+  return (
+    <li>
+      <Link to={`/app/clients/${client.id}`} className="group flex min-w-0 items-center gap-4 px-4 py-3.5 transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none sm:px-6">
+        <ClientLogo client={client} className="size-11" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-semibold text-foreground">{client.name}</span>
+          <span className="block truncate text-[13px] text-muted-foreground">{client.industry?.trim() || 'Setor não informado'}</span>
+        </span>
+        <span className="hidden w-32 shrink-0 text-[13px] tabular-nums text-muted-foreground md:block">{contents === 0 ? 'Sem conteúdos' : `${contents} ${contents === 1 ? 'conteúdo' : 'conteúdos'}`}</span>
+        <span className="hidden w-40 shrink-0 truncate text-[13px] text-muted-foreground lg:block">{client.accountManager?.name || 'Sem gestor'}</span>
+        <span className="w-24 shrink-0 text-right"><StatusText status={client.status} /></span>
+        <ChevronRight size={16} aria-hidden className="shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+      </Link>
+    </li>
   )
 }
 
@@ -83,6 +131,8 @@ export function ClientsPage() {
   const [manager, setManager] = useState('all')
   const [sort, setSort] = useState('name-asc')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const [view, setView] = useState<'grid' | 'list'>(() => (typeof localStorage !== 'undefined' && localStorage.getItem('agencyos-clients-view') === 'list' ? 'list' : 'grid'))
+  const changeView = (next: 'grid' | 'list') => { setView(next); try { localStorage.setItem('agencyos-clients-view', next) } catch { /* private mode */ } }
   const query = useQuery({
     queryKey: ['clients', 'directory', agencyId],
     queryFn: async ({ signal }) => {
@@ -130,39 +180,50 @@ export function ClientsPage() {
     <Page>
       <PageHeader title="Clientes" description="As marcas da agência, seus Brand Brains e conteúdos associados."
         actions={<Button asChild><Link to="/app/clients/new"><Plus size={16} aria-hidden />Novo cliente</Link></Button>} />
-      <section aria-label="Pesquisa e filtros de clientes" className="space-y-3">
-        <div className="grid grid-cols-2 items-end gap-3 sm:grid-cols-3 xl:grid-cols-[minmax(14rem,1fr)_10.5rem_12rem_12rem]">
-          <div role="search" className="col-span-2 sm:col-span-3 xl:col-span-1">
-            <label htmlFor="client-search" className="mb-1.5 block text-xs font-medium text-muted-foreground">Pesquisar nesta lista</label>
-            <Input id="client-search" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Nome, setor ou gestor…" icon={<Search aria-hidden />} aria-controls="clients-results" autoComplete="off" />
+      <section aria-label="Pesquisa e filtros de clientes" className="rounded-[20px] border border-border/70 bg-card p-3 shadow-card sm:p-4">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+          <div role="search" className="min-w-0 xl:w-[300px]">
+            <label htmlFor="client-search" className="sr-only">Pesquisar clientes</label>
+            <Input id="client-search" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar por nome, setor ou gestor…" icon={<Search aria-hidden />} aria-controls="clients-results" autoComplete="off" />
           </div>
-          <div>
-            <label id="client-status-label" className="mb-1.5 block text-xs font-medium text-muted-foreground">Estado</label>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger aria-labelledby="client-status-label"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="all">Todos</SelectItem>{statuses.map(value => <SelectItem key={value} value={value}>{statusLabels[value] || value}</SelectItem>)}</SelectContent>
-            </Select>
+          <div className="flex flex-wrap items-center gap-2">
+            <div role="radiogroup" aria-label="Status" className="inline-flex items-center gap-0.5 rounded-full border border-border bg-muted/50 p-1">
+              {[...STATUS_FILTERS, ...statuses.filter(value => !STATUS_FILTERS.some(option => option.value === value)).map(value => ({ value, label: statusLabels[value] || value }))].map(option => (
+                <button key={option.value} type="button" role="radio" aria-checked={status === option.value} onClick={() => setStatus(option.value)}
+                  className={`h-8 rounded-full px-3.5 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${status === option.value ? 'bg-card text-foreground shadow-z1' : 'text-muted-foreground hover:text-foreground'}`}>
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <FilterMenu active={manager !== 'all' ? 1 : 0} onClear={() => setManager('all')}>
+              <FilterField label="Gestor">
+                <Select value={manager} onValueChange={setManager}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="all">Todos os gestores</SelectItem><SelectItem value="unassigned">Sem gestor</SelectItem>{managers.map(value => <SelectItem key={value.id} value={value.id}>{value.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </FilterField>
+              <FilterField label="Ordenar por">
+                <Select value={sort} onValueChange={setSort}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="name-asc">Nome · A–Z</SelectItem><SelectItem value="name-desc">Nome · Z–A</SelectItem><SelectItem value="contents">Mais conteúdos</SelectItem><SelectItem value="recent">Mais recentes</SelectItem></SelectContent>
+                </Select>
+              </FilterField>
+            </FilterMenu>
           </div>
-          <div>
-            <label id="client-manager-label" className="mb-1.5 block text-xs font-medium text-muted-foreground">Gestor</label>
-            <Select value={manager} onValueChange={setManager}>
-              <SelectTrigger aria-labelledby="client-manager-label"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="all">Todos</SelectItem><SelectItem value="unassigned">Sem gestor</SelectItem>{managers.map(value => <SelectItem key={value.id} value={value.id}>{value.name}</SelectItem>)}</SelectContent>
-            </Select>
+          <div className="flex items-center justify-between gap-3 xl:ml-auto">
+            <p role="status" aria-live="polite" aria-atomic="true" className="text-[13px] font-medium text-muted-foreground">
+              {query.isLoading ? 'Carregando clientes…' : query.isError ? 'Lista indisponível' : hasFilters ? `${filtered.length} de ${clients.length} clientes` : `${clients.length} ${clients.length === 1 ? 'cliente cadastrado' : 'clientes cadastrados'}`}
+            </p>
+            {hasFilters && <Button variant="ghost" size="sm" onClick={resetFilters}>Limpar</Button>}
+            <div role="radiogroup" aria-label="Visualização" className="inline-flex items-center gap-0.5 rounded-xl border border-border p-1">
+              {([['grid', LayoutGrid, 'Grade'], ['list', List, 'Lista']] as const).map(([value, Icon, label]) => (
+                <button key={value} type="button" role="radio" aria-checked={view === value} aria-label={label} title={label} onClick={() => changeView(value)}
+                  className={`flex size-8 items-center justify-center rounded-lg transition-colors ${view === value ? 'bg-primary/10 text-primary-dark dark:text-primary-light' : 'text-muted-foreground hover:text-foreground'}`}>
+                  <Icon size={17} />
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="col-span-2 sm:col-span-1 xl:col-span-1">
-            <label id="client-sort-label" className="mb-1.5 block text-xs font-medium text-muted-foreground">Ordenar por</label>
-            <Select value={sort} onValueChange={setSort}>
-              <SelectTrigger aria-labelledby="client-sort-label"><SelectValue /></SelectTrigger>
-              <SelectContent><SelectItem value="name-asc">Nome · A–Z</SelectItem><SelectItem value="name-desc">Nome · Z–A</SelectItem><SelectItem value="contents">Mais conteúdos</SelectItem><SelectItem value="recent">Mais recentes</SelectItem></SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="flex min-h-8 flex-wrap items-center justify-between gap-2">
-          <p role="status" aria-live="polite" aria-atomic="true" className="text-xs text-muted-foreground">
-            {query.isLoading ? 'Carregando clientes…' : query.isError ? 'Lista indisponível' : hasFilters ? `${filtered.length} de ${clients.length} clientes` : `${clients.length} ${clients.length === 1 ? 'cliente' : 'clientes'}`}
-          </p>
-          {hasFilters && <Button variant="ghost" size="sm" onClick={resetFilters}>Limpar filtros</Button>}
         </div>
       </section>
       <section id="clients-results" aria-label="Lista de clientes" aria-busy={query.isFetching}>
@@ -183,7 +244,9 @@ export function ClientsPage() {
         ) : !filtered.length ? (
           <EmptyState icon={Search} title="Nenhum cliente corresponde à pesquisa" description="Experimente outro nome, setor ou gestor, ou remova os filtros para voltar à lista completa." action={<Button variant="outline" onClick={resetFilters}>Limpar pesquisa e filtros</Button>} />
         ) : (
-          <div className={gridClass}>{filtered.map(client => <ClientCard key={client.id} client={client} onDescription={setSelectedClient} />)}</div>
+          view === 'list'
+            ? <ul className="divide-y divide-border/70 overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-card">{filtered.map(client => <ClientRow key={client.id} client={client} />)}</ul>
+            : <div className={gridClass}>{filtered.map(client => <ClientCard key={client.id} client={client} onDescription={setSelectedClient} />)}</div>
         )}
       </section>
       <Dialog open={Boolean(selectedClient)} onOpenChange={open => { if (!open) setSelectedClient(null) }}>

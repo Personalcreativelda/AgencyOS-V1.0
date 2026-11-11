@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core'
@@ -25,6 +25,7 @@ import { PlatformPicker } from '@/components/planner/PlatformPicker'
 import { ContentLibrary } from '@/components/content/ContentLibrary'
 import { GenerateMonthDialog } from '@/components/planner/GenerateMonthDialog'
 import { Page, PageHeader } from '@/components/layout/Page'
+import { FilterMenu, FilterField } from '@/components/ui/FilterMenu'
 import {
   getMonthGridRange, dateKey, capitalize, parseKanbanColumns, getBoardColumns, getVisibleBoardColumns,
   type KanbanColumnConfig,
@@ -44,7 +45,7 @@ type ListDisplay = 'rows' | 'grid'
 export type ViewMode = 'list' | 'calendar' | 'board'
 
 const VIEW_LABELS: Record<ViewMode, string> = {
-  list: 'Criativos',
+  list: 'Conteúdos',
   calendar: 'Planner',
   board: 'Kanban',
 }
@@ -196,6 +197,17 @@ export function ContentPage({ view }: ContentPageProps) {
     setShowModal(true)
   }
 
+  // Mobile "+" button (and any deep link) lands here with ?novo=1 — open the create modal once.
+  const [searchParams, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    if (searchParams.get('novo') !== '1') return
+    openCreateModal()
+    const next = new URLSearchParams(searchParams)
+    next.delete('novo')
+    setSearchParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
   const handleCreateContent = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newContent.clientId || !newContent.title) return
@@ -297,68 +309,61 @@ export function ContentPage({ view }: ContentPageProps) {
               <Sparkles size={16} />
               <span className="sm:hidden">Gerar mês</span><span className="hidden sm:inline">Gerar mês com Brand Brain</span>
             </Button>
-            <Button onClick={() => openCreateModal()}>
-              <Plus size={16} />
-              <span>Novo conteúdo</span>
-            </Button>
           </>
         }
       />
 
-      {/* Shared filters for Planner and Kanban */}
-      {view !== 'list' && <div className="flex flex-col lg:flex-row lg:items-center lg:justify-end gap-3">
-        {view === 'board' && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowColumnsModal(true)}
-            className="self-start lg:self-auto lg:mr-auto gap-1.5"
-          >
-            <Settings2 size={14} />
-            <span>Personalizar colunas</span>
-          </Button>
-        )}
-
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-[140px] sm:w-44 sm:flex-none">
-            <Select value={selectedClient || ALL_CLIENTS} onValueChange={(v) => setSelectedClient(v === ALL_CLIENTS ? '' : v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_CLIENTS}>Todos os clientes</SelectItem>
-                {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex-1 min-w-[140px] sm:w-44 sm:flex-none">
-            <Select value={selectedStatus || ALL_STATUS} onValueChange={(v) => setSelectedStatus(v === ALL_STATUS ? '' : v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_STATUS}>Todos os status</SelectItem>
-                {FILTER_STATUSES.map((status) => <SelectItem key={status} value={status}>{STATUS_LABELS[status]}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex-1 min-w-[140px] sm:w-40 sm:flex-none">
-            <Select value={selectedPlatform || ALL_PLATFORMS} onValueChange={(v) => setSelectedPlatform(v === ALL_PLATFORMS ? '' : v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_PLATFORMS}>Todas as redes</SelectItem>
-                {Object.keys(PLATFORM_LABELS).map((p) => <SelectItem key={p} value={p}>{PLATFORM_LABELS[p]}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>}
-
-      {/* Temporal navigation (Planner/Calendar) */}
-      {view === 'calendar' && (
+      {/* Planner / Kanban toolbar: period (Planner) or columns (Kanban) on the left, filters on the right */}
+      {view !== 'list' && (
         <div className="flex flex-wrap items-center gap-2.5">
-          <Button variant="ghost" size="icon" onClick={goPrev}><ChevronLeft size={18} /></Button>
-          <span className="text-sm font-bold text-foreground text-center">{dateLabel}</span>
-          <Button variant="ghost" size="icon" onClick={goNext}><ChevronRight size={18} /></Button>
-          <Button variant="outline" size="sm" onClick={goToday}>Hoje</Button>
+          {view === 'calendar' && (
+            <div className="hidden items-center gap-1 md:flex">
+              <Button variant="ghost" size="icon" onClick={goPrev} aria-label="Mês anterior"><ChevronLeft size={18} /></Button>
+              <span className="min-w-[140px] text-center text-base font-semibold text-foreground">{dateLabel}</span>
+              <Button variant="ghost" size="icon" onClick={goNext} aria-label="Próximo mês"><ChevronRight size={18} /></Button>
+              <Button variant="outline" size="sm" onClick={goToday} className="ml-1">Hoje</Button>
+            </div>
+          )}
+          {view === 'board' && (
+            <Button variant="outline" size="sm" onClick={() => setShowColumnsModal(true)} className="gap-1.5">
+              <Settings2 size={14} />
+              <span>Colunas</span>
+            </Button>
+          )}
+          <div className="ml-auto">
+            <FilterMenu
+              active={[selectedClient, selectedStatus, selectedPlatform].filter(Boolean).length}
+              onClear={() => { setSelectedClient(''); setSelectedStatus(''); setSelectedPlatform('') }}
+            >
+              <FilterField label="Cliente">
+                <Select value={selectedClient || ALL_CLIENTS} onValueChange={(v) => setSelectedClient(v === ALL_CLIENTS ? '' : v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_CLIENTS}>Todos os clientes</SelectItem>
+                    {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FilterField>
+              <FilterField label="Status">
+                <Select value={selectedStatus || ALL_STATUS} onValueChange={(v) => setSelectedStatus(v === ALL_STATUS ? '' : v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_STATUS}>Todos os status</SelectItem>
+                    {FILTER_STATUSES.map((status) => <SelectItem key={status} value={status}>{STATUS_LABELS[status]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FilterField>
+              <FilterField label="Rede social">
+                <Select value={selectedPlatform || ALL_PLATFORMS} onValueChange={(v) => setSelectedPlatform(v === ALL_PLATFORMS ? '' : v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_PLATFORMS}>Todas as redes</SelectItem>
+                    {Object.keys(PLATFORM_LABELS).map((p) => <SelectItem key={p} value={p}>{PLATFORM_LABELS[p]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FilterField>
+            </FilterMenu>
+          </div>
         </div>
       )}
 
@@ -385,11 +390,12 @@ export function ContentPage({ view }: ContentPageProps) {
               contents={contents}
               onOpenContent={(id) => navigate(`/app/content/${id}`)}
               onCreateAt={openCreateModal}
+              onNavigateMonth={setCurrentDate}
             />
           )}
 
           {view === 'board' && (
-            <BoardView contents={contents} columns={boardColumns} onOpenContent={(id) => navigate(`/app/content/${id}`)} />
+            <BoardView contents={contents} columns={boardColumns} onOpenContent={(id) => navigate(`/app/content/${id}`)} onCreate={() => openCreateModal()} />
           )}
         </DndContext>
       )}

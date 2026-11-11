@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Link, Outlet, useNavigate } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
-  LogOut, Bell, Menu, CheckCheck, Inbox, Camera,
+  LogOut, Bell, CheckCheck, Inbox, Camera, ChevronDown,
 } from 'lucide-react'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { MobileTabBar } from '@/components/layout/MobileTabBar'
+import { HeaderSearch } from '@/components/layout/HeaderSearch'
 import { LogoMark } from '@/components/brand/Logo'
 import { ThemeMenu } from '@/components/ui/ThemeMenu'
 import { useAuthStore } from '@/stores/authStore'
-import { cn, getInitials, timeAgo } from '@/lib/utils'
+import { cn, getInitials, ROLE_LABELS, timeAgo } from '@/lib/utils'
 import api from '@/lib/api'
 import { uploadFile } from '@/lib/upload'
 import { toast } from '@/lib/toast'
@@ -19,10 +21,31 @@ import {
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
 } from '@/components/ui/DropdownMenu'
 
+// Title shown in the desktop top bar for the current route (longest prefix wins).
+const PAGE_TITLES: [string, string][] = [
+  ['/app/dashboard', 'Dashboard'],
+  ['/app/performance', 'Performance'],
+  ['/app/clients/new', 'Novo cliente'],
+  ['/app/clients', 'Clientes'],
+  ['/app/approvals', 'Aprovações'],
+  ['/app/reports', 'Relatórios mensais'],
+  ['/app/content/calendar', 'Planner'],
+  ['/app/content/board', 'Kanban'],
+  ['/app/content', 'Conteúdos'],
+  ['/app/ads', 'Meta Ads'],
+  ['/app/google', 'Google Ads & Analytics'],
+  ['/app/tiktok-ads', 'TikTok Ads'],
+  ['/app/linkedin-ads', 'LinkedIn Ads'],
+  ['/app/social', 'Redes sociais'],
+  ['/app/settings', 'Configurações'],
+]
+
 export function AppLayout() {
   const { user, logout, updateUser } = useAuthStore()
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const pageTitle = PAGE_TITLES.find(([prefix]) => pathname.startsWith(prefix))?.[1] ?? ''
   const [navOpen, setNavOpen] = useState(false)
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -99,20 +122,17 @@ export function AppLayout() {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Minimals Header */}
-        <header className="flex flex-col isolate bg-card border-b border-border shrink-0 z-20">
-          <div className="flex items-center justify-between h-14 px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-3 min-w-0 lg:hidden">
-              <button
-                onClick={() => setNavOpen(true)}
-                aria-label="Abrir menu"
-                className="p-2.5 -ml-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:hidden shrink-0"
-              >
-                <Menu size={20} />
-              </button>
-              <Link to="/app/dashboard" aria-label="AgencyOS — início" className="shrink-0 lg:hidden">
-                <LogoMark size={32} />
-              </Link>
+        {/* Phones: header sits on the page background (no divider) like a native app bar;
+            the menu lives in the bottom tab bar's "Mais". Desktop keeps the card header. */}
+        <header className="flex flex-col isolate shrink-0 z-20 bg-background lg:border-b lg:border-border lg:bg-card">
+          <div className="flex items-center justify-between h-14 px-4 sm:px-6 lg:h-16 lg:px-8">
+            <div className="hidden min-w-0 flex-1 items-center lg:flex">
+              <HeaderSearch />
             </div>
+            <Link to="/app/dashboard" aria-label="AgencyOS — início" className="flex min-w-0 items-center gap-2.5 lg:hidden">
+              <LogoMark size={32} />
+              <span className="text-[17px] font-semibold tracking-tight text-foreground">Agency<span className="text-primary">OS</span></span>
+            </Link>
 
             <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
               <ThemeMenu />
@@ -174,13 +194,18 @@ export function AppLayout() {
             {/* User Avatar & Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button aria-label="Menu do usuário" className="flex items-center gap-2 p-1 rounded-full sm:p-1.5 hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-                  <Avatar className="h-9 w-9 ring-2 ring-primary/30 sm:h-10 sm:w-10">
+                <button aria-label="Menu do usuário" className="flex items-center gap-2.5 rounded-full p-1 transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:rounded-xl lg:py-1 lg:pl-1 lg:pr-3">
+                  <Avatar className="h-9 w-9 ring-2 ring-primary/30 lg:h-10 lg:w-10">
                     {user?.avatarUrl && <AvatarImage src={user.avatarUrl} />}
                     <AvatarFallback className="bg-primary/20 text-primary-dark text-sm">
                       {getInitials(user?.name || 'U')}
                     </AvatarFallback>
                   </Avatar>
+                  <span className="hidden min-w-0 text-left leading-tight lg:block">
+                    <span className="block max-w-[160px] truncate text-sm font-semibold text-foreground">{user?.name}</span>
+                    <span className="block max-w-[160px] truncate text-xs text-muted-foreground">{ROLE_LABELS[user?.role || ''] || user?.role}</span>
+                  </span>
+                  <ChevronDown size={15} aria-hidden className="hidden text-muted-foreground lg:block" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
@@ -211,9 +236,12 @@ export function AppLayout() {
 
         {/* Page View */}
         <div className="flex-1 overflow-auto bg-background">
-          <div id="page-content" tabIndex={-1} className="min-w-0 outline-none"><Outlet /></div>
+          {/* Bottom padding keeps the last item clear of the floating tab bar on phones. */}
+          <div id="page-content" tabIndex={-1} className="min-w-0 pb-[calc(5.5rem+env(safe-area-inset-bottom))] outline-none lg:pb-0"><Outlet /></div>
         </div>
       </main>
+
+      <MobileTabBar onOpenMenu={() => setNavOpen(true)} menuOpen={navOpen} unread={unreadCount} />
     </div>
   )
 }

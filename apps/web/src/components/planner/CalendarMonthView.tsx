@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ContentCard } from './ContentCard'
 import { DayAgendaDialog } from './DayAgendaDialog'
+import { PlannerWeekView } from './PlannerWeekView'
 import { getMonthGridRange, dateKey, capitalize } from './plannerUtils'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 
@@ -16,6 +17,8 @@ interface CalendarMonthViewProps {
   contents: any[]
   onOpenContent: (id: string) => void
   onCreateAt: (date: Date) => void
+  /** Phone week view moved into another month. */
+  onNavigateMonth?: (date: Date) => void
 }
 
 function DayCell({
@@ -84,7 +87,7 @@ function DayCell({
   )
 }
 
-export function CalendarMonthView({ currentDate, contents, onOpenContent, onCreateAt }: CalendarMonthViewProps) {
+export function CalendarMonthView({ currentDate, contents, onOpenContent, onCreateAt, onNavigateMonth }: CalendarMonthViewProps) {
   const isDesktop = useMediaQuery('(min-width: 768px)')
   const [expandedDay, setExpandedDay] = useState<Date | null>(null)
   const { monthStart, days } = getMonthGridRange(currentDate)
@@ -95,26 +98,14 @@ export function CalendarMonthView({ currentDate, contents, onOpenContent, onCrea
       .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
 
   if (!isDesktop) {
-    const daysWithContent = days.filter((d) => isSameMonth(d, monthStart) && itemsByDay(d).length > 0)
     return (
-      <div className="space-y-4">
-        {daysWithContent.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic text-center py-10">Nenhum conteúdo agendado neste mês.</p>
-        ) : (
-          daysWithContent.map((date) => (
-            <div key={dateKey(date)} className="space-y-2">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                {capitalize(date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' }))}
-              </p>
-              <div className="space-y-1.5">
-                {itemsByDay(date).map((item) => (
-                  <ContentCard key={item.id} content={item} onClick={() => onOpenContent(item.id)} />
-                ))}
-              </div>
-            </div>
-          ))
-        )}
-      </div>
+      <PlannerWeekView
+        currentDate={currentDate}
+        contents={contents}
+        onOpenContent={onOpenContent}
+        onCreateAt={onCreateAt}
+        onNavigateMonth={onNavigateMonth}
+      />
     )
   }
 

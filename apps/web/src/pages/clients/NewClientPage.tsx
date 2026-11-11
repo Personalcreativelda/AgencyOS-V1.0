@@ -53,32 +53,32 @@ export function NewClientPage() {
 
   return (
     <Page narrow>
-      <Link
-        to="/app/clients"
-        className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft size={16} />
-        <span>Voltar para clientes</span>
-      </Link>
+      <nav aria-label="Navegação estrutural" className="flex items-center gap-2 text-sm">
+        <Link to="/app/clients" className="inline-flex items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft size={16} aria-hidden />Voltar para Clientes
+        </Link>
+        <span aria-hidden className="text-muted-foreground/50">/</span>
+        <span className="font-semibold text-foreground">Novo cliente</span>
+      </nav>
 
-      <div className="card-minimals p-5 sm:p-8 space-y-6">
-        <div className="flex items-center gap-3.5 border-b border-border pb-5">
+      <div className="overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-card">
+        <div className="flex flex-col gap-5 border-b border-border/70 bg-muted/30 px-5 py-6 sm:flex-row sm:items-center sm:px-8">
           <UploadableAvatar
             src={formData.logoUrl}
             rounded="rounded-2xl"
-            className="w-12 h-12 bg-primary/10"
-            fallback={<Building2 className="w-6 h-6 text-primary-dark" />}
+            className="size-[76px] shrink-0 border-2 border-dashed border-grey-300 bg-card"
+            fallback={<span className="flex flex-col items-center gap-1 text-muted-foreground"><Building2 size={22} aria-hidden /><span className="text-[10px] font-semibold">Enviar logo</span></span>}
             onUpload={handleLogoUpload}
           />
-          <div>
-            <h1 className="text-xl font-extrabold text-foreground tracking-tight">Novo cliente</h1>
-            <p className="text-xs text-muted-foreground font-medium">
-              Configure a marca para inicializar o Brand Brain. Envie o logotipo para o Brand Brain usá-lo (em vez de inventar um) nas propostas de criativo.
+          <div className="min-w-0">
+            <h1 className="text-[26px] font-bold tracking-[-0.02em] text-foreground">Novo cliente</h1>
+            <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
+              Configure a identidade da marca para inicializar o Brand Brain. Envie o logotipo para ele usá-lo (em vez de inventar um) nas propostas de criativo.
             </p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6 px-5 py-6 sm:px-8 sm:py-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <Label htmlFor="name">Nome comercial da marca *</Label>
@@ -199,8 +199,14 @@ export function NewClientPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-5 border-t border-border">
-            <Button asChild variant="ghost">
+          <div className="flex items-start gap-3 rounded-2xl border border-info/20 bg-info/[0.06] px-4 py-3.5 text-sm leading-relaxed text-foreground/85">
+            <Sparkles size={18} aria-hidden className="mt-0.5 shrink-0 text-info-dark dark:text-info" />
+            <p><span className="font-semibold text-foreground">Motor Brand Brain:</span> estes dados treinam o tom de voz e geram as primeiras personas e linhas editoriais do cliente automaticamente.</p>
+          </div>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-border/70 pt-6 sm:flex-row sm:items-center">
+            <p className="text-[13px] text-muted-foreground sm:mr-auto"><span className="text-error">*</span> Campos marcados com asterisco são obrigatórios</p>
+            <Button asChild variant="outline">
               <Link to="/app/clients">Cancelar</Link>
             </Button>
             <Button type="submit" loading={loading}>

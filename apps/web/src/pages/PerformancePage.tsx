@@ -101,10 +101,16 @@ function KpiCard({ item }: { item: Kpi }) {
 }
 function IntegrationStatus({ data, allClients }: { data: Overview; allClients: boolean }) {
   const connected = integrations.filter(item => data.connections.some(row => row.platform === item.platform && row.status === 'ACTIVE')).length
-  return <Card className="p-4 sm:p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-[15px] font-bold tracking-tight text-foreground">Status das integrações</h2><p className="mt-0.5 text-xs text-muted-foreground">{allClients ? 'Canais conectados em pelo menos um cliente' : 'Contas conectadas a este cliente'}</p></div><span className="text-[11px] font-semibold text-muted-foreground">{connected} de {integrations.length} canais conectados</span></div>
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 2xl:grid-cols-5">{integrations.map(item => {
+  return <Card className="p-4 sm:p-5"><div className="mb-4 flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-[15px] font-bold tracking-tight text-foreground">Status das integrações</h2><p className="mt-0.5 text-xs text-muted-foreground">{allClients ? 'Canais conectados em pelo menos um cliente' : 'Contas conectadas a este cliente'}</p></div><div className="flex items-center gap-3"><span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary-dark dark:text-primary-light">{connected} de {integrations.length} canais</span><Link to="/app/social" className="text-[13px] font-semibold text-primary-dark hover:underline dark:text-primary-light">Gerenciar conexões →</Link></div></div>
+    <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5 xl:grid-cols-10">{integrations.map(item => {
       const count = data.connections.filter(row => row.platform === item.platform && row.status === 'ACTIVE').length
-      return <div key={item.platform} title={count ? `${count} ${count === 1 ? 'conta conectada' : 'contas conectadas'}` : 'Não conectado'} className={cn('flex min-w-0 items-center gap-2.5 rounded-xl border border-border px-3 py-2.5', count ? 'bg-card' : 'bg-muted/40')}><item.icon size={16} className={cn('shrink-0', !count && 'opacity-50 grayscale')} style={{ color: item.color }} /><span className={cn('min-w-0 flex-1 truncate text-[13px] font-medium', count ? 'text-foreground' : 'text-muted-foreground')}>{item.label}</span>{count ? <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold tabular-nums text-success-dark dark:text-success"><span aria-hidden className="size-1.5 rounded-full bg-success" />{count}</span> : <span className="shrink-0 text-xs text-muted-foreground/70">—</span>}</div>
+      return <div key={item.platform} className={cn('flex min-w-0 flex-col items-center rounded-2xl border px-2 py-4 text-center transition-colors', count ? 'border-border/70 bg-card hover:border-grey-400' : 'border-dashed border-border bg-muted/30')}>
+        <span className={cn('flex size-10 items-center justify-center rounded-xl border border-border/60 bg-muted/60', !count && 'opacity-60 grayscale')}><item.icon size={19} style={{ color: item.color }} /></span>
+        <span className={cn('mt-2.5 line-clamp-2 text-[13px] font-semibold leading-tight', count ? 'text-foreground' : 'text-muted-foreground')}>{item.label}</span>
+        {count
+          ? <span className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-success-dark dark:text-success"><span aria-hidden className="size-1.5 rounded-full bg-success" />{count} {count === 1 ? 'ativa' : 'ativas'}</span>
+          : <span className="mt-1.5 text-xs text-muted-foreground">Não conectado</span>}
+      </div>
     })}</div></Card>
 }
 function Chart({ data, metric, source }: { data: Overview; metric: ChartMetric; source: ChartSource }) {

@@ -1,0 +1,6 @@
+dist/
+www/config.js
+node_modules/
+*.keystore
+*.jks
+android/keystore.properties

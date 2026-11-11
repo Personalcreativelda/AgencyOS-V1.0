@@ -16,10 +16,36 @@ const media = typeof window !== 'undefined' ? window.matchMedia('(prefers-color-
 const resolveMode = (preference: ThemePreference): ThemeMode =>
   preference === 'system' ? (media?.matches ? 'dark' : 'light') : preference
 
+/** Current page background (`--background`, an "h s% l%" triple) as #rrggbb. */
+function backgroundHex(): string | null {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--background').trim()
+  const m = raw.match(/^([\d.]+)\s+([\d.]+)%\s+([\d.]+)%$/)
+  if (!m) return null
+  const [h, s, l] = [Number(m[1]), Number(m[2]) / 100, Number(m[3]) / 100]
+  const a = s * Math.min(l, 1 - l)
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12
+    const c = l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))
+    return Math.round(c * 255).toString(16).padStart(2, '0')
+  }
+  return `#${f(0)}${f(8)}${f(4)}`
+}
+
+// Android app: paint the system bars with the page background so the app reads as one surface
+// edge to edge, in light and dark mode.
+function syncNativeSystemBars(mode: ThemeMode) {
+  const capacitor = typeof window !== 'undefined' ? (window as any).Capacitor : null
+  if (!capacitor?.isNativePlatform?.()) return
+  const color = backgroundHex() ?? (mode === 'dark' ? '#202020' : '#f3f3f3')
+  // Older APKs don't ship the AgencyShell plugin — ignore the rejection.
+  capacitor.nativePromise?.('AgencyShell', 'setSystemBars', { color, dark: mode === 'dark' })?.catch?.(() => {})
+}
+
 function applyTheme(mode: ThemeMode) {
   if (typeof document === 'undefined') return
   document.documentElement.classList.toggle('dark', mode === 'dark')
   document.documentElement.style.colorScheme = mode
+  syncNativeSystemBars(mode)
 }
 
 function readPreference(value: unknown): ThemePreference {
