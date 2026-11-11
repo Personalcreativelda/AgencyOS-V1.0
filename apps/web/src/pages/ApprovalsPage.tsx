@@ -120,6 +120,7 @@ export function ApprovalsPage() {
           icon={CheckSquare}
           title={withoutLink.length ? 'Nenhum link de aprovação enviado' : 'Nenhuma aprovação solicitada ainda'}
           description={withoutLink.length ? 'Os links que enviar aparecem aqui, com o estado de cada resposta do cliente.' : 'Abra qualquer conteúdo no Workspace e clique em "Link de aprovação" para enviar ao cliente.'}
+          action={withoutLink.length ? undefined : <Button asChild variant="outline"><Link to="/app/content">Ir para Conteúdos<ArrowRight size={15} /></Link></Button>}
         />
       </>
       ) : (<>

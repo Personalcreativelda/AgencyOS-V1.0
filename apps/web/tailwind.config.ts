@@ -119,6 +119,7 @@ export default {
         '2xl': '12px',
       },
       keyframes: {
+        'page-in': { from: { opacity: '0', transform: 'translateY(6px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
         'fade-in': {
           from: { opacity: '0', transform: 'translateY(6px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
@@ -151,6 +152,7 @@ export default {
         'overlay-out': { from: { opacity: '1' }, to: { opacity: '0' } },
       },
       animation: {
+        'page-in': 'page-in 180ms cubic-bezier(0.2, 0, 0, 1)',
         'fade-in': 'fade-in 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
         // Enter: decelerate (ease-out-expo-ish). Exit: shorter + accelerate.
         'dialog-in': 'dialog-in 0.22s cubic-bezier(0.16, 1, 0.3, 1)',

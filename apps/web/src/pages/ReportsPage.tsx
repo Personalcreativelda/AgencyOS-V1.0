@@ -297,7 +297,7 @@ export function ReportsPage() {
                     <span>Gerar e publicar</span>
                   </>
                 )}
-                {creating && <span>Analisando com Brand Brain...</span>}
+                {creating && <span>Analisando com Brand Brain…</span>}
               </Button>
             </DialogFooter>
           </form>

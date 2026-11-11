@@ -10,7 +10,17 @@ import { brandIcon } from '@/components/brand/BrandIcon'
 import { cn } from '@/lib/utils'
 
 type Icon = ComponentType<{ size?: number | string; className?: string }>
-type Result = { id: string; group: 'Clientes' | 'Conteúdos' | 'Páginas'; label: string; hint?: string; to: string; icon: Icon }
+type Group = 'Recentes' | 'Clientes' | 'Conteúdos' | 'Páginas'
+type Result = { id: string; group: Group; label: string; hint?: string; to: string; icon: Icon }
+type Recent = { id: string; kind: 'Clientes' | 'Conteúdos' | 'Páginas'; label: string; hint?: string; to: string }
+
+const RECENTS_KEY = 'agencyos-recent-search'
+function readRecents(): Recent[] {
+  try { return JSON.parse(localStorage.getItem(RECENTS_KEY) || '[]') } catch { return [] }
+}
+function saveRecent(r: Recent) {
+  try { localStorage.setItem(RECENTS_KEY, JSON.stringify([r, ...readRecents().filter((x) => x.id !== r.id)].slice(0, 5))) } catch { /* private mode */ }
+}
 
 const PAGES: { label: string; to: string; icon: Icon; keywords?: string }[] = [
   { label: 'Dashboard', to: '/app/dashboard', icon: LayoutDashboard, keywords: 'inicio visao geral' },
@@ -97,13 +107,20 @@ export function HeaderSearch() {
     const q = norm(query.trim())
     const has = (...parts: (string | undefined)[]) => !q || norm(parts.filter(Boolean).join(' ')).includes(q)
     const pages = PAGES.filter((p) => has(p.label, p.keywords)).map((p) => ({ id: `p-${p.to}`, group: 'Páginas' as const, label: p.label, to: p.to, icon: p.icon }))
-    if (!q) return pages.slice(0, 8)
+    if (!q) {
+      // Never a blank search: last opened items first, then the main pages.
+      const recents = readRecents().map((r) => ({
+        id: `r-${r.id}`, group: 'Recentes' as const, label: r.label, hint: r.hint, to: r.to,
+        icon: r.kind === 'Clientes' ? Users : r.kind === 'Conteúdos' ? FileText : (PAGES.find((p) => p.to === r.to)?.icon || Search),
+      }))
+      return [...recents, ...pages.filter((p) => !recents.some((r) => r.to === p.to)).slice(0, 6)]
+    }
     const cl = clients.filter((c) => has(c.name, c.segment)).slice(0, 5)
       .map((c) => ({ id: `c-${c.id}`, group: 'Clientes' as const, label: c.name, hint: c.segment, to: `/app/clients/${c.id}`, icon: Users }))
     const co = contents.filter((c) => has(c.title, c.client?.name, c.caption)).slice(0, 6)
       .map((c) => ({ id: `t-${c.id}`, group: 'Conteúdos' as const, label: c.title, hint: c.client?.name, to: `/app/content/${c.id}`, icon: FileText }))
     return [...cl, ...co, ...pages.slice(0, 5)]
-  }, [query, clients, contents])
+  }, [query, clients, contents, open])
 
   useEffect(() => { setActive(0) }, [query])
   useEffect(() => {
@@ -112,6 +129,8 @@ export function HeaderSearch() {
 
   const go = (result?: Result) => {
     if (!result) return
+    const kind = result.group === 'Recentes' ? undefined : result.group
+    saveRecent({ id: result.id.replace(/^r-/, ''), kind: kind || (result.to.startsWith('/app/clients/') ? 'Clientes' : result.to.startsWith('/app/content/') && !/calendar|board/.test(result.to) ? 'Conteúdos' : 'Páginas'), label: result.label, hint: result.hint, to: result.to })
     setOpen(false)
     navigate(result.to)
   }
@@ -123,7 +142,7 @@ export function HeaderSearch() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Pesquisar"
-        className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:hidden"
+        className="flex size-12 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:hidden"
       >
         <Search size={20} />
       </button>

@@ -18,6 +18,7 @@ import { MetricExplorer, type ExplorerRow } from '@/components/charts/MetricExpl
 import { FilterBar } from '@/components/ui/FilterPills'
 import { Segmented } from '@/components/dashboard/DashboardWidgets'
 import { Badge } from '@/components/ui/Badge'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Panel, PanelHeader } from '@/components/dashboard/DashboardWidgets'
@@ -268,7 +269,7 @@ export function GooglePerformancePage() {
         <Button variant="outline" size="sm" onClick={refresh} loading={loading} aria-label="Atualizar dados" title="Atualizar dados">{!loading && <RefreshCw size={15} />}<span className="hidden sm:inline">Atualizar</span></Button>
       </div>
 
-      {loading && !insights ? <Card className="p-8 text-sm text-muted-foreground">Carregando dados do Google...</Card> : insights?.kind === 'ads' ? <>
+      {loading && !insights ? <div aria-busy="true" aria-label="Carregando dados do Google" className="space-y-5"><div className="grid grid-cols-2 gap-px overflow-hidden rounded-[20px] border border-border/70 sm:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-24 rounded-none" />)}</div><Skeleton className="h-64 rounded-[20px]" /></div> : insights?.kind === 'ads' ? <>
         <MetricExplorer
           tiles={[
             { key: 'spend', label: 'Investimento', value: money(insights.totals.spend, insights.currency), icon: TrendingUp, chart: { color: '#00A76F', pick: (r) => Number(r.spend || 0) } },
@@ -329,7 +330,7 @@ export function GooglePerformancePage() {
           </tr></thead><tbody>{insights.campaigns.filter((c: any) => (statusTab === 'all' || c.status === statusTab) && (!campaignQuery.trim() || String(c.name || '').toLowerCase().includes(campaignQuery.trim().toLowerCase()))).map((campaign: any) => <tr key={campaign.id} className="border-b border-border/60 last:border-0 text-foreground">
             <td className="py-3 pr-4 font-semibold">{campaign.name}</td><td className="py-3 pr-4"><Badge dot variant={campaign.status === 'ENABLED' ? 'success' : 'default'} className="text-[11px]">{GOOGLE_STATUS[campaign.status] || campaign.status}</Badge></td><td className="py-3 pr-4 text-right font-semibold tabular-nums">{money(campaign.spend, insights.currency)}</td><td className="py-3 pr-4 text-right">{number(campaign.clicks)}</td><td className="py-3 pr-4 text-right">{number(campaign.impressions)}</td><td className="py-3 pr-4 text-right">{number(campaign.conversions)}</td>{canManage && <td className="py-3 text-right">
               {(campaign.status === 'ENABLED' || campaign.status === 'PAUSED') && <button disabled={!!changingCampaignId} onClick={() => changeCampaignStatus(campaign)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-                {campaign.status === 'ENABLED' ? <Pause size={12} /> : <Play size={12} />}{changingCampaignId === campaign.id ? 'Aguarde...' : campaign.status === 'ENABLED' ? 'Pausar' : 'Reativar'}
+                {campaign.status === 'ENABLED' ? <Pause size={12} /> : <Play size={12} />}{changingCampaignId === campaign.id ? 'Aguarde…' : campaign.status === 'ENABLED' ? 'Pausar' : 'Reativar'}
               </button>}
             </td>}
           </tr>)}</tbody></table>{!insights.campaigns.length && <p className="py-6 text-sm text-muted-foreground">Sem campanhas neste período.</p>}</div>

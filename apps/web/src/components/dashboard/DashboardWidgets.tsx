@@ -92,13 +92,31 @@ export function KpiBadge({ children, tone = 'neutral', className }: { children: 
 }
 
 /** Trend → KpiBadge (null/undefined → no badge). */
-export function TrendBadge({ value }: { value: number | null | undefined }) {
+/** Trend chip. `neutral` keeps volume metrics calm: red is reserved for failures. */
+export function TrendBadge({ value, neutral = false }: { value: number | null | undefined; neutral?: boolean }) {
   if (value === null || value === undefined) return null
   const Icon = value > 0 ? ArrowUpRight : value < 0 ? ArrowDownRight : Minus
   return (
-    <KpiBadge tone={value > 0 ? 'up' : value < 0 ? 'down' : 'neutral'}>
+    <KpiBadge tone={neutral ? 'neutral' : value > 0 ? 'up' : value < 0 ? 'down' : 'neutral'}>
       <Icon size={13} strokeWidth={2.5} aria-hidden />{Math.abs(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%
     </KpiBadge>
+  )
+}
+
+/** Compact empty state for dashboard panels: soft icon, one sentence, optional action. */
+export function PanelEmpty({ icon: Icon, title, text, action }: {
+  icon: ComponentType<{ size?: number | string; className?: string }>
+  title: string
+  text?: string
+  action?: ReactNode
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center py-6 text-center">
+      <span className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary-dark dark:text-primary-light"><Icon size={21} aria-hidden /></span>
+      <h3 className="text-[15px] font-semibold">{title}</h3>
+      {text && <p className="mt-1 max-w-xs text-sm leading-6 text-muted-foreground">{text}</p>}
+      {action && <div className="mt-5">{action}</div>}
+    </div>
   )
 }
 

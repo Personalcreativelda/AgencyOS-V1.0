@@ -44,7 +44,7 @@ export function ContentCard({ content, onClick, className }: ContentCardProps) {
       onClick={onClick}
       style={transform ? { transform: CSS.Translate.toString(transform) } : undefined}
       className={cn(
-        'group flex items-start gap-2 p-2 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-z4 cursor-pointer transition-all overflow-hidden',
+        'group flex items-start gap-2 p-2 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-z4 cursor-pointer transition-[border-color,box-shadow] overflow-hidden',
         TEMPORAL_ACCENT[temporal],
         isDragging && 'opacity-40 z-50',
         className

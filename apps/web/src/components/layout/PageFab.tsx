@@ -16,7 +16,8 @@ export function PageFab({ label, onClick, icon: Icon = Plus }: {
   return createPortal(
     <button
       type="button"
-      onClick={onClick}
+      // Never forward the click event: handlers like openCreateModal(date?) take optional args.
+      onClick={() => onClick()}
       aria-label={label}
       title={label}
       className="fixed right-4 z-30 flex size-14 items-center justify-center rounded-full bg-primary text-[#fff] shadow-[0_10px_24px_-6px_rgba(0,120,103,0.55)] transition-transform hover:bg-primary-dark active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/30 lg:hidden"

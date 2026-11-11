@@ -419,7 +419,7 @@ export function ClientDetailPage() {
 
   return (
     <Page>
-      <Link to="/app/clients" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+      <Link to="/app/clients" className="hidden items-center gap-1.5 text-sm font-medium lg:inline-flex text-muted-foreground transition-colors hover:text-foreground">
         <ArrowLeft size={16} aria-hidden />Voltar para Clientes
       </Link>
 
@@ -427,7 +427,7 @@ export function ClientDetailPage() {
         <div className="flex min-w-0 flex-1 items-center gap-4">
           <UploadableAvatar
             src={client.logoUrl}
-            rounded="rounded-2xl"
+            rounded="rounded-full"
             className="size-16 shrink-0 bg-primary/10"
             fallback={<span className="text-xl font-bold text-primary-dark dark:text-primary-light">{getInitials(client.name)}</span>}
             onUpload={handleUploadLogo}
@@ -447,7 +447,7 @@ export function ClientDetailPage() {
         <div className="flex flex-wrap items-center gap-2.5">
           <Button asChild variant="outline"><Link to="/app/content/calendar" state={{ clientId: client.id }}><CalendarRange size={16} aria-hidden />Planner do cliente</Link></Button>
           <Button onClick={handleAIBrandAnalysis} loading={analyzingBrand}>
-            {analyzingBrand ? <span>Analisando...</span> : <><Sparkles size={16} /><span>Análise de marca com Brand Brain</span></>}
+            {analyzingBrand ? <span>Analisando…</span> : <><Sparkles size={16} /><span>Análise de marca com Brand Brain</span></>}
           </Button>
         </div>
       </section>
@@ -590,7 +590,7 @@ export function ClientDetailPage() {
                 className="resize-y min-h-[6rem]"
                 value={profile.brandSummary || ''}
                 onChange={(e) => setProfile({ ...profile, brandSummary: e.target.value })}
-                placeholder="Ex: Bella Moda é uma marca de moda feminina premium focada em peças atemporais..."
+                placeholder="Ex: Bella Moda é uma marca de moda feminina premium focada em peças atemporais…"
               />
             </div>
 
@@ -750,7 +750,7 @@ export function ClientDetailPage() {
               <Input
                 type="text"
                 required
-                placeholder="Ex: Nunca usar gírias excessivas / Sempre incluir CTA para o WhatsApp..."
+                placeholder="Ex: Nunca usar gírias excessivas / Sempre incluir CTA para o WhatsApp…"
                 value={newRule.ruleText}
                 onChange={(e) => setNewRule({ ...newRule, ruleText: e.target.value })}
                 className="flex-1"

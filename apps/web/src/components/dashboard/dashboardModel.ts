@@ -38,9 +38,9 @@ export function buildDashboardAttention(overview: DashboardOverview, items: Atte
   // The overview counts platform records, including those whose content is no longer in the directory.
   // Preserve the authoritative total instead of silently making these failures disappear.
   const unavailableFailures = Math.max(0, overview.failedPublications - visibleFailures)
-  if (unavailableFailures) alerts.push({ id: 'failure-unavailable', kind: 'failure', title: 'Falhas no histórico de publicação',
-    description: 'O conteúdo associado não está disponível nesta lista.', badge: `${unavailableFailures} ${unavailableFailures === 1 ? 'plataforma' : 'plataformas'}`,
-    tone: 'error', action: 'Ver criativos', to: '/app/content' })
+  if (unavailableFailures) alerts.push({ id: 'failure-unavailable', kind: 'failure', title: unavailableFailures === 1 ? '1 publicação falhou' : `${unavailableFailures} publicações falharam`,
+    description: 'Em conteúdos que já foram removidos ou arquivados. Republique a partir de um conteúdo ativo, se ainda for necessário.', badge: 'Histórico',
+    tone: 'error', action: 'Ver conteúdos', to: '/app/content' })
 
   const waiting = new Map(items.filter(item => item.type === 'APPROVAL_WAITING' && item.contentId).map(item => [item.contentId!, item]))
   const reviewing = contents.filter(content => content.status === 'CLIENT_REVIEW')

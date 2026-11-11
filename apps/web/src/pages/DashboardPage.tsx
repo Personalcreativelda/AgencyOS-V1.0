@@ -5,7 +5,7 @@ import { format, formatDistanceToNowStrict } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   AlertCircle, AlertTriangle, ArrowRight, BadgeCheck, CalendarDays, CalendarRange,
-  CheckCircle2, ChevronDown, ChevronRight, FilePlus2, FileText, Plus, RefreshCw, Send, Sparkles, Users,
+  CheckCircle2, ChevronDown, ChevronRight, FilePlus2, FileText, Plus, RefreshCw, Send, Share2, Sparkles, Users,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/authStore'
@@ -17,7 +17,7 @@ import { Page } from '@/components/layout/Page'
 import { WelcomeBanner } from '@/components/dashboard/WelcomeBanner'
 import { AreaChart } from '@/components/charts/AreaChart'
 import { DonutChart, DonutLegend, type DonutSlice } from '@/components/charts/DonutChart'
-import { KpiBadge, KpiCard, Panel, PanelHeader, Segmented, ShareBar, Trend, TrendBadge } from '@/components/dashboard/DashboardWidgets'
+import { KpiBadge, KpiCard, Panel, PanelEmpty, PanelHeader, Segmented, ShareBar, TrendBadge } from '@/components/dashboard/DashboardWidgets'
 import { BRAND_COLORS, BrandIcon } from '@/components/brand/BrandIcon'
 import { PlatformIcon } from '@/components/planner/PlatformIcon'
 import { getPrimaryImage } from '@/components/planner/plannerUtils'
@@ -278,12 +278,12 @@ export function DashboardPage() {
             : <>
               <KpiCard label="Conteúdos criados" icon={FilePlus2} tone="brand" to="/app/content"
                 value={data?.kpis.created.value ?? overview?.totalContentsThisMonth ?? 0}
-                badge={<TrendBadge value={data?.kpis.created.delta} />}
+                badge={<TrendBadge value={data?.kpis.created.delta} neutral />}
                 sparkline={data?.series.map(point => point.created)}
                 footer={data ? (data.kpis.created.delta === null ? 'Primeiro período com dados' : RANGE_SUFFIX[range]) : 'Este mês'} />
               <KpiCard label="Publicados" icon={Send} tone="info" to="/app/content"
                 value={data?.kpis.published.value ?? overview?.publishedThisMonth ?? 0}
-                badge={<TrendBadge value={data?.kpis.published.delta} />}
+                badge={<TrendBadge value={data?.kpis.published.delta} neutral />}
                 sparkline={data?.series.map(point => point.published)}
                 footer={data ? (data.kpis.published.delta === null ? 'Primeiro período com dados' : RANGE_SUFFIX[range]) : 'Este mês'} />
               <KpiCard label="Aguardando aprovação" icon={BadgeCheck} tone="warning" to="/app/approvals" alert={pending > 0} value={pending} cta={pending > 0 ? 'Ver pendentes' : undefined}
@@ -304,11 +304,10 @@ export function DashboardPage() {
             description="Criados e publicados ao longo do período."
             action={<Segmented label="Período" value={range} options={RANGE_OPTIONS} onChange={setRange} />}
           />
-          {data && (
+          {data && data.series.some(point => point.created || point.published) && (
             <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="text-[32px] font-bold leading-none tracking-[-0.03em] tabular-nums">{data.kpis.created.value}</span>
               <span className="text-sm text-muted-foreground">conteúdos criados</span>
-              <Trend value={data.kpis.created.delta} suffix="" />
               <span className="ml-auto hidden items-center gap-4 text-xs text-muted-foreground sm:flex">
                 <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: SERIES_COLORS.created }} />Criados</span>
                 <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: SERIES_COLORS.published }} />Publicados</span>
@@ -317,6 +316,8 @@ export function DashboardPage() {
           )}
           {insights.isLoading ? <Skeleton className="h-[280px] rounded-xl" />
             : insights.isError ? <div role="status" className="flex h-[280px] flex-col items-center justify-center rounded-xl border border-dashed border-border text-center text-[13px] text-muted-foreground"><p>Não foi possível carregar o histórico.</p><Button variant="outline" size="sm" className="mt-3" onClick={() => void insights.refetch()}>Tentar novamente</Button></div>
+            : data && data.series.every(point => !point.created && !point.published) ? <PanelEmpty icon={FilePlus2} title="Sem produção neste período" text={`Nenhum conteúdo foi criado ou publicado ${range === '30d' ? 'nos últimos 30 dias' : range === '90d' ? 'nos últimos 90 dias' : 'nos últimos 12 meses'}.`}
+              action={range !== '12m' ? <Button variant="outline" onClick={() => setRange(range === '30d' ? '90d' : '12m')}>Ver {range === '30d' ? '90 dias' : '12 meses'}</Button> : <Button asChild variant="outline"><Link to="/app/content?novo=1">Criar conteúdo<ArrowRight size={14} aria-hidden /></Link></Button>} />
             : data && <div className={cn('transition-opacity', insights.isFetching && 'opacity-60')}>
               <AreaChart
                 height={chartHeight}
@@ -366,7 +367,7 @@ export function DashboardPage() {
                 </div>
               </li>
             ))}</ul>
-            : <p className="py-8 text-center text-[13px] text-muted-foreground">Sem publicações planejadas neste período.</p>}
+            : <PanelEmpty icon={Share2} title="Nenhuma publicação planejada" text="As redes aparecem aqui quando houver conteúdos agendados no período." action={<Button asChild variant="outline"><Link to="/app/content/calendar">Abrir Planner<ArrowRight size={14} aria-hidden /></Link></Button>} />}
         </Panel>
 
         <Panel aria-label="Clientes mais ativos" className="md:col-span-2 xl:col-span-1">
@@ -391,7 +392,7 @@ export function DashboardPage() {
                 </Link>
               </li>
             ))}</ul>
-            : <p className="py-8 text-center text-[13px] text-muted-foreground">Nenhum conteúdo criado neste período.</p>}
+            : <PanelEmpty icon={Users} title="Sem atividade de clientes" text="Nenhum conteúdo foi criado para os clientes neste período." action={<Button asChild variant="outline"><Link to="/app/clients">Ver clientes<ArrowRight size={14} aria-hidden /></Link></Button>} />}
         </Panel>
       </div>
 

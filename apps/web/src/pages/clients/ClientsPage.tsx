@@ -46,9 +46,9 @@ const STATUS_FILTERS = [
 
 function ClientLogo({ client, className = 'size-12' }: { client: Client; className?: string }) {
   return (
-    <Avatar className={`${className} shrink-0 rounded-xl border border-border/70`}>
-      {client.logoUrl && <AvatarImage src={client.logoUrl} alt="" className="object-contain" />}
-      <AvatarFallback className={`rounded-none text-[15px] font-bold ${toneFor(client.name)}`}>{getInitials(client.name)}</AvatarFallback>
+    <Avatar className={`${className} shrink-0 rounded-full border border-border/70`}>
+      {client.logoUrl && <AvatarImage src={client.logoUrl} alt="" className="object-cover" />}
+      <AvatarFallback className={`rounded-full text-[15px] font-bold ${toneFor(client.name)}`}>{getInitials(client.name)}</AvatarFallback>
     </Avatar>
   )
 }

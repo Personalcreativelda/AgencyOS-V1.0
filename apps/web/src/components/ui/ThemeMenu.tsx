@@ -16,7 +16,7 @@ export function ThemeMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label={`Tema: ${selected.label}`} title={`Tema: ${selected.label}`} className="text-muted-foreground hover:bg-muted hover:text-foreground">
+        <Button variant="ghost" size="icon" aria-label={`Tema: ${selected.label}`} title={`Tema: ${selected.label}`} className="size-12 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground lg:size-10">
           <Icon size={18} />
         </Button>
       </DropdownMenuTrigger>

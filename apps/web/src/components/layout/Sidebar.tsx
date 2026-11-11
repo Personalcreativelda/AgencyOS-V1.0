@@ -6,7 +6,7 @@ import {
   CalendarRange, Kanban, Plus, Share2, Settings, ChevronDown, ChevronsLeft, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { brandIcon } from '@/components/brand/BrandIcon'
+import { BrandIcon, brandIcon } from '@/components/brand/BrandIcon'
 import { Logo, LogoMark } from '@/components/brand/Logo'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/Tooltip'
 import { useSidebarStore } from '@/stores/sidebarStore'
@@ -16,6 +16,8 @@ import { BrandBrainCard } from '@/components/layout/BrandBrainCard'
 type IconComponent = ComponentType<{ size?: number | string; className?: string }>
 
 type NavItem = {
+  /** Platform icon: monochrome like the rest of the menu, brand colour only when active. */
+  brand?: string
   label: string
   href: string
   icon: IconComponent
@@ -64,10 +66,10 @@ const NAV: NavSection[] = [
     id: 'ads',
     label: 'Anúncios',
     items: [
-      { label: 'Meta Ads', href: '/app/ads', icon: brandIcon('META_ADS') },
-      { label: 'Google Ads', href: '/app/google', icon: brandIcon('GOOGLE_ADS') },
-      { label: 'TikTok Ads', href: '/app/tiktok-ads', icon: brandIcon('TIKTOK_ADS') },
-      { label: 'LinkedIn Ads', href: '/app/linkedin-ads', icon: brandIcon('LINKEDIN_ADS') },
+      { label: 'Meta Ads', href: '/app/ads', icon: brandIcon('META_ADS'), brand: 'META_ADS' },
+      { label: 'Google Ads', href: '/app/google', icon: brandIcon('GOOGLE_ADS'), brand: 'GOOGLE_ADS' },
+      { label: 'TikTok Ads', href: '/app/tiktok-ads', icon: brandIcon('TIKTOK_ADS'), brand: 'TIKTOK_ADS' },
+      { label: 'LinkedIn Ads', href: '/app/linkedin-ads', icon: brandIcon('LINKEDIN_ADS'), brand: 'LINKEDIN_ADS' },
     ],
   },
   {
@@ -199,7 +201,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         className={cn(itemClass(active), rail ? 'mx-auto size-12 justify-center rounded-xl' : 'h-10 px-3')}
       >
         <span className="relative shrink-0">
-          <Icon size={rail ? 21 : 18} className="shrink-0" />
+          {item.brand ? <BrandIcon platform={item.brand} colored={active} size={rail ? 21 : 18} className="shrink-0" /> : <Icon size={rail ? 21 : 18} className="shrink-0" />}
           {rail && item.count === 'approvals' && counts.pendingApprovals > 0 && (
             <span aria-hidden className="absolute -right-1 -top-1 size-2 rounded-full bg-warning ring-2 ring-sidebar" />
           )}
@@ -247,8 +249,8 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         )}
       >
         {/* Brand */}
-        <div className={cn('flex h-16 shrink-0 items-center', rail ? 'justify-center px-0' : 'justify-between gap-3 px-6')}>
-          {rail ? <LogoMark size={38} /> : <Logo size={34} tagline={null} wordmarkClassName="text-[19px] font-bold" />}
+        <div className={cn('flex h-14 shrink-0 items-center', rail ? 'justify-center px-0' : 'justify-between gap-3 px-6')}>
+          {rail ? <LogoMark size={42} /> : <Logo size={42} tagline={null} wordmarkClassName="text-[23px] font-bold" />}
           <button
             onClick={onClose}
             aria-label="Fechar menu"
@@ -265,7 +267,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           onClick={toggleCollapsed}
           aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'}
           title={`${collapsed ? 'Expandir' : 'Recolher'} menu (Ctrl+B)`}
-          className="absolute -right-3 top-[20px] z-10 hidden size-6 items-center justify-center rounded-full border border-sidebar-border bg-card text-muted-foreground shadow-z4 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:flex"
+          className="absolute -right-3 top-[16px] z-10 hidden size-6 items-center justify-center rounded-full border border-sidebar-border bg-card text-muted-foreground shadow-z4 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:flex"
         >
           <ChevronsLeft size={14} className={cn('transition-transform duration-300', collapsed && 'rotate-180')} />
         </button>
@@ -276,7 +278,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4 pt-2">
+        <nav className="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4 pt-2 [mask-image:linear-gradient(to_bottom,black_calc(100%-28px),transparent)]">
           {NAV.map((section, index) => {
             if (rail) {
               return (

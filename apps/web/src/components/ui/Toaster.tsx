@@ -59,7 +59,7 @@ export function Toaster() {
           </ToastPrimitive.Root>
         )
       })}
-      <ToastPrimitive.Viewport className="fixed bottom-0 right-0 z-[100] flex flex-col gap-2.5 p-4 sm:p-6 w-full sm:max-w-sm max-h-screen overflow-hidden outline-none" />
+      <ToastPrimitive.Viewport className="fixed bottom-[calc(4rem+var(--sab))] right-0 z-[100] flex max-h-screen w-full flex-col gap-2.5 overflow-hidden p-4 outline-none sm:max-w-sm sm:p-6 lg:bottom-0" />
     </ToastPrimitive.Provider>
   )
 }

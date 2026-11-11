@@ -2,25 +2,30 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/authStore'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
-import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { DashboardPage } from '@/pages/DashboardPage'
-import { ClientsPage } from '@/pages/clients/ClientsPage'
-import { ClientDetailPage } from '@/pages/clients/ClientDetailPage'
-import { NewClientPage } from '@/pages/clients/NewClientPage'
-import { ContentPage } from '@/pages/ContentPage'
-import { ContentDetailPage } from '@/pages/ContentDetailPage'
-import { ApprovalsPage } from '@/pages/ApprovalsPage'
-import { ApprovalPortalPage } from '@/pages/ApprovalPortalPage'
-import { ReportPublicPage } from '@/pages/ReportPublicPage'
-import { SettingsPage } from '@/pages/SettingsPage'
-import { SocialConnectionsPage } from '@/pages/SocialConnectionsPage'
-import { AdsPage } from '@/pages/AdsPage'
-import { GooglePerformancePage } from '@/pages/GooglePerformancePage'
-import { PerformancePage } from '@/pages/PerformancePage'
-import { AdPlatformPage } from '@/pages/AdPlatformPage'
-import { ReportsPage } from '@/pages/ReportsPage'
 import { Toaster } from '@/components/ui/Toaster'
+import { lazyPage } from '@/lib/lazyPage'
+import { Suspense } from 'react'
 import { ConfirmDialogHost } from '@/components/ui/ConfirmDialogHost'
+
+// Route-level code splitting: Dashboard and Login stay in the main bundle (first screens); every
+// other page is its own chunk, loaded when opened.
+const ClientsPage = lazyPage(() => import('@/pages/clients/ClientsPage'), 'ClientsPage')
+const ClientDetailPage = lazyPage(() => import('@/pages/clients/ClientDetailPage'), 'ClientDetailPage')
+const NewClientPage = lazyPage(() => import('@/pages/clients/NewClientPage'), 'NewClientPage')
+const ContentPage = lazyPage(() => import('@/pages/ContentPage'), 'ContentPage')
+const ContentDetailPage = lazyPage(() => import('@/pages/ContentDetailPage'), 'ContentDetailPage')
+const ApprovalsPage = lazyPage(() => import('@/pages/ApprovalsPage'), 'ApprovalsPage')
+const ApprovalPortalPage = lazyPage(() => import('@/pages/ApprovalPortalPage'), 'ApprovalPortalPage')
+const ReportPublicPage = lazyPage(() => import('@/pages/ReportPublicPage'), 'ReportPublicPage')
+const SettingsPage = lazyPage(() => import('@/pages/SettingsPage'), 'SettingsPage')
+const SocialConnectionsPage = lazyPage(() => import('@/pages/SocialConnectionsPage'), 'SocialConnectionsPage')
+const AdsPage = lazyPage(() => import('@/pages/AdsPage'), 'AdsPage')
+const GooglePerformancePage = lazyPage(() => import('@/pages/GooglePerformancePage'), 'GooglePerformancePage')
+const PerformancePage = lazyPage(() => import('@/pages/PerformancePage'), 'PerformancePage')
+const AdPlatformPage = lazyPage(() => import('@/pages/AdPlatformPage'), 'AdPlatformPage')
+const ReportsPage = lazyPage(() => import('@/pages/ReportsPage'), 'ReportsPage')
+const RegisterPage = lazyPage(() => import('@/pages/auth/RegisterPage'), 'RegisterPage')
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuthStore()
@@ -37,6 +42,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <Suspense fallback={null}>
       <Routes>
         {/* Public routes */}
         <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
@@ -71,6 +77,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/app/dashboard" replace />} />
       </Routes>
+      </Suspense>
 
       <Toaster />
       <ConfirmDialogHost />

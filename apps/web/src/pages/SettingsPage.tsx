@@ -376,7 +376,7 @@ export function SettingsPage() {
             <div className="flex items-center gap-4 rounded-2xl border border-dashed border-border bg-muted/30 p-4 md:flex-col md:justify-center md:gap-2 md:p-5 md:text-center">
               <UploadableAvatar
                 src={agency?.logoUrl}
-                rounded="rounded-2xl"
+                rounded="rounded-full"
                 className="h-16 w-16 bg-primary/10"
                 fallback={<Building size={26} className="text-primary-dark" />}
                 onUpload={handleUploadAgencyLogo}
@@ -606,7 +606,7 @@ export function SettingsPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-muted-foreground font-medium mt-1.5">Calendário, legendas, hooks, Brand Brain, feedback...</p>
+                <p className="text-[11px] text-muted-foreground font-medium mt-1.5">Calendário, legendas, hooks, Brand Brain, feedback…</p>
               </div>
               <div>
                 <Label>Provedor para tarefas de imagem</Label>
@@ -655,7 +655,7 @@ export function SettingsPage() {
               <Input
                 id="apiKey"
                 type={showApiKey ? 'text' : 'password'}
-                placeholder={aiProvider === 'openai' ? 'sk-...' : aiProvider === 'anthropic' ? 'sk-ant-...' : 'AIza...'}
+                placeholder={aiProvider === 'openai' ? 'sk-...' : aiProvider === 'anthropic' ? 'sk-ant-...' : 'AIza…'}
                 value={apiKeyInput}
                 onChange={(e) => { setApiKeyInput(e.target.value); setTestResult(null) }}
                 endAdornment={

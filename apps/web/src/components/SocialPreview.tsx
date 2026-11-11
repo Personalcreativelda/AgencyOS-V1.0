@@ -129,7 +129,7 @@ function CarouselOverlay({ count, index, onChange }: { count: number; index: num
       )}
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1">
         {Array.from({ length: count }, (_, i) => (
-          <span key={i} className={cn('rounded-full transition-all', i === index ? 'w-3.5 h-1.5 bg-[#fff]' : 'w-1.5 h-1.5 bg-[#fff]/50')} />
+          <span key={i} className={cn('rounded-full transition-[width,background-color]', i === index ? 'w-3.5 h-1.5 bg-[#fff]' : 'w-1.5 h-1.5 bg-[#fff]/50')} />
         ))}
       </div>
       <span className="absolute top-2 right-2 z-20 bg-[#000]/50 text-[#fff] text-[9px] font-bold px-1.5 py-0.5 rounded-full">
@@ -152,7 +152,7 @@ function PreviewMedia({
   const uploading = uploadProgress != null
   const overlay = uploading
     ? { title: `Enviando arquivo... ${uploadProgress}%`, subtitle: 'Não feche esta página até o envio terminar.' }
-    : { title: 'Gerando criativo com Brand Brain...', subtitle: 'Isso pode levar até 1 minuto — não feche esta página.' }
+    : { title: 'Gerando criativo com Brand Brain…', subtitle: 'Isso pode levar até 1 minuto — não feche esta página.' }
 
   if (image) {
     const isVideo = image.mimeType?.startsWith('video/')
@@ -189,7 +189,7 @@ function PreviewMedia({
 
 // Highlights #hashtags the way Instagram/Facebook render them in a real caption.
 function renderCaption(caption?: string | null) {
-  if (!caption) return <span className="text-slate-400 italic">Sem legenda ainda...</span>
+  if (!caption) return <span className="text-slate-400 italic">Sem legenda ainda…</span>
   return caption.split(/(#[\p{L}0-9_]+)/gu).map((part, i) =>
     part.startsWith('#') ? (
       <span key={i} className="text-[#00376B] font-semibold">{part}</span>

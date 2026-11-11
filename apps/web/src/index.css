@@ -102,6 +102,34 @@
     box-sizing: border-box;
   }
 
+  /* Native-app feel (Android WebView): no blue tap flash, no rubber-band/pull-to-refresh on
+     the page, and UI chrome is not selectable with a long press (form fields still are). */
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* Rubber-band off with a mouse and inside the Android app; phone browsers keep pull-to-refresh. */
+  @media (pointer: fine) {
+    html { overscroll-behavior: none; }
+  }
+  html.native { overscroll-behavior: none; }
+  /* No double-tap-zoom delay on controls. */
+  a, button, [role='button'], [role='tab'], input, select, textarea, label {
+    touch-action: manipulation;
+  }
+  /* Touch screens: every control answers a tap within ~80ms (no hover there). Opacity only, so
+     nothing shifts layout. */
+  @media (hover: none) {
+    button:not(:disabled):active, a:active, [role='button']:active, [role='tab']:active {
+      opacity: 0.72;
+      transition: opacity 80ms ease-out;
+    }
+  }
+  button, [role='button'], [role='tab'], nav a, label {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));

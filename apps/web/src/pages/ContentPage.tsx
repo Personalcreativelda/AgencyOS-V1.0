@@ -194,7 +194,9 @@ export function ContentPage({ view }: ContentPageProps) {
   }
 
   const openCreateModal = (date?: Date) => {
-    setNewContent((prev) => ({ ...prev, scheduledAt: date ? `${dateKey(date)}T09:00` : '' }))
+    // Only a real Date pre-fills the schedule (a click event passed by mistake is ignored).
+    const day = date instanceof Date && !Number.isNaN(date.getTime()) ? date : undefined
+    setNewContent((prev) => ({ ...prev, scheduledAt: day ? `${dateKey(day)}T09:00` : '' }))
     setShowModal(true)
   }
 
@@ -352,7 +354,7 @@ export function ContentPage({ view }: ContentPageProps) {
         }
       />
 
-      <PageFab label="Novo conteúdo" onClick={openCreateModal} />
+      <PageFab label="Novo conteúdo" onClick={() => openCreateModal()} />
 
       {/* Planner / Kanban toolbar: period (Planner) or columns (Kanban) on the left, filters on the right */}
       {view !== 'list' && (
@@ -392,7 +394,7 @@ export function ContentPage({ view }: ContentPageProps) {
           onClientChange={setSelectedClient} onStatusChange={setSelectedStatus} onPlatformChange={setSelectedPlatform}
           onRetry={() => void loadContents()} onCreate={() => openCreateModal()}
           onDelete={(id, title) => void handleDeleteContent(id, title)} />
-      ) : loading ? <Skeleton className="h-[520px] w-full rounded-2xl" /> : (
+      ) : loading && contents.length === 0 ? <Skeleton className="h-[520px] w-full rounded-2xl" /> : (
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           {view === 'calendar' && (
             <CalendarMonthView
@@ -492,7 +494,7 @@ export function ContentPage({ view }: ContentPageProps) {
               <Textarea
                 id="newContentBrief"
                 rows={2}
-                placeholder="Ideia central ou objetivo do post..."
+                placeholder="Ideia central ou objetivo do post…"
                 value={newContent.brief}
                 onChange={(e) => setNewContent({ ...newContent, brief: e.target.value })}
               />

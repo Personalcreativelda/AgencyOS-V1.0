@@ -90,9 +90,10 @@ export function ApprovalPortalPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4 font-sans text-foreground">
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-muted-foreground">Carregando conteúdo para aprovação...</p>
+        <div aria-busy="true" aria-label="Carregando conteúdo para aprovação" className="w-full max-w-md space-y-4">
+          <div className="flex items-center gap-3"><div className="size-12 animate-pulse rounded-full bg-muted motion-reduce:animate-none" /><div className="flex-1 space-y-2"><div className="h-4 w-1/2 animate-pulse rounded bg-muted motion-reduce:animate-none" /><div className="h-3 w-1/3 animate-pulse rounded bg-muted motion-reduce:animate-none" /></div></div>
+          <div className="aspect-square w-full animate-pulse rounded-2xl bg-muted motion-reduce:animate-none" />
+          <div className="h-12 w-full animate-pulse rounded-xl bg-muted motion-reduce:animate-none" />
         </div>
       </div>
     )
@@ -127,11 +128,11 @@ export function ApprovalPortalPage() {
         {/* Client Brand Header */}
         <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-card">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-primary/20 text-primary font-bold flex items-center justify-center text-base border border-primary/30 overflow-hidden">
+            <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-primary/30 bg-primary/20 text-base font-bold text-primary">
               {data.client?.logoUrl ? (
                 <img src={data.client.logoUrl} alt={data.client.name} className="w-full h-full object-cover" />
               ) : (
-                data.client?.name?.[0] || 'C'
+                (data.client?.name || 'C').split(/\s+/).filter(Boolean).slice(0, 2).map((w: string) => w[0]?.toUpperCase()).join('')
               )}
             </div>
             <div>

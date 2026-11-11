@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { Suspense, useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   LogOut, Bell, CheckCheck, Inbox, Camera, ChevronDown,
 } from 'lucide-react'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { useAndroidBack } from '@/hooks/useAndroidBack'
 import { MobileTabBar } from '@/components/layout/MobileTabBar'
 import { HeaderSearch } from '@/components/layout/HeaderSearch'
 import { LogoMark } from '@/components/brand/Logo'
@@ -39,6 +40,17 @@ const PAGE_TITLES: [string, string][] = [
   ['/app/social', 'Redes sociais'],
   ['/app/settings', 'Configurações'],
 ]
+
+/** Shown in the page area only (menu and tab bar stay) while a page chunk loads. */
+function PageFallback() {
+  return (
+    <div aria-busy="true" aria-label="Carregando página" className="space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="h-8 w-48 animate-pulse rounded-lg bg-muted motion-reduce:animate-none" />
+      <div className="h-40 animate-pulse rounded-[20px] bg-muted motion-reduce:animate-none" />
+      <div className="h-64 animate-pulse rounded-[20px] bg-muted motion-reduce:animate-none" />
+    </div>
+  )
+}
 
 export function AppLayout() {
   const { user, logout, updateUser } = useAuthStore()
@@ -109,6 +121,7 @@ export function AppLayout() {
   }
 
   const closeNav = React.useCallback(() => setNavOpen(false), [])
+  useAndroidBack({ menuOpen: navOpen, closeMenu: closeNav })
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background font-sans">
@@ -129,10 +142,10 @@ export function AppLayout() {
         {/* Phones: header sits on the page background (no divider) like a native app bar;
             the menu lives in the bottom tab bar's "Mais". Desktop keeps the card header. */}
         <header className="flex flex-col isolate shrink-0 z-20 bg-background pt-[var(--sat)] lg:border-b lg:border-border lg:bg-card lg:pt-0">
-          <div className="flex items-center justify-between h-14 px-4 sm:px-6 lg:h-16 lg:px-8">
+          <div className="flex items-center justify-between h-14 px-4 sm:px-6 lg:px-8">
             <Link to="/app/dashboard" aria-label="AgencyOS — início" className="flex min-w-0 items-center gap-2.5 lg:hidden">
-              <LogoMark size={32} />
-              <span className="text-[17px] font-semibold tracking-tight text-foreground">Agency<span className="text-primary">OS</span></span>
+              <LogoMark size={36} />
+              <span className="text-[19px] font-semibold tracking-tight text-foreground">Agency<span className="text-primary">OS</span></span>
             </Link>
 
             <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
@@ -141,7 +154,7 @@ export function AppLayout() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button aria-label="Notificações" className="relative p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                <button aria-label="Notificações" className="relative flex size-12 items-center justify-center rounded-full hover:bg-muted lg:size-10 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                   <Bell size={20} />
                   {unreadCount > 0 && (
                     <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-error rounded-full text-[11px] font-bold text-[#fff]">
@@ -239,7 +252,7 @@ export function AppLayout() {
         {/* Page View */}
         <div ref={scrollRef} className="flex-1 overflow-auto bg-background">
           {/* Bottom padding keeps the last item clear of the floating tab bar on phones. */}
-          <div id="page-content" tabIndex={-1} className="min-w-0 pb-[calc(5.5rem+var(--sab))] outline-none lg:pb-0"><Outlet /></div>
+          <div id="page-content" key={pathname.split('/').slice(0, 4).join('/')} tabIndex={-1} className="animate-page-in motion-reduce:animate-none min-w-0 pb-[calc(9rem+var(--sab))] outline-none lg:pb-0"><Suspense fallback={<PageFallback />}><Outlet /></Suspense></div>
         </div>
       </main>
 

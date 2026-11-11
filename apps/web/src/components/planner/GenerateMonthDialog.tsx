@@ -158,14 +158,14 @@ export function GenerateMonthDialog({ open, onOpenChange, clients, defaultClient
               rows={2}
               value={form.objectives}
               onChange={(e) => setForm({ ...form, objectives: e.target.value })}
-              placeholder="Ex: lançamento de nova coleção, gerar leads, engajar comunidade..."
+              placeholder="Ex: lançamento de nova coleção, gerar leads, engajar comunidade…"
             />
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
             <Button type="submit" loading={loading} disabled={!form.clientId}>
-              {loading ? <span>Planejando...</span> : <><Sparkles size={16} /><span>Gerar mês completo</span></>}
+              {loading ? <span>Planejando…</span> : <><Sparkles size={16} /><span>Gerar mês completo</span></>}
             </Button>
           </DialogFooter>
         </form>

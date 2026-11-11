@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { addDays, addWeeks, format, isBefore, isSameDay, isSameMonth, isToday, startOfDay, startOfWeek } from 'date-fns'
+import { addDays, addMonths, addWeeks, endOfMonth, endOfWeek, format, isBefore, isSameDay, isSameMonth, isToday, startOfDay, startOfMonth, startOfWeek } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ContentCard } from './ContentCard'
 import { capitalize } from './plannerUtils'
@@ -28,6 +28,9 @@ export function PlannerWeekView({ currentDate, contents, onOpenContent, onCreate
   const [selected, setSelected] = useState<Date>(startOfDay(initial))
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const touchX = useRef<number | null>(null)
+  // Month calendar only on demand (tap the month name) — to schedule in another month.
+  const [monthOpen, setMonthOpen] = useState(false)
+  const [pickerMonth, setPickerMonth] = useState<Date>(startOfMonth(initial))
 
   // Keep the selection inside the month the page loaded (e.g. after "Hoje" or month arrows).
   useEffect(() => {
@@ -56,6 +59,22 @@ export function PlannerWeekView({ currentDate, contents, onOpenContent, onCreate
     rowRefs.current[day.toDateString()]?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const pickerDays = useMemo(() => {
+    const start = startOfWeek(startOfMonth(pickerMonth), WEEK_OPTS)
+    const end = endOfWeek(endOfMonth(pickerMonth), WEEK_OPTS)
+    const list: Date[] = []
+    for (let d = start; !isBefore(end, d); d = addDays(d, 1)) list.push(d)
+    return list
+  }, [pickerMonth])
+
+  const pickFromMonth = (day: Date) => {
+    const d = startOfDay(day)
+    setSelected(d)
+    setMonthOpen(false)
+    if (!isSameMonth(d, currentDate)) onNavigateMonth?.(d)
+    requestAnimationFrame(() => rowRefs.current[d.toDateString()]?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
+
   const today = startOfDay(new Date())
 
   return (
@@ -63,10 +82,17 @@ export function PlannerWeekView({ currentDate, contents, onOpenContent, onCreate
       {/* Month + week navigation */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur-md">
         <div className="flex items-center justify-between px-4 pb-1 pt-1 sm:px-6">
-          <h2 className="text-lg font-semibold tracking-tight text-foreground">
+          <button
+            type="button"
+            onClick={() => { setPickerMonth(startOfMonth(selected)); setMonthOpen((v) => !v) }}
+            aria-expanded={monthOpen}
+            aria-label="Abrir calendário do mês"
+            className="-ml-2 flex min-h-11 items-center gap-1 rounded-full px-2 text-lg font-semibold tracking-tight text-foreground active:bg-muted"
+          >
             {capitalize(format(selected, 'MMMM', { locale: ptBR }))}
-            <span className="ml-1.5 font-normal text-muted-foreground">{format(selected, 'yyyy')}</span>
-          </h2>
+            <span className="font-normal text-muted-foreground">{format(selected, 'yyyy')}</span>
+            <ChevronDown size={18} className={cn('ml-0.5 text-muted-foreground transition-transform', monthOpen && 'rotate-180')} />
+          </button>
           <div className="flex items-center">
             <button type="button" onClick={() => moveWeek(-1)} aria-label="Semana anterior" className="flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
               <ChevronLeft size={20} />
@@ -76,6 +102,39 @@ export function PlannerWeekView({ currentDate, contents, onOpenContent, onCreate
             </button>
           </div>
         </div>
+
+        {monthOpen && (
+          <div className="border-b border-border px-2 pb-3 sm:px-4">
+            <div className="flex items-center justify-between px-2 pb-1">
+              <span className="text-sm font-medium text-muted-foreground">{capitalize(format(pickerMonth, 'MMMM yyyy', { locale: ptBR }))}</span>
+              <div className="flex">
+                <button type="button" onClick={() => setPickerMonth((m) => addMonths(m, -1))} aria-label="Mês anterior" className="flex size-10 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><ChevronLeft size={20} /></button>
+                <button type="button" onClick={() => setPickerMonth((m) => addMonths(m, 1))} aria-label="Próximo mês" className="flex size-10 items-center justify-center rounded-full text-muted-foreground active:bg-muted"><ChevronRight size={20} /></button>
+              </div>
+            </div>
+            <div aria-hidden className="grid grid-cols-7 pb-1">
+              {['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((d, i) => <span key={i} className="text-center text-xs font-medium text-muted-foreground">{d}</span>)}
+            </div>
+            <div role="grid" className="grid grid-cols-7">
+              {pickerDays.map((day) => {
+                const inMonth = isSameMonth(day, pickerMonth)
+                const active = isSameDay(day, selected)
+                const has = inMonth && isSameMonth(day, currentDate) && itemsByDay(day).length > 0
+                return (
+                  <button key={day.toDateString()} type="button" role="gridcell" disabled={!inMonth} onClick={() => pickFromMonth(day)}
+                    aria-label={format(day, "EEEE, d 'de' MMMM yyyy", { locale: ptBR })}
+                    className="flex h-12 flex-col items-center justify-center gap-0.5 disabled:opacity-0">
+                    <span className={cn('flex size-8 items-center justify-center rounded-full text-sm tabular-nums',
+                      active ? 'bg-primary font-semibold text-[#fff]' : isToday(day) ? 'font-semibold text-primary-dark ring-1 ring-primary/50 dark:text-primary-light' : 'text-foreground/80')}>
+                      {day.getDate()}
+                    </span>
+                    <span aria-hidden className={cn('size-1 rounded-full', has ? 'bg-muted-foreground/70' : 'bg-transparent')} />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         <div
           role="tablist"

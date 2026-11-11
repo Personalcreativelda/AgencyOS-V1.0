@@ -589,7 +589,7 @@ export function ContentDetailPage() {
       <header ref={toolbarRef} className="sticky top-0 z-20 -mx-1 border-b border-border bg-background/95 px-1 py-3 backdrop-blur-md sm:py-5">
         <div className="flex flex-col justify-between gap-3 sm:gap-4 lg:flex-row lg:items-center">
           <div className="flex min-w-0 items-center gap-3">
-            <Button asChild variant="ghost" size="icon" className="shrink-0"><Link to="/app/content" aria-label="Voltar para criativos"><ArrowLeft size={19} /></Link></Button>
+            <Button asChild variant="ghost" size="icon" className="hidden shrink-0 lg:inline-flex"><Link to="/app/content" aria-label="Voltar para criativos"><ArrowLeft size={19} /></Link></Button>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2.5"><h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Editar criativo</h1><StatusBadge status={content.status} /></div>
               <p className="mt-1 truncate text-xs text-muted-foreground sm:text-[13px]">{content.client?.name || 'Cliente'}</p>
@@ -677,7 +677,7 @@ export function ContentDetailPage() {
                 disabled={sendingComment}
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Escreva uma observação..."
+                placeholder="Escreva uma observação…"
                 className="flex-1 px-3 py-2"
               />
               <Button type="submit" size="icon" aria-label="Enviar comentário" loading={sendingComment} disabled={!newComment.trim()}>
@@ -706,7 +706,7 @@ export function ContentDetailPage() {
                     className="w-full gap-1.5"
                   >
                     {publishing === targetPlatform ? (
-                      <span>Publicando...</span>
+                      <span>Publicando…</span>
                     ) : (
                       <>
                         <Send size={15} />
@@ -737,7 +737,7 @@ export function ContentDetailPage() {
                           ? primaryMediaList.length > 1
                             ? `Publicando ${primaryMediaList.length} imagens... pode levar vários minutos`
                             : 'Publicando... pode levar até 1 minuto'
-                          : 'Publicando...'}
+                          : 'Publicando…'}
                       </span>
                     ) : (
                       <>

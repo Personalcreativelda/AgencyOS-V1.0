@@ -53,7 +53,7 @@ export function NewClientPage() {
 
   return (
     <Page narrow>
-      <nav aria-label="Navegação estrutural" className="flex items-center gap-2 text-sm">
+      <nav aria-label="Navegação estrutural" className="hidden items-center gap-2 text-sm lg:flex">
         <Link to="/app/clients" className="inline-flex items-center gap-1.5 font-medium text-muted-foreground transition-colors hover:text-foreground">
           <ArrowLeft size={16} aria-hidden />Voltar para Clientes
         </Link>
@@ -216,7 +216,7 @@ export function NewClientPage() {
                   <span>Cadastrar & ativar Brand Brain</span>
                 </>
               )}
-              {loading && <span>Salvando...</span>}
+              {loading && <span>Salvando…</span>}
             </Button>
           </div>
         </form>
