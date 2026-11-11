@@ -132,10 +132,10 @@ export function KpiCard({ label, value, icon: Icon, tone = 'brand', footer, to, 
         alert ? TONE_TEXT[tone] : 'text-foreground')}>
         {value}
       </p>
-      {(footer || sparkline) && (
-        <div className="mt-auto flex min-h-6 items-end justify-between gap-3 pt-2">
-          <div className="min-w-0 text-[13px] leading-snug text-muted-foreground">{footer}</div>
-          {sparkline && <Sparkline values={sparkline} className={cn('hidden sm:block', TONE_TEXT[tone])} />}
+      {/* No caption text under the number (it repeated what the card already says) — only the trend line. */}
+      {sparkline && (
+        <div className="mt-auto flex min-h-6 items-end justify-end pt-2">
+          <Sparkline values={sparkline} className={cn('hidden sm:block', TONE_TEXT[tone])} />
         </div>
       )}
     </div>

@@ -146,7 +146,7 @@ export function AppLayout() {
                 <button aria-label="Notificações" className="relative p-2 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
                   <Bell size={20} />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-error rounded-full text-[9px] font-bold text-[#fff]">
+                    <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center bg-error rounded-full text-[11px] font-bold text-[#fff]">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   )}
@@ -186,7 +186,7 @@ export function AppLayout() {
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-foreground truncate">{n.title}</p>
                           <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
-                          <p className="text-[10px] text-muted-foreground mt-1 font-medium">{timeAgo(n.createdAt)}</p>
+                          <p className="text-[11px] text-muted-foreground mt-1 font-medium">{timeAgo(n.createdAt)}</p>
                         </div>
                       </button>
                     ))

@@ -67,7 +67,7 @@ function DayCell({
         <button
           type="button"
           onClick={() => onExpand(date)}
-          className="w-full text-[10px] font-bold text-primary hover:underline text-left"
+          className="w-full text-[11px] font-bold text-primary hover:underline text-left"
         >
           +{hidden} mais
         </button>
@@ -77,7 +77,7 @@ function DayCell({
         <button
           type="button"
           onClick={() => onCreateAt(date)}
-          className="w-full flex items-center justify-center gap-1 text-[10px] font-medium text-transparent group-hover:text-muted-foreground py-1 transition-colors"
+          className="w-full flex items-center justify-center gap-1 text-[11px] font-medium text-transparent group-hover:text-muted-foreground py-1 transition-colors"
         >
           <Plus size={11} />
           <span>Criar</span>
@@ -113,7 +113,7 @@ export function CalendarMonthView({ currentDate, contents, onOpenContent, onCrea
     <div className="border-t border-l border-border rounded-2xl overflow-hidden">
       <div className="grid grid-cols-7 bg-muted">
         {WEEKDAY_LABELS.map((d) => (
-          <div key={d} className="px-2 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider text-center border-r border-border">
+          <div key={d} className="px-2 py-2 text-[11px] font-bold text-muted-foreground uppercase tracking-wider text-center border-r border-border">
             {d}
           </div>
         ))}

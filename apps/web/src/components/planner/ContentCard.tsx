@@ -75,7 +75,7 @@ export function ContentCard({ content, onClick, className }: ContentCardProps) {
       </div>
 
       <div className="min-w-0 flex-1 space-y-0.5">
-        <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground">
           {time && <span>{time}</span>}
           {platforms.length > 0 && (
             <span className="flex items-center gap-1">
@@ -87,8 +87,8 @@ export function ContentCard({ content, onClick, className }: ContentCardProps) {
         </div>
         <p className="text-xs font-bold text-foreground leading-snug line-clamp-2">{content.title}</p>
         <div className="flex items-center justify-between gap-1.5 pt-0.5">
-          <span className="text-[10px] text-primary font-semibold truncate">{content.client?.name}</span>
-          <StatusBadge status={content.status} className="gap-1 px-1.5 py-0 text-[9px] leading-4 shrink-0" />
+          <span className="text-[11px] text-primary font-semibold truncate">{content.client?.name}</span>
+          <StatusBadge status={content.status} className="gap-1 px-1.5 py-0 text-[11px] leading-4 shrink-0" />
         </div>
       </div>
     </div>

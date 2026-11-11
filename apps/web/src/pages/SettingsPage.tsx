@@ -4,7 +4,7 @@ import {
 } from 'lucide-react'
 import { RiOpenaiFill } from 'react-icons/ri'
 import { SiAnthropic, SiGooglegemini } from 'react-icons/si'
-import api from '@/lib/api'
+import api, { cachedGet } from '@/lib/api'
 import { uploadFile } from '@/lib/upload'
 import { useAuthStore } from '@/stores/authStore'
 import { ROLE_LABELS, getInitials } from '@/lib/utils'
@@ -167,7 +167,7 @@ export function SettingsPage() {
   const availableToAdd = AI_PROVIDERS.filter((p) => !connectedProviderValues.includes(p.value))
 
   const loadAiSettings = async () => {
-    const { data } = await api.get('/ai/settings')
+    const { data } = await cachedGet('/ai/settings')
     setAiProviders(data.providers || [])
     setAiRouting({ textProvider: data.textProvider || null, imageProvider: data.imageProvider || null })
   }
@@ -176,8 +176,8 @@ export function SettingsPage() {
     async function load() {
       try {
         const [agRes, memRes] = await Promise.all([
-          api.get('/agencies/current'),
-          api.get('/agencies/current/members'),
+          cachedGet('/agencies/current'),
+          cachedGet('/agencies/current/members'),
         ])
         setAgency(agRes.data)
         setMembers(memRes.data || [])

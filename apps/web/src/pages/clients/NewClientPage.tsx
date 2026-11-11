@@ -67,7 +67,7 @@ export function NewClientPage() {
             src={formData.logoUrl}
             rounded="rounded-2xl"
             className="size-[76px] shrink-0 border-2 border-dashed border-grey-300 bg-card"
-            fallback={<span className="flex flex-col items-center gap-1 text-muted-foreground"><Building2 size={22} aria-hidden /><span className="text-[10px] font-semibold">Enviar logo</span></span>}
+            fallback={<span className="flex flex-col items-center gap-1 text-muted-foreground"><Building2 size={22} aria-hidden /><span className="text-[11px] font-semibold">Enviar logo</span></span>}
             onUpload={handleLogoUpload}
           />
           <div className="min-w-0">

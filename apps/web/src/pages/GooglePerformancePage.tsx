@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { BarChart3, ExternalLink, Globe2, MousePointerClick, Pause, Play, Plus, RefreshCw, Sparkles, Trash2, TrendingUp, Users } from 'lucide-react'
 import { BrandIcon } from '@/components/brand/BrandIcon'
-import api from '@/lib/api'
+import api, { cachedGet } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
@@ -94,7 +94,7 @@ export function GooglePerformancePage() {
   useEffect(() => {
     let active = true
     setLoadError('')
-    Promise.allSettled([api.get('/clients'), api.get('/google/settings')]).then(([clientResult, settingsResult]) => {
+    Promise.allSettled([cachedGet('/clients'), cachedGet('/google/settings')]).then(([clientResult, settingsResult]) => {
       if (!active) return
       if (clientResult.status === 'fulfilled') {
         const list = clientResult.value.data.data || []
@@ -130,7 +130,7 @@ export function GooglePerformancePage() {
     setLoading(true)
     setInsights(null)
     try {
-      const { data } = await api.get(`/google/connections/${connectionId}/insights`, { params: { range } })
+      const { data } = await cachedGet(`/google/connections/${connectionId}/insights`, { params: { range } })
       if (request === insightsRequest.current) setInsights(data)
     } catch (error) { if (request === insightsRequest.current) toast.error('Erro ao carregar métricas Google', getErrorMessage(error)) }
     finally { if (request === insightsRequest.current) setLoading(false) }
@@ -235,7 +235,7 @@ export function GooglePerformancePage() {
     </Card>}
 
     {settings && <Card className={`p-5 ${settings.configured ? '' : 'border-primary/30'}`}>
-      <h2 className="font-bold text-foreground">{settings.configured ? 'Google Cloud configurado' : 'Configure o Google Cloud da agência'}</h2>
+      <h2 className="text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">{settings.configured ? 'Google Cloud configurado' : 'Configure o Google Cloud da agência'}</h2>
       <p className="mt-1 text-sm text-muted-foreground">{settings.configured ? 'Para conectar Ads ou GA4, confirme que o projeto tem acesso às APIs Google Ads, Analytics Data e Analytics Admin e que este URI está autorizado:' : 'Adicione o Client ID e o Client Secret em Redes Sociais → Agência → YouTube. Ative as APIs Google Ads, Analytics Data e Analytics Admin no mesmo projeto e registe este URI de redirecionamento:'}</p>
       <code className="mt-3 block rounded-lg bg-muted p-3 text-xs text-foreground break-all">{settings.callbackUrl}</code>
       <Link to="/app/social" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline">Abrir configurações <ExternalLink size={14} /></Link>
@@ -356,7 +356,7 @@ export function GooglePerformancePage() {
       </> : null}
       {insights && <Card className="p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div><h2 className="font-bold text-foreground">Recomendações do Brand Brain</h2>
+          <div><h2 className="text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">Recomendações do Brand Brain</h2>
             <p className="mt-1 text-xs text-muted-foreground">Sugestões baseadas nas métricas atuais. Reveja antes de agir.</p></div>
           {canManage && <Button onClick={analyze} loading={analyzing} className="w-full sm:w-auto"><Sparkles size={15} />Analisar com Brand Brain</Button>}
         </div>
@@ -368,7 +368,7 @@ export function GooglePerformancePage() {
         </div>)}</div>}
       </Card>}
     </> : <Card className="p-8 text-center"><BrandIcon platform={kind === 'ads' ? 'GOOGLE_ADS' : 'GOOGLE_ANALYTICS'} className="mx-auto mb-3" size={28} />
-      <h2 className="font-bold text-foreground">{kind === 'ads' ? 'Conecte uma conta Google Ads' : 'Conecte uma propriedade GA4'}</h2>
+      <h2 className="text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">{kind === 'ads' ? 'Conecte uma conta Google Ads' : 'Conecte uma propriedade GA4'}</h2>
       <p className="mt-1 text-sm text-muted-foreground">Escolha o cliente acima para consultar as métricas desta conta.</p></Card>}
 
     <Dialog open={!!pendingToken} onOpenChange={open => { if (!open) setPendingToken('') }}>

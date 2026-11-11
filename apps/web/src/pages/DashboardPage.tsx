@@ -62,7 +62,7 @@ function UpcomingPublication({ content }: { content: DashboardContent }) {
         <div className="relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-muted">
           {image && !imageFailed ? <img src={image.publicUrl} alt="" loading="lazy" className="size-full object-cover transition-transform duration-300 group-hover:scale-105" onError={() => setImageFailed(true)} /> : <FileText size={22} aria-hidden className="text-muted-foreground" />}
           {content.contentType && TYPE_TAG[content.contentType] && (
-            <span className="absolute bottom-1 right-1 rounded bg-[#000]/70 px-1 text-[9px] font-semibold uppercase leading-[14px] text-[#fff]">{TYPE_TAG[content.contentType]}</span>
+            <span className="absolute bottom-1 right-1 rounded bg-[#000]/70 px-1 text-[11px] font-semibold uppercase leading-[14px] text-[#fff]">{TYPE_TAG[content.contentType]}</span>
           )}
         </div>
         <div className="min-w-0 flex-1">
@@ -213,9 +213,6 @@ export function DashboardPage() {
   const pending = overview?.pendingApprovals ?? 0
   const failed = overview?.failedPublications ?? 0
 
-  // Blockers first: when something needs action, the attention centre comes right after the KPIs
-  // (on phones it was ~3,000px down, below empty analytics panels).
-  const attentionFirst = attention.alerts.length > 0
   const attentionBlock = (
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)] lg:gap-6">
         <Panel id="dashboard-attention" tabIndex={-1} className="scroll-mt-6 p-3 sm:p-4" aria-label="Centro de atenção">
@@ -298,8 +295,6 @@ export function DashboardPage() {
             </>}
         </section>
       )}
-
-      {attentionFirst && attentionBlock}
 
       {/* Main chart + upcoming */}
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)] lg:gap-6">
@@ -400,7 +395,8 @@ export function DashboardPage() {
         </Panel>
       </div>
 
-      {!attentionFirst && attentionBlock}
+      {/* Attention + activity */}
+      {attentionBlock}
     </Page>
   )
 }

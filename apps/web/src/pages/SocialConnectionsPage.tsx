@@ -8,7 +8,7 @@ import { useSearchParams } from 'react-router-dom'
 import { SiFacebook, SiMeta, SiTiktok, SiWhatsapp, SiYoutube } from 'react-icons/si'
 import { FaLinkedin } from 'react-icons/fa6'
 import { BrandIcon } from '@/components/brand/BrandIcon'
-import api from '@/lib/api'
+import api, { cachedGet } from '@/lib/api'
 import { cn, PLATFORM_COLORS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -301,13 +301,13 @@ export function SocialConnectionsPage() {
     async function load() {
       try {
         const [cliRes, metaRes, linkedinRes, tiktokRes, youtubeRes, waRes, smtpRes] = await Promise.all([
-          api.get('/clients'),
-          api.get('/social/meta/settings'),
-          api.get('/social/linkedin/settings'),
-          api.get('/social/tiktok/settings'),
-          api.get('/social/youtube/settings'),
+          cachedGet('/clients'),
+          cachedGet('/social/meta/settings'),
+          cachedGet('/social/linkedin/settings'),
+          cachedGet('/social/tiktok/settings'),
+          cachedGet('/social/youtube/settings'),
           api.get('/social/whatsapp/settings'),
-          api.get('/email/settings'),
+          cachedGet('/email/settings'),
         ])
         setClients(cliRes.data.data || [])
         if (cliRes.data.data?.length > 0) setSocialClientId(cliRes.data.data[0].id)
@@ -426,7 +426,7 @@ export function SocialConnectionsPage() {
   const loadConnections = async (clientId: string) => {
     setLoadingConnections(true)
     try {
-      const { data } = await api.get('/social/connections', { params: { clientId } })
+      const { data } = await cachedGet('/social/connections', { params: { clientId } })
       setConnections(data || [])
     } catch {
       setConnections([])

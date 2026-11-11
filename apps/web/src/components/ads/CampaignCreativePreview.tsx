@@ -54,7 +54,7 @@ export function CampaignCreativePreview({ accountId, campaignId, campaignName }:
     <>
       <button ref={trigger} type="button" aria-label={`Ver anúncios de ${campaignName}`} title="Ver anúncio completo" onClick={() => setOpen(true)} className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted text-muted-foreground transition-colors hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
         {query.isLoading ? <Skeleton className="size-full rounded-none" /> : first ? <CreativeImage key={`${first.id}-${first.imageUrl}-${first.thumbnailUrl}`} ad={first} thumbnail /> : <ImageIcon size={18} aria-hidden />}
-        {ads.length > 1 && <span className="absolute bottom-0 right-0 rounded-tl bg-[#000]/75 px-1 text-[10px] leading-4 text-[#fff]">+{ads.length - 1}</span>}
+        {ads.length > 1 && <span className="absolute bottom-0 right-0 rounded-tl bg-[#000]/75 px-1 text-[11px] leading-4 text-[#fff]">+{ads.length - 1}</span>}
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent size="lg" className="[scrollbar-gutter:stable]">

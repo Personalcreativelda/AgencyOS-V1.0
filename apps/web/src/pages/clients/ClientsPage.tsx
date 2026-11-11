@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Plus, Search, Building2, User, ChevronRight, FileText, RefreshCw, AlertCircle, LayoutGrid, List } from 'lucide-react'
 import api from '@/lib/api'
 import { getInitials } from '@/lib/utils'
@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { Page, PageHeader } from '@/components/layout/Page'
+import { PageFab } from '@/components/layout/PageFab'
 import { FilterMenu, FilterField } from '@/components/ui/FilterMenu'
 import { ViewToggle } from '@/components/ui/ViewToggle'
 
@@ -125,6 +126,7 @@ function ClientRow({ client }: { client: Client }) {
 }
 
 export function ClientsPage() {
+  const navigate = useNavigate()
   const agencyId = useAuthStore(state => state.user?.agency.id)
   const [searchParams, setSearchParams] = useSearchParams()
   const search = searchParams.get('q') || ''
@@ -180,7 +182,8 @@ export function ClientsPage() {
   return (
     <Page>
       <PageHeader title="Clientes" description="As marcas da agência, seus Brand Brains e conteúdos associados."
-        actions={<Button asChild><Link to="/app/clients/new"><Plus size={16} aria-hidden />Novo cliente</Link></Button>} />
+        actions={<Button asChild className="hidden lg:inline-flex"><Link to="/app/clients/new"><Plus size={16} aria-hidden />Novo cliente</Link></Button>} />
+      <PageFab label="Novo cliente" onClick={() => navigate('/app/clients/new')} />
       <section aria-label="Pesquisa e filtros de clientes" className="space-y-2.5">
         <div className="flex items-center gap-2.5">
           <div role="search" className="min-w-0 flex-1">

@@ -21,7 +21,6 @@ type NavItem = {
   /** Custom active rule; defaults to the href and its sub-paths. */
   match?: (pathname: string) => boolean
   /** Full page load (pages that need a fresh OAuth/session state). */
-  reload?: boolean
   /** Live counter shown on the right of the item. */
   count?: 'approvals' | 'clients'
 }
@@ -33,7 +32,7 @@ const NAV: NavSection[] = [
     label: 'Visão geral',
     items: [
       { label: 'Dashboard', href: '/app/dashboard', icon: LayoutDashboard },
-      { label: 'Performance', href: '/app/performance', icon: Activity, reload: true },
+      { label: 'Performance', href: '/app/performance', icon: Activity },
     ],
   },
   {
@@ -65,7 +64,7 @@ const NAV: NavSection[] = [
     label: 'Anúncios',
     items: [
       { label: 'Meta Ads', href: '/app/ads', icon: brandIcon('META_ADS') },
-      { label: 'Google Ads', href: '/app/google', icon: brandIcon('GOOGLE_ADS'), reload: true },
+      { label: 'Google Ads', href: '/app/google', icon: brandIcon('GOOGLE_ADS') },
       { label: 'TikTok Ads', href: '/app/tiktok-ads', icon: brandIcon('TIKTOK_ADS') },
       { label: 'LinkedIn Ads', href: '/app/linkedin-ads', icon: brandIcon('LINKEDIN_ADS') },
     ],
@@ -193,7 +192,6 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       <NavLink
         key={item.href}
         to={item.href}
-        reloadDocument={item.reload}
         onClick={onClose}
         aria-label={rail ? item.label : undefined}
         aria-current={active ? 'page' : undefined}
@@ -259,22 +257,6 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
-        {/* Primary action, always one click away (Stitch dashboard) */}
-        <div className={cn('hidden shrink-0 pb-3 lg:block', rail ? 'px-0' : 'px-4')}>
-          {rail ? (
-            <RailTooltip label="Criar conteúdo">
-              <button type="button" aria-label="Criar conteúdo" onClick={() => { onClose(); navigate('/app/content?novo=1') }}
-                className="mx-auto flex size-10 items-center justify-center rounded-xl bg-primary text-[#fff] shadow-[0_6px_14px_-6px_rgba(0,120,103,0.6)] transition-colors hover:bg-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-                <Plus size={19} strokeWidth={2.4} />
-              </button>
-            </RailTooltip>
-          ) : (
-            <button type="button" onClick={() => { onClose(); navigate('/app/content?novo=1') }}
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-[#fff] shadow-[0_8px_18px_-8px_rgba(0,120,103,0.6)] transition-colors hover:bg-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-              <Plus size={18} strokeWidth={2.4} />Criar conteúdo
-            </button>
-          )}
-        </div>
 
         {/* Desktop collapse handle, sitting on the sidebar's edge */}
         <button

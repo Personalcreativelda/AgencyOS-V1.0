@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { BarChart3, CheckCircle2, Share2 } from 'lucide-react'
-import { Logo, LogoMark } from '@/components/brand/Logo'
+import { LogoMark } from '@/components/brand/Logo'
 import { ThemeMenu } from '@/components/ui/ThemeMenu'
 
 const POINTS = [
@@ -15,7 +15,7 @@ const POINTS = [
  */
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh bg-background pb-[var(--sab)] pt-[var(--sat)] font-sans">
+    <div className="flex min-h-dvh flex-col bg-background pb-[var(--sab)] font-sans lg:flex-row">
       {/* Brand panel */}
       <aside
         className="relative hidden w-[45%] max-w-[640px] shrink-0 flex-col justify-between overflow-hidden px-14 py-12 text-[#fff] lg:flex"
@@ -61,11 +61,38 @@ export function AuthShell({ children }: { children: ReactNode }) {
         <p className="relative text-[13px] text-[#fff]/60">© {new Date().getFullYear()} AgencyOS</p>
       </aside>
 
+      {/* Phones/tablets: compact brand header (same identity as the desktop panel), drawn under
+          the status bar; the form sits on a rounded sheet below it. */}
+      <header
+        className="relative overflow-hidden px-6 pb-14 pt-[calc(var(--sat)+1.25rem)] text-[#fff] lg:hidden"
+        style={{ background: 'linear-gradient(150deg, #004B50 0%, #007867 55%, #00A76F 100%)' }}
+      >
+        <svg aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-[300px] w-[300px] opacity-[0.12]" viewBox="0 0 640 640" fill="none">
+          <circle cx="320" cy="320" r="318" stroke="#fff" strokeWidth="3" />
+          <circle cx="320" cy="320" r="200" stroke="#fff" strokeWidth="3" strokeDasharray="8 14" />
+        </svg>
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <LogoMark size={34} />
+            <span className="text-lg font-bold tracking-tight">Agency<span className="text-[#5BE49B]">OS</span></span>
+          </div>
+          <div className="rounded-full bg-[#fff]/10 [&_button]:text-[#fff]"><ThemeMenu /></div>
+        </div>
+        <h1 className="relative mt-7 max-w-xs text-[26px] font-bold leading-[1.15] tracking-[-0.02em]">O sistema operacional da sua agência</h1>
+        <p className="relative mt-2 max-w-sm text-[15px] leading-relaxed text-[#fff]/80">Planeje, aprove e publique para todos os clientes.</p>
+        <ul className="relative mt-5 flex flex-wrap gap-2">
+          {POINTS.map((p) => (
+            <li key={p.title} className="inline-flex items-center gap-1.5 rounded-full border border-[#fff]/20 bg-[#fff]/10 px-3 py-1.5 text-[13px] font-medium">
+              <p.icon size={14} aria-hidden />{p.title}
+            </li>
+          ))}
+        </ul>
+      </header>
+
       {/* Form side */}
-      <main className="relative flex min-w-0 flex-1 flex-col items-center justify-center px-5 py-16 sm:px-10">
-        <div className="absolute right-4 top-4"><ThemeMenu /></div>
+      <main className="relative -mt-7 flex min-w-0 flex-1 flex-col items-center rounded-t-[28px] bg-background px-5 pb-10 pt-8 sm:px-10 lg:mt-0 lg:justify-center lg:rounded-none lg:py-16">
+        <div className="absolute right-4 top-4 hidden lg:block"><ThemeMenu /></div>
         <div className="w-full max-w-[420px]">
-          <div className="mb-8 lg:hidden"><Logo size={44} tagline="Sistema operacional de agências" wordmarkClassName="text-xl" /></div>
           {children}
         </div>
       </main>

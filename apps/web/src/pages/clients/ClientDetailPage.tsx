@@ -665,7 +665,7 @@ export function ClientDetailPage() {
       {activeTab === 'personas' && (
         <div className="space-y-6">
           <div className="card-minimals p-6">
-            <h2 className="text-base font-bold text-foreground mb-1">Personas do público</h2>
+            <h2 className="mb-1 text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">Personas do público</h2>
             <p className="text-xs text-muted-foreground font-medium mb-4">
               Perfis de cliente ideal usados pelo Brand Brain para escrever com a linguagem certa pra cada público.
             </p>
@@ -726,7 +726,7 @@ export function ClientDetailPage() {
       {activeTab === 'rules' && (
         <div className="space-y-6">
           <div className="card-minimals p-6">
-            <h2 className="text-base font-bold text-foreground mb-1">Regras obrigatórias da marca</h2>
+            <h2 className="mb-1 text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">Regras obrigatórias da marca</h2>
             <p className="text-xs text-muted-foreground font-medium mb-4">
               O Brand Brain nunca violará essas regras ao redigir legendas, hooks ou planejar posts.
             </p>
@@ -795,7 +795,7 @@ export function ClientDetailPage() {
       {activeTab === 'pillars' && (
         <div className="space-y-6">
           <div className="card-minimals p-6">
-            <h2 className="text-base font-bold text-foreground mb-1">Pilares editoriais de conteúdo</h2>
+            <h2 className="mb-1 text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">Pilares editoriais de conteúdo</h2>
             <p className="text-xs text-muted-foreground font-medium mb-4">
               Distribuição temática para o gerador de calendário do Brand Brain.
             </p>
@@ -851,7 +851,7 @@ export function ClientDetailPage() {
         <div className="space-y-6">
           <form onSubmit={handleUpdateProfile} className="card-minimals p-6 space-y-3">
             <div>
-              <h2 className="text-base font-bold text-foreground mb-1">Estilo visual</h2>
+              <h2 className="mb-1 text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">Estilo visual</h2>
               <p className="text-xs text-muted-foreground font-medium">
                 Descreva em texto livre o estilo que o Brand Brain deve seguir ao gerar imagens — mood, composição, iconografia, fundo, etc. Isso é usado diretamente no prompt de geração.
               </p>
@@ -868,7 +868,7 @@ export function ClientDetailPage() {
           <div className="card-minimals p-6 space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-bold text-foreground mb-1">Referências visuais</h2>
+                <h2 className="mb-1 text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">Referências visuais</h2>
                 <p className="text-xs text-muted-foreground font-medium">
                   Exemplos de posts/criativos que representam o estilo desejado — use como mood board.
                 </p>
@@ -911,7 +911,7 @@ export function ClientDetailPage() {
           </div>
 
           <div className="card-minimals p-6">
-            <h2 className="text-base font-bold text-foreground mb-1">Paleta de cores</h2>
+            <h2 className="mb-1 text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">Paleta de cores</h2>
             <p className="text-xs text-muted-foreground font-medium mb-4">Cores oficiais da marca para direção criativa.</p>
 
             <form onSubmit={handleAddColor} className="flex flex-wrap gap-3">
@@ -963,7 +963,7 @@ export function ClientDetailPage() {
                     <h4 className="text-xs font-bold text-foreground truncate">{color.name}</h4>
                     <span className="text-[11px] font-mono text-muted-foreground uppercase">{color.hex}</span>
                     {color.usageNotes && (
-                      <span className="block text-[10px] text-muted-foreground font-semibold mt-0.5 truncate">{color.usageNotes}</span>
+                      <span className="block text-[11px] text-muted-foreground font-semibold mt-0.5 truncate">{color.usageNotes}</span>
                     )}
                   </div>
                   <Button
@@ -986,7 +986,7 @@ export function ClientDetailPage() {
         <div className="space-y-6">
           <div className="card-minimals p-6 space-y-4">
             <div>
-              <h2 className="text-base font-bold text-foreground">Aprendizagem por feedback</h2>
+              <h2 className="text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">Aprendizagem por feedback</h2>
               <p className="text-xs text-muted-foreground font-medium">
                 Feedbacks recebidos nas aprovações viram regras permanentes do Brand Brain.
               </p>

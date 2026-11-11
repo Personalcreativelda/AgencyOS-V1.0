@@ -802,7 +802,7 @@ export function ContentDetailPage() {
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                         </div>
-                        <span className="absolute bottom-0.5 right-0.5 bg-[#000]/60 text-[#fff] text-[9px] font-bold px-1 rounded">{i + 1}</span>
+                        <span className="absolute bottom-0.5 right-0.5 bg-[#000]/60 text-[#fff] text-[11px] font-bold px-1 rounded">{i + 1}</span>
                       </div>
                     ))
                   ) : (
@@ -810,7 +810,7 @@ export function ContentDetailPage() {
                       {primaryMediaList.map((m: any, i: number) => (
                         <div key={m.id ?? i} className="relative w-14 h-14 rounded-lg overflow-hidden border border-border shrink-0 group">
                           <img src={m.publicUrl} alt={`Slide ${i + 1}`} className="w-full h-full object-cover" />
-                          <span className="absolute bottom-0.5 right-0.5 bg-[#000]/60 text-[#fff] text-[9px] font-bold px-1 rounded">{i + 1}</span>
+                          <span className="absolute bottom-0.5 right-0.5 bg-[#000]/60 text-[#fff] text-[11px] font-bold px-1 rounded">{i + 1}</span>
                           <button
                             type="button"
                             title="Remover imagem"

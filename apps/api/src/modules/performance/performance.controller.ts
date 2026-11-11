@@ -20,6 +20,11 @@ async function mapLimited<T, R>(items: T[], limit: number, task: (item: T) => Pr
   return results;
 }
 
+// Each connected account's report is cached for a few minutes: the page aggregates every
+// account of the agency through external APIs, which is slow. "Atualizar" (refresh=1) bypasses it.
+const REPORT_TTL = 5 * 60 * 1000;
+const reportCache = new Map<string, { at: number; value: any }>();
+
 export async function overview(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const agencyId = req.user!.agencyId;
@@ -58,6 +63,10 @@ export async function overview(req: AuthRequest, res: Response, next: NextFuncti
     const reportConnections = connections.filter(connection => connection.status === 'ACTIVE' &&
       ['META_ADS', 'GOOGLE_ADS', 'TIKTOK_ADS', 'LINKEDIN_ADS', 'GOOGLE_ANALYTICS'].includes(connection.platform));
     const reports = await mapLimited(reportConnections, 4, async connection => {
+      const cacheKey = `${connection.id}|${range}`;
+      const cached = reportCache.get(cacheKey);
+      if (!refresh && cached && Date.now() - cached.at < REPORT_TTL) return cached.value;
+      const value = await (async () => {
       try {
         if (connection.platform === 'META_ADS') {
           return { platform: connection.platform, clientId: connection.clientId,
@@ -77,6 +86,10 @@ export async function overview(req: AuthRequest, res: Response, next: NextFuncti
           connectionId: connection.id, data: null,
           error: error instanceof Error ? error.message.slice(0, 240) : 'Não foi possível carregar esta conta.' };
       }
+      })();
+      // Errors are not cached, so a temporary failure is retried on the next visit.
+      if (!value.error) reportCache.set(cacheKey, { at: Date.now(), value });
+      return value;
     });
 
     res.json({

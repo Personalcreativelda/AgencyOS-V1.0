@@ -6,7 +6,7 @@ import {
   MapPin, Users, MessageCircle, Radio,
 } from 'lucide-react'
 import { BrandIcon } from '@/components/brand/BrandIcon'
-import api from '@/lib/api'
+import api, { cachedGet } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/Card'
@@ -108,8 +108,8 @@ export function AdsPage() {
       try {
         // Open on a client that actually has a Meta ad account, not just the first one alphabetically.
         const [{ data }, withAccounts] = await Promise.all([
-          api.get('/clients'),
-          api.get('/ads/accounts').then((r) => r.data as { clientId: string }[]).catch(() => []),
+          cachedGet('/clients'),
+          cachedGet('/ads/accounts').then((r) => r.data as { clientId: string }[]).catch(() => []),
         ])
         const list = data.data || []
         setClients(list)
@@ -127,7 +127,7 @@ export function AdsPage() {
   const loadAccounts = async (cid: string) => {
     setLoadingAccounts(true)
     try {
-      const { data } = await api.get('/ads/accounts', { params: { clientId: cid } })
+      const { data } = await cachedGet('/ads/accounts', { params: { clientId: cid } })
       setAccounts(data || [])
       setAccountId(data?.[0]?.id || '')
       if (!data?.length) { setInsights(null); setRecommendations([]) }
@@ -145,7 +145,7 @@ export function AdsPage() {
   const loadInsights = async (id: string, r: 'today' | '7d' | '30d', campaignExternalId?: string) => {
     setLoadingInsights(true)
     try {
-      const { data } = await api.get(`/ads/accounts/${id}/insights`, {
+      const { data } = await cachedGet(`/ads/accounts/${id}/insights`, {
         params: { range: r, ...(campaignExternalId ? { campaignExternalId } : {}) },
       })
       setInsights(data)
@@ -159,7 +159,7 @@ export function AdsPage() {
   const loadRecommendations = async (id: string) => {
     setLoadingRecs(true)
     try {
-      const { data } = await api.get('/ads/recommendations', { params: { connectionId: id } })
+      const { data } = await cachedGet('/ads/recommendations', { params: { connectionId: id } })
       setRecommendations(data || [])
     } catch (err) {
       console.error(err)
@@ -194,7 +194,7 @@ export function AdsPage() {
     setAudience(null)
     setAudienceError(false)
     setLoadingAudience(true)
-    api.get(`/ads/accounts/${accountId}/audience`, {
+    cachedGet(`/ads/accounts/${accountId}/audience`, {
       params: { range, ...(campaignFilter ? { campaignExternalId: campaignFilter } : {}) },
     }).then(({ data }) => {
       if (!cancelled) setAudience(data)
@@ -625,7 +625,7 @@ export function AdsPage() {
                 <div className="hidden overflow-x-auto pb-1 md:block [scrollbar-width:thin]">
                   <table className="w-full min-w-[760px] text-xs">
                     <thead>
-                      <tr className="border-b border-border text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <tr className="border-b border-border text-left text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                         <th className="w-[36%] py-3 pr-4">Campanha</th>
                         <th className="whitespace-nowrap py-3 pr-4">Status</th>
                         <th className="whitespace-nowrap py-3 pr-4 text-right">Gasto</th>
@@ -649,7 +649,7 @@ export function AdsPage() {
                           <tr key={c.campaignExternalId} className="border-b border-border/60 transition-colors last:border-0 hover:bg-muted/40">
                             <td className="max-w-[24rem] py-3.5 pr-4 font-medium leading-relaxed text-foreground"><div className="flex items-center gap-3"><CampaignCreativePreview key={`${accountId}-${c.campaignExternalId}`} accountId={accountId} campaignId={c.campaignExternalId} campaignName={c.campaignName} /><span className="min-w-0 break-words">{c.campaignName}</span></div></td>
                             <td className="whitespace-nowrap py-3.5 pr-4">
-                              <Badge dot variant={c.status === 'ACTIVE' ? 'success' : 'default'} className="text-[10px]">{AD_STATUS_LABELS[c.status] || c.status}</Badge>
+                              <Badge dot variant={c.status === 'ACTIVE' ? 'success' : 'default'} className="text-[11px]">{AD_STATUS_LABELS[c.status] || c.status}</Badge>
                             </td>
                             <td className="whitespace-nowrap py-3.5 pr-4 text-right font-semibold tabular-nums text-foreground">{formatCurrency(c.spend, account?.currency)}</td>
                             <td className="whitespace-nowrap py-3.5 pr-4 text-right tabular-nums text-foreground">{c.results}</td>

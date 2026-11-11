@@ -1,3 +1,5 @@
+import { Skeleton } from '@/components/ui/Skeleton'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AxiosError } from 'axios'
@@ -154,7 +156,7 @@ function Evolution({ data }: { data: Overview }) {
   const sources = metric === 'sessions' || metric === 'views'
     ? [{ id: 'all' as ChartSource, label: 'Todas as propriedades GA4' }]
     : [{ id: 'all' as ChartSource, label: 'Todas as contas' }, { id: 'META_ADS' as ChartSource, label: 'Meta Ads' }, { id: 'GOOGLE_ADS' as ChartSource, label: 'Google Ads' }]
-  return <Card className="min-w-0 p-4 sm:p-6"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><h2 className="text-base font-bold text-foreground">Evolução da performance</h2><p className="mt-1 text-xs text-muted-foreground">Dados diários das contas conectadas · {periods[data.range]}</p></div><div className="w-full sm:w-60"><Select value={metric} onValueChange={value => { setMetric(value as ChartMetric); setSource('all') }}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(chartMetrics) as ChartMetric[]).map(key => <SelectItem key={key} value={key}>{chartMetrics[key]}</SelectItem>)}</SelectContent></Select></div></div>
+  return <Card className="min-w-0 p-4 sm:p-6"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><h2 className="text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">Evolução da performance</h2><p className="mt-1 text-xs text-muted-foreground">Dados diários das contas conectadas · {periods[data.range]}</p></div><div className="w-full sm:w-60"><Select value={metric} onValueChange={value => { setMetric(value as ChartMetric); setSource('all') }}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(chartMetrics) as ChartMetric[]).map(key => <SelectItem key={key} value={key}>{chartMetrics[key]}</SelectItem>)}</SelectContent></Select></div></div>
     <div className="-mx-1 mt-5 flex gap-1 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{sources.map(item => <button key={item.id} type="button" onClick={() => setSource(item.id)} className={cn('shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40', source === item.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>{item.label}</button>)}</div>
     <div className="mt-3"><Chart data={data} metric={metric} source={source} /></div>
     <p className="mt-4 border-t border-border pt-4 text-xs text-muted-foreground">{metric === 'impressions' || metric === 'clicks' ? 'Soma das contas de anúncios. Um clique ou impressão pode aparecer em mais de uma plataforma.' : 'Soma das propriedades GA4 conectadas. Cada propriedade usa o respetivo fuso horário.'}</p>
@@ -165,7 +167,7 @@ function SocialCards({ data, onDetails }: { data: Overview; onDetails: (platform
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{social.map(item => {
       const accounts = data.connections.filter(row => row.platform === item.platform && row.status === 'ACTIVE')
       const posts = data.posts.filter(post => post.platform === item.platform)
-      return <Card key={item.platform} className="flex min-h-[190px] min-w-0 flex-col p-4 sm:p-5"><div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-2.5"><span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted"><item.icon size={19} style={{ color: item.color }} /></span><h3 className="truncate text-sm font-bold text-foreground">{item.label}</h3></div><Badge variant={accounts.length ? 'success' : 'default'} className="shrink-0 text-[10px]">{accounts.length ? 'Conectado' : 'Não conectado'}</Badge></div>
+      return <Card key={item.platform} className="flex min-h-[190px] min-w-0 flex-col p-4 sm:p-5"><div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-2.5"><span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-muted"><item.icon size={19} style={{ color: item.color }} /></span><h3 className="truncate text-sm font-bold text-foreground">{item.label}</h3></div><Badge variant={accounts.length ? 'success' : 'default'} className="shrink-0 text-[11px]">{accounts.length ? 'Conectado' : 'Não conectado'}</Badge></div>
         <div className="mt-5 grid grid-cols-2 gap-4"><div><p className="text-[11px] text-muted-foreground">Contas conectadas</p><p className="mt-0.5 text-base font-bold text-foreground">{integer(accounts.length)}</p></div><div><p className="text-[11px] text-muted-foreground">Publicações no período</p><p className="mt-0.5 text-base font-bold text-foreground">{integer(posts.length)}</p></div></div>
         <button type="button" onClick={() => onDetails(item.platform)} className="mt-auto self-start rounded pt-5 text-xs font-bold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">Ver detalhes →</button>
       </Card>
@@ -245,7 +247,7 @@ function AgencyTable({ data }: { data: Overview }) {
 function DataStatus({ data }: { data: Overview }) {
   const errors = data.reports.filter(row => row.error)
   const unsynced = data.reports.filter(row => row.platform === 'META_ADS' && row.data?.source === 'synced' && row.data.lastSyncedAt && Date.now() - new Date(row.data.lastSyncedAt).getTime() > 24 * 60 * 60 * 1000)
-  return <Card className="p-4 sm:p-6"><div className="flex items-start justify-between gap-2"><div><h2 className="text-base font-bold text-foreground">Estado dos dados</h2><p className="mt-1 text-xs text-muted-foreground">Atualizado em {dateTime(data.generatedAt)}</p></div><span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Activity size={17} /></span></div><div className="mt-4 space-y-2 border-t border-border pt-4 text-xs text-muted-foreground">
+  return <Card className="p-4 sm:p-6"><div className="flex items-start justify-between gap-2"><div><h2 className="text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">Estado dos dados</h2><p className="mt-1 text-xs text-muted-foreground">Atualizado em {dateTime(data.generatedAt)}</p></div><span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Activity size={17} /></span></div><div className="mt-4 space-y-2 border-t border-border pt-4 text-xs text-muted-foreground">
     {errors.length ? errors.map((row, index) => <p key={`${row.connectionId || row.platform}-${index}`} className="rounded-lg border border-border bg-muted/20 p-3">{integrations.find(item => item.platform === row.platform)?.label || row.platform}: {row.error}</p>) : <p>As contas consultadas responderam sem erros.</p>}
     {unsynced.length > 0 && <p className="rounded-lg border border-border bg-muted/20 p-3">{unsynced.length} conta(s) Meta Ads têm dados sincronizados há mais de 24 horas. Use “Atualizar” para sincronizar novamente.</p>}
     <p>As métricas de redes sociais mostram publicações registadas no AgencyOS. O acesso atual destas ligações não inclui analytics orgânicos; alcance, interações e seguidores não são estimados.</p>
@@ -257,25 +259,34 @@ export function PerformancePage() {
   const [period, setPeriod] = useState<Period>('30d')
   const [tab, setTab] = useState<Tab>('overview')
   const [details, setDetails] = useState<string | null>(null)
-  const [data, setData] = useState<Overview | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Cached per client + period: coming back to this page shows the last result instantly
+  // instead of re-querying every connected account behind a full-page loader.
+  const queryClient = useQueryClient()
   const [refreshing, setRefreshing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const requestId = useRef(0)
+  const [refreshError, setRefreshError] = useState<string | null>(null)
+  const query = useQuery({
+    queryKey: ['performance', clientId, period],
+    queryFn: async ({ signal }) => (await api.get<Overview>('/performance', { params: { clientId, range: period }, signal })).data,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
+  })
+  const data: Overview | null = query.data ?? null
+  const loading = query.isLoading
+  const queryError = query.error ? (query.error instanceof AxiosError ? query.error.response?.data?.error || query.error.message : 'Não foi possível carregar a performance.') : null
+  const error = refreshError || queryError
   const load = useCallback(async (force = false) => {
-    const current = ++requestId.current
-    if (force) setRefreshing(true); else { setLoading(true); setData(null) }
-    setError(null)
+    if (!force) { void query.refetch(); return }
+    setRefreshing(true)
+    setRefreshError(null)
     try {
-      const response = await api.get<Overview>('/performance', { params: { clientId, range: period, ...(force ? { refresh: '1' } : {}) } })
-      if (current === requestId.current) setData(response.data)
+      const response = await api.get<Overview>('/performance', { params: { clientId, range: period, refresh: '1' } })
+      queryClient.setQueryData(['performance', clientId, period], response.data)
     } catch (reason) {
-      if (current === requestId.current) setError(reason instanceof AxiosError ? reason.response?.data?.error || reason.message : 'Não foi possível carregar a performance.')
+      setRefreshError(reason instanceof AxiosError ? reason.response?.data?.error || reason.message : 'Não foi possível atualizar a performance.')
     } finally {
-      if (current === requestId.current) { setLoading(false); setRefreshing(false) }
+      setRefreshing(false)
     }
-  }, [clientId, period])
-  useEffect(() => { void load() }, [load])
+  }, [clientId, period, query, queryClient])
 
   const allClients = clientId === 'all'
   const selectedClient = data?.clients.find(client => client.id === clientId)
@@ -303,7 +314,7 @@ export function PerformancePage() {
       </>}
     />
     {error && <Card className="border-error/30 bg-error/5 p-4 text-sm text-foreground" role="alert">{error} <button type="button" onClick={() => void load()} className="ml-2 font-bold text-primary hover:underline">Tentar novamente</button></Card>}
-    {loading && !data ? <Card className="p-8 text-center text-sm text-muted-foreground"><RefreshCw size={18} className="mx-auto mb-3 animate-spin" />Carregando dados das contas conectadas…</Card> : data && <Tabs value={tab} onValueChange={value => setTab(value as Tab)}><TabsList className="flex w-full max-w-full justify-start overflow-x-auto whitespace-nowrap sm:w-auto">{([['overview', 'Visão geral'], ['social', 'Redes sociais'], ['ads', 'Publicidade'], ['website', 'Website / GA4']] as [Tab, string][]).map(([id, label]) => <TabsTrigger key={id} value={id} className="shrink-0">{label}</TabsTrigger>)}</TabsList>
+    {loading && !data ? <div aria-busy="true" aria-label="Carregando dados das contas conectadas" className="space-y-6"><Skeleton className="h-10 w-full max-w-md rounded-xl" /><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-28 rounded-[20px]" />)}</div><Skeleton className="h-80 rounded-[20px]" /></div> : data && <Tabs value={tab} onValueChange={value => setTab(value as Tab)}><TabsList className="flex w-full max-w-full justify-start overflow-x-auto whitespace-nowrap sm:w-auto">{([['overview', 'Visão geral'], ['social', 'Redes sociais'], ['ads', 'Publicidade'], ['website', 'Website / GA4']] as [Tab, string][]).map(([id, label]) => <TabsTrigger key={id} value={id} className="shrink-0">{label}</TabsTrigger>)}</TabsList>
       <TabsContent value="overview" className="mt-6 space-y-6"><section className="space-y-4"><SectionHeading title={allClients ? 'Visão da Agência' : `Indicadores de ${selectedClient?.name || 'cliente'}`} description={`Indicadores das contas conectadas · ${periods[period]}`} /><StatGroup>{kpis.map(item => <KpiCard key={item.label} item={item} />)}</StatGroup></section><Evolution data={data} />{allClients && <AgencyTable data={data} />}<IntegrationStatus data={data} allClients={allClients} /></TabsContent>
       <TabsContent value="social" className="mt-6 space-y-6"><SocialCards data={data} onDetails={setDetails} /><RecentPosts data={data} /></TabsContent>
       <TabsContent value="ads" className="mt-6 space-y-6"><AdsSection data={data} /></TabsContent>

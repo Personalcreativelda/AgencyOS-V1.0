@@ -10,8 +10,35 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const { token } = useAuthStore.getState()
   if (token) config.headers.Authorization = `Bearer ${token}`
+  // Any write (create, update, delete, sync…) can change what a cached read returns.
+  if (config.method && config.method.toLowerCase() !== 'get') readCache.clear()
   return config
 })
+
+// ─── Short-lived read cache ───────────────────────────────────────────────────────────────
+// Pages that used to re-query everything on every visit (Meta Ads, Google, Relatórios…) read
+// through this, so coming back to a page is instant. Entries live 2 minutes, are scoped to the
+// signed-in user and are dropped on any write request — never stale after an action.
+type CacheEntry = { at: number; promise: Promise<any> }
+const readCache = new Map<string, CacheEntry>()
+const READ_TTL = 2 * 60 * 1000
+
+export function clearReadCache() {
+  readCache.clear()
+}
+
+export function cachedGet<T = any>(url: string, config: { params?: Record<string, unknown>; signal?: AbortSignal } = {}) {
+  const user = useAuthStore.getState().user?.id || 'anon'
+  const key = `${user}|${url}|${JSON.stringify(config.params || {})}`
+  const hit = readCache.get(key)
+  if (hit && Date.now() - hit.at < READ_TTL) return hit.promise as Promise<{ data: T }>
+  // The shared request is not tied to one page's AbortSignal, so leaving a page never poisons
+  // the cache with an aborted request.
+  const promise = api.get<T>(url, { params: config.params }).then((res) => ({ data: res.data }))
+  readCache.set(key, { at: Date.now(), promise })
+  promise.catch(() => readCache.delete(key))
+  return promise
+}
 
 // Auto-refresh on 401. The backend rotates refresh tokens (each one is single-use, deleted the
 // moment it's redeemed) — if two requests 401 around the same time (e.g. the notifications poll

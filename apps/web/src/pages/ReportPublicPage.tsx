@@ -51,7 +51,7 @@ export function ReportPublicPage() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="bg-card border border-border rounded-2xl p-8 max-w-md w-full text-center space-y-4 shadow-dialog">
           <XCircle className="w-12 h-12 text-error mx-auto" />
-          <h2 className="text-lg font-extrabold text-foreground">Relatório indisponível</h2>
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">Relatório indisponível</h2>
           <p className="text-sm text-muted-foreground">{error}</p>
         </div>
       </div>
@@ -90,7 +90,7 @@ export function ReportPublicPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-border">
             <div>
               <p className="text-xs font-bold text-primary uppercase tracking-wider">Relatório Mensal de Performance</p>
-              <h1 className="text-2xl font-extrabold text-foreground mt-1">{report.title}</h1>
+              <h1 className="text-2xl font-bold text-foreground mt-1">{report.title}</h1>
               <p className="text-xs text-muted-foreground font-medium mt-1">
                 {report.client?.name} • {new Date(report.periodStart).toLocaleDateString('pt-BR')} até {new Date(report.periodEnd).toLocaleDateString('pt-BR')}
               </p>
@@ -112,19 +112,19 @@ export function ReportPublicPage() {
           {/* KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="p-4 bg-muted/70 rounded-xl text-center">
-              <p className="text-2xl font-extrabold text-foreground">{snapshot.contentsPublished ?? 0}</p>
+              <p className="text-2xl font-bold text-foreground">{snapshot.contentsPublished ?? 0}</p>
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">Publicados</p>
             </div>
             <div className="p-4 bg-muted/70 rounded-xl text-center">
-              <p className="text-2xl font-extrabold text-foreground">{snapshot.approvalsSent ?? 0}</p>
+              <p className="text-2xl font-bold text-foreground">{snapshot.approvalsSent ?? 0}</p>
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">Enviados p/ Aprovação</p>
             </div>
             <div className="p-4 bg-success/10 rounded-xl text-center">
-              <p className="text-2xl font-extrabold text-success-dark">{snapshot.approvedCount ?? 0}</p>
+              <p className="text-2xl font-bold text-success-dark">{snapshot.approvedCount ?? 0}</p>
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">Aprovados</p>
             </div>
             <div className="p-4 bg-warning/10 rounded-xl text-center">
-              <p className="text-2xl font-extrabold text-warning-dark">{snapshot.changesRequestedCount ?? 0}</p>
+              <p className="text-2xl font-bold text-warning-dark">{snapshot.changesRequestedCount ?? 0}</p>
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">Ajustes Pedidos</p>
             </div>
           </div>
@@ -132,28 +132,28 @@ export function ReportPublicPage() {
           {/* Ads (Meta Ads) — only shown when this client has a connected ad account */}
           {snapshot.ads && (
             <div className="space-y-3">
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                 <Megaphone size={14} className="text-primary" /> Anúncios Pagos (Meta Ads)
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="p-4 bg-muted/70 rounded-xl text-center">
-                  <p className="text-lg font-extrabold text-foreground">
+                  <p className="text-lg font-bold text-foreground">
                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(snapshot.ads.spend)}
                   </p>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">Investimento</p>
                   <GrowthBadge pct={snapshot.adsGrowth?.spendPct} />
                 </div>
                 <div className="p-4 bg-muted/70 rounded-xl text-center">
-                  <p className="text-lg font-extrabold text-foreground">{snapshot.ads.results}</p>
+                  <p className="text-lg font-bold text-foreground">{snapshot.ads.results}</p>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">Resultados</p>
                   <GrowthBadge pct={snapshot.adsGrowth?.resultsPct} />
                 </div>
                 <div className="p-4 bg-muted/70 rounded-xl text-center">
-                  <p className="text-lg font-extrabold text-foreground">{snapshot.ads.ctr.toFixed(2)}%</p>
+                  <p className="text-lg font-bold text-foreground">{snapshot.ads.ctr.toFixed(2)}%</p>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">CTR</p>
                 </div>
                 <div className="p-4 bg-muted/70 rounded-xl text-center">
-                  <p className="text-lg font-extrabold text-foreground">
+                  <p className="text-lg font-bold text-foreground">
                     {snapshot.ads.costPerResult != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(snapshot.ads.costPerResult) : '—'}
                   </p>
                   <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">Custo/Resultado</p>
@@ -178,7 +178,7 @@ export function ReportPublicPage() {
           {/* Summary */}
           {report.summary && (
             <div className="space-y-2">
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                 <CheckCircle2 size={14} className="text-primary" /> Resumo Executivo
               </h2>
               <p className="text-sm text-foreground/85 leading-relaxed font-medium">{report.summary}</p>
@@ -188,7 +188,7 @@ export function ReportPublicPage() {
           {/* AI Analysis */}
           {report.aiAnalysis && (
             <div className="space-y-2">
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                 <TrendingUp size={14} className="text-primary" /> Análise de Performance
               </h2>
               <p className="text-sm text-foreground/85 leading-relaxed font-medium whitespace-pre-line">{report.aiAnalysis}</p>
@@ -198,7 +198,7 @@ export function ReportPublicPage() {
           {/* Recommendations */}
           {recommendations.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Recomendações para o próximo período</h2>
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Recomendações para o próximo período</h2>
               <div className="space-y-2.5">
                 {recommendations.map((r: any, i: number) => (
                   <div key={i} className="p-4 bg-muted/70 rounded-xl">
@@ -213,7 +213,7 @@ export function ReportPublicPage() {
           {/* Published contents list */}
           {snapshot.contents?.length > 0 && (
             <div className="space-y-3">
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                 <ImageIcon size={14} className="text-primary" /> Conteúdos Publicados no Período
               </h2>
               <div className="space-y-1.5">

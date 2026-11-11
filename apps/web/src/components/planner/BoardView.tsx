@@ -48,7 +48,7 @@ function KanbanCard({ content, onClick, showStatus }: { content: any; onClick: (
           {content.client?.name || 'Cliente'}
         </span>
         {/* The column already names the status — only show it when a column groups several. */}
-        {showStatus && <StatusBadge status={content.status} className="gap-1 px-1.5 py-0 text-[10px] leading-4" />}
+        {showStatus && <StatusBadge status={content.status} className="gap-1 px-1.5 py-0 text-[11px] leading-4" />}
       </div>
 
       <div className="mt-2.5 flex items-start gap-3">

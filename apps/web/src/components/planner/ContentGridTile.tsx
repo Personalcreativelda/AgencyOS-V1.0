@@ -81,7 +81,7 @@ export function ContentListRow(props: CreativeItemProps) {
       <div className="flex min-w-0 flex-1 items-center gap-3.5 sm:gap-4">
         <button type="button" onClick={onPreview} aria-label={`Pré-visualizar ${content.title}`} className={cn('relative z-10 size-14 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted', focus)}>
           <CreativeThumbnail content={content} />
-          {(video || (content.contentType === 'CAROUSEL' && media.length > 0)) && <span className="absolute bottom-0 right-0 inline-flex items-center gap-0.5 rounded-tl-md bg-[#000]/70 px-1 py-0.5 text-[10px] text-[#fff]">{video ? <Play size={10} aria-hidden /> : <><Layers size={10} aria-hidden />{media.length}</>}</span>}
+          {(video || (content.contentType === 'CAROUSEL' && media.length > 0)) && <span className="absolute bottom-0 right-0 inline-flex items-center gap-0.5 rounded-tl-md bg-[#000]/70 px-1 py-0.5 text-[11px] text-[#fff]">{video ? <Play size={10} aria-hidden /> : <><Layers size={10} aria-hidden />{media.length}</>}</span>}
         </button>
         <div className="min-w-0 flex-1 space-y-1.5">
           <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground"><Link to={`/app/content/${content.id}`} aria-label={`Abrir Workspace de ${content.title}`} className="outline-none after:absolute after:inset-0 after:rounded-md focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary/60">{content.title}</Link></h3>

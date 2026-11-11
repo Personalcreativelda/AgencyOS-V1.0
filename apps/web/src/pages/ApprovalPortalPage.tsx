@@ -103,7 +103,7 @@ export function ApprovalPortalPage() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4 font-sans text-foreground">
         <div className="bg-card border border-border rounded-2xl p-8 max-w-md w-full text-center space-y-4 shadow-dialog">
           <XCircle className="w-12 h-12 text-error mx-auto" />
-          <h2 className="text-lg font-extrabold">Link indisponível</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Link indisponível</h2>
           <p className="text-sm text-muted-foreground">{error || 'Não foi possível encontrar a solicitação.'}</p>
         </div>
       </div>
@@ -127,7 +127,7 @@ export function ApprovalPortalPage() {
         {/* Client Brand Header */}
         <div className="bg-card border border-border rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-card">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-primary/20 text-primary font-extrabold flex items-center justify-center text-base border border-primary/30 overflow-hidden">
+            <div className="w-12 h-12 rounded-2xl bg-primary/20 text-primary font-bold flex items-center justify-center text-base border border-primary/30 overflow-hidden">
               {data.client?.logoUrl ? (
                 <img src={data.client.logoUrl} alt={data.client.name} className="w-full h-full object-cover" />
               ) : (
@@ -136,7 +136,7 @@ export function ApprovalPortalPage() {
             </div>
             <div>
               <p className="text-[11px] font-bold text-primary uppercase tracking-wider">Portal de Aprovação</p>
-              <h1 className="text-xl font-extrabold text-foreground">{data.client?.name}</h1>
+              <h1 className="text-xl font-bold text-foreground">{data.client?.name}</h1>
             </div>
           </div>
 
@@ -163,7 +163,7 @@ export function ApprovalPortalPage() {
             {actionDone === 'APPROVED' ? (
               <>
                 <CheckCircle2 className="w-12 h-12 mx-auto text-success mb-2" />
-                <h3 className="text-lg font-extrabold text-foreground">Conteúdo aprovado com sucesso!</h3>
+                <h3 className="text-lg font-bold text-foreground">Conteúdo aprovado com sucesso!</h3>
                 <p className="text-sm text-muted-foreground font-medium">
                   A equipe da agência já foi notificada e dará andamento à publicação.
                 </p>
@@ -171,7 +171,7 @@ export function ApprovalPortalPage() {
             ) : (
               <>
                 <AlertTriangle className="w-12 h-12 mx-auto text-warning mb-2" />
-                <h3 className="text-lg font-extrabold text-foreground">Alterações solicitadas!</h3>
+                <h3 className="text-lg font-bold text-foreground">Alterações solicitadas!</h3>
                 <p className="text-sm text-muted-foreground font-medium">
                   Suas observações foram salvas na memória da marca para orientar a equipe.
                 </p>
@@ -183,7 +183,7 @@ export function ApprovalPortalPage() {
         {/* Post Preview Card — simulates exactly how it will look once published */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-card">
           <div className="p-4 border-b border-border flex items-center justify-between">
-            <h2 className="text-sm font-extrabold text-muted-foreground uppercase tracking-wider">
+            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {content.title}
             </h2>
             <Badge variant="primary">{CONTENT_TYPE_LABELS[content.contentType] || content.contentType}</Badge>
@@ -209,7 +209,7 @@ export function ApprovalPortalPage() {
         {/* Action Controls */}
         {!actionDone && (
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4 shadow-card">
-            <h3 className="text-sm font-extrabold text-foreground">Sua decisão:</h3>
+            <h3 className="text-sm font-bold text-foreground">Sua decisão:</h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>

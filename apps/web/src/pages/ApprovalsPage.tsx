@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ArrowRight, CheckCircle2, CheckSquare, Clock, ExternalLink, MessageSquareWarning, Percent, Send, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import api from '@/lib/api'
+import api, { cachedGet } from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -30,8 +30,8 @@ export function ApprovalsPage() {
         // Contents marked "Aguardando cliente" are what the nav badge counts — load them too, so a
         // piece moved to that status without a link sent still shows up here.
         const [appr, review] = await Promise.all([
-          api.get('/approvals'),
-          api.get('/contents', { params: { status: 'CLIENT_REVIEW', limit: 50 } }).catch(() => ({ data: { data: [] } })),
+          cachedGet('/approvals'),
+          cachedGet('/contents', { params: { status: 'CLIENT_REVIEW', limit: 50 } }).catch(() => ({ data: { data: [] } })),
         ])
         setApprovals(appr.data || [])
         setInReview(review.data?.data || [])

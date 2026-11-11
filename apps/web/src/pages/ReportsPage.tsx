@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Plus, BarChart2, Sparkles, ExternalLink, Copy, Check, Trash2, FileBarChart, CalendarCheck, Users, FileClock } from 'lucide-react'
-import api from '@/lib/api'
+import api, { cachedGet } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
@@ -16,6 +16,7 @@ import { ListCard, ListSkeleton, listRowClass, Meta } from '@/components/ui/List
 import { cn } from '@/lib/utils'
 import { Stat, StatGroup } from '@/components/ui/Stat'
 import { FilterBar } from '@/components/ui/FilterPills'
+import { PageFab } from '@/components/layout/PageFab'
 
 export function ReportsPage() {
   const [reports, setReports] = useState<any[]>([])
@@ -39,8 +40,8 @@ export function ReportsPage() {
     async function load() {
       try {
         const [repRes, cliRes] = await Promise.all([
-          api.get('/reports'),
-          api.get('/clients'),
+          cachedGet('/reports'),
+          cachedGet('/clients'),
         ])
         setReports(repRes.data || [])
         setClients(cliRes.data.data || [])
@@ -129,12 +130,14 @@ export function ReportsPage() {
         title="Relatórios mensais"
         description="Relatórios de desempenho e métricas com análises geradas pelo Brand Brain."
         actions={
-          <Button onClick={() => setShowModal(true)}>
+          <Button onClick={() => setShowModal(true)} className="hidden lg:inline-flex">
             <Plus size={16} />
             <span>Gerar relatório</span>
           </Button>
         }
       />
+
+      <PageFab label="Gerar relatório" onClick={() => setShowModal(true)} />
 
       {loading ? (
         <ListSkeleton rows={3} />

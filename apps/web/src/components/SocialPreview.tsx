@@ -93,7 +93,7 @@ function GeneratingOverlay({ overImage, title, subtitle }: { overImage: boolean;
           <Loader2 size={20} className="text-primary-light animate-spin" />
         </div>
       </div>
-      <p className="text-xs font-extrabold text-[#fff]">{title}</p>
+      <p className="text-xs font-bold text-[#fff]">{title}</p>
       <p className="text-[10px] text-slate-300 font-medium">{subtitle}</p>
     </div>
   )
@@ -179,7 +179,7 @@ function PreviewMedia({
           <div className="w-14 h-14 rounded-2xl bg-[#fff]/10 flex items-center justify-center mb-3 backdrop-blur-md border border-[#fff]/20">
             <Sparkles size={24} className="text-primary-light" />
           </div>
-          <p className="text-sm font-extrabold max-w-xs">{title}</p>
+          <p className="text-sm font-bold max-w-xs">{title}</p>
           {hook && <p className="text-xs text-slate-300 mt-2 italic max-w-xs font-medium">"{hook}"</p>}
         </>
       )}
@@ -364,7 +364,7 @@ export function SocialPreview({
 
           <div className="pointer-events-none absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-[#000]/70 via-[#000]/20 to-transparent">
             {hook && <p className="text-[11px] text-[#fff]/90 italic mb-1 line-clamp-2">"{hook}"</p>}
-            {cta && <p className="text-xs font-extrabold text-[#fff]">{cta}</p>}
+            {cta && <p className="text-xs font-bold text-[#fff]">{cta}</p>}
           </div>
         </div>
       )}

@@ -9,6 +9,7 @@ import {
   Plus, Sparkles, ChevronRight, ChevronLeft, AlertCircle, Settings2, FilePlus2 } from 'lucide-react'
 import api from '@/lib/api'
 import { PLATFORM_LABELS, STATUS_LABELS, cn } from '@/lib/utils'
+import { PageFab } from '@/components/layout/PageFab'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { DateTimeField } from '@/components/ui/DateTimeField'
@@ -197,7 +198,7 @@ export function ContentPage({ view }: ContentPageProps) {
     setShowModal(true)
   }
 
-  // Mobile "+" button (and any deep link) lands here with ?novo=1 — open the create modal once.
+  // Deep links (and the old mobile "+") land here with ?novo=1 — open the create modal once.
   const [searchParams, setSearchParams] = useSearchParams()
   useEffect(() => {
     if (searchParams.get('novo') !== '1') return
@@ -221,7 +222,7 @@ export function ContentPage({ view }: ContentPageProps) {
         platforms: newContent.platforms.length ? newContent.platforms : ['INSTAGRAM'],
       })
       setShowModal(false)
-      window.location.href = `/app/content/${data.id}`
+      navigate(`/app/content/${data.id}`)
     } catch (err) {
       toast.error('Erro ao criar conteúdo', getErrorMessage(err))
     }
@@ -344,11 +345,14 @@ export function ContentPage({ view }: ContentPageProps) {
               <Sparkles size={16} />
               <span className="sm:hidden">Gerar mês</span><span className="hidden sm:inline">Gerar mês com Brand Brain</span>
             </Button>
+            <Button onClick={() => openCreateModal()} className="hidden lg:inline-flex"><Plus size={16} />Novo conteúdo</Button>
             {/* Planner on phones: filters live in the header instead of a row of their own */}
             {view === 'calendar' && <div className="md:hidden">{filtersMenu}</div>}
           </>
         }
       />
+
+      <PageFab label="Novo conteúdo" onClick={openCreateModal} />
 
       {/* Planner / Kanban toolbar: period (Planner) or columns (Kanban) on the left, filters on the right */}
       {view !== 'list' && (
