@@ -39,8 +39,8 @@ export function ContentLibrary(props: Props) {
   return (
     <div className="space-y-5">
       <section aria-label="Pesquisa e filtros de conteúdos" className="space-y-2.5">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div role="search" className="min-w-0 flex-1 basis-[220px]">
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          <div role="search" className="min-w-0 flex-1">
             <label htmlFor="creative-search" className="sr-only">Pesquisar na biblioteca</label>
             <Input id="creative-search" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar por título, cliente ou legenda…" icon={<Search aria-hidden />} autoComplete="off" aria-controls="creative-library-results" />
           </div>

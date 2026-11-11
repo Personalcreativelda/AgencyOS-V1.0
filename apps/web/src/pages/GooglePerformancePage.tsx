@@ -300,7 +300,31 @@ export function GooglePerformancePage() {
             placeholder="Pesquisar campanha"
             label="Filtrar campanhas por estado"
           />}
-          <div className="overflow-x-auto"><table className="w-full min-w-[780px] text-sm"><thead><tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {/* Phones: cards instead of a sideways-scrolling table */}
+          <ul className="divide-y divide-border/70 md:hidden">
+            {insights.campaigns.filter((c: any) => (statusTab === 'all' || c.status === statusTab) && (!campaignQuery.trim() || String(c.name || '').toLowerCase().includes(campaignQuery.trim().toLowerCase()))).map((campaign: any) => (
+              <li key={campaign.id} className="py-3.5">
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 break-words text-[13px] font-semibold leading-snug text-foreground">{campaign.name}</p>
+                    <Badge dot variant={campaign.status === 'ENABLED' ? 'success' : 'default'} className="mt-1.5 text-[11px]">{GOOGLE_STATUS[campaign.status] || campaign.status}</Badge>
+                  </div>
+                  {canManage && (campaign.status === 'ENABLED' || campaign.status === 'PAUSED') && (
+                    <Button type="button" variant="outline" size="sm" disabled={!!changingCampaignId} onClick={() => changeCampaignStatus(campaign)}
+                      aria-label={campaign.status === 'ENABLED' ? 'Pausar campanha' : 'Reativar campanha'} className="size-9 shrink-0 p-0">
+                      {campaign.status === 'ENABLED' ? <Pause size={14} /> : <Play size={14} />}
+                    </Button>
+                  )}
+                </div>
+                <dl className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-muted/40 p-2.5 text-center">
+                  <div><dt className="text-[11px] text-muted-foreground">Gasto</dt><dd className="mt-0.5 truncate text-[13px] font-semibold tabular-nums">{money(campaign.spend, insights.currency)}</dd></div>
+                  <div><dt className="text-[11px] text-muted-foreground">Cliques</dt><dd className="mt-0.5 text-[13px] font-semibold tabular-nums">{number(campaign.clicks)}</dd></div>
+                  <div><dt className="text-[11px] text-muted-foreground">Conversões</dt><dd className="mt-0.5 text-[13px] font-semibold tabular-nums">{number(campaign.conversions)}</dd></div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[780px] text-sm"><thead><tr className="border-b border-border text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             <th className="pb-3 pr-4">Campanha</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4 text-right">Gasto</th><th className="pb-3 pr-4 text-right">Cliques</th><th className="pb-3 pr-4 text-right">Impressões</th><th className="pb-3 pr-4 text-right">Conversões</th>{canManage && <th className="pb-3 text-right">Ação</th>}
           </tr></thead><tbody>{insights.campaigns.filter((c: any) => (statusTab === 'all' || c.status === statusTab) && (!campaignQuery.trim() || String(c.name || '').toLowerCase().includes(campaignQuery.trim().toLowerCase()))).map((campaign: any) => <tr key={campaign.id} className="border-b border-border/60 last:border-0 text-foreground">
             <td className="py-3 pr-4 font-semibold">{campaign.name}</td><td className="py-3 pr-4"><Badge dot variant={campaign.status === 'ENABLED' ? 'success' : 'default'} className="text-[11px]">{GOOGLE_STATUS[campaign.status] || campaign.status}</Badge></td><td className="py-3 pr-4 text-right font-semibold tabular-nums">{money(campaign.spend, insights.currency)}</td><td className="py-3 pr-4 text-right">{number(campaign.clicks)}</td><td className="py-3 pr-4 text-right">{number(campaign.impressions)}</td><td className="py-3 pr-4 text-right">{number(campaign.conversions)}</td>{canManage && <td className="py-3 text-right">

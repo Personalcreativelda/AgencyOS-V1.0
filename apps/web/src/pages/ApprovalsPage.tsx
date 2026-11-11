@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, CheckSquare, Clock, ExternalLink, MessageSquareWarning, Percent, Trash2 } from 'lucide-react'
+import { ArrowRight, CheckCircle2, CheckSquare, Clock, ExternalLink, MessageSquareWarning, Percent, Send, Trash2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import api from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Button } from '@/components/ui/Button'
@@ -19,14 +20,21 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('pt-BR', { day: '2
 export function ApprovalsPage() {
   const [approvals, setApprovals] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [inReview, setInReview] = useState<any[]>([])
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
 
   useEffect(() => {
     async function load() {
       try {
-        const { data } = await api.get('/approvals')
-        setApprovals(data || [])
+        // Contents marked "Aguardando cliente" are what the nav badge counts — load them too, so a
+        // piece moved to that status without a link sent still shows up here.
+        const [appr, review] = await Promise.all([
+          api.get('/approvals'),
+          api.get('/contents', { params: { status: 'CLIENT_REVIEW', limit: 50 } }).catch(() => ({ data: { data: [] } })),
+        ])
+        setApprovals(appr.data || [])
+        setInReview(review.data?.data || [])
       } catch (err) {
         console.error(err)
       } finally {
@@ -54,6 +62,32 @@ export function ApprovalsPage() {
     }
   }
 
+  const withoutLink = inReview.filter((c) => !approvals.some((a) => (a.content?.id || a.contentId) === c.id && a.status === 'PENDING'))
+  const withoutLinkCard = withoutLink.length > 0 && (
+    <section className="overflow-hidden rounded-[20px] border border-warning/30 bg-warning/[0.05]">
+      <div className="flex items-start gap-3 px-4 pt-4 sm:px-5">
+        <Send size={17} className="mt-0.5 shrink-0 text-warning-dark dark:text-warning" />
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-foreground">Aguardando cliente, sem link enviado</h2>
+          <p className="mt-0.5 text-[13px] text-muted-foreground">{withoutLink.length === 1 ? 'Este conteúdo está' : `Estes ${withoutLink.length} conteúdos estão`} como "Aguardando cliente", mas o cliente ainda não recebeu um link de aprovação.</p>
+        </div>
+      </div>
+      <ul className="mt-3 divide-y divide-warning/20 border-t border-warning/20">
+        {withoutLink.map((c) => (
+          <li key={c.id}>
+            <Link to={`/app/content/${c.id}`} className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-warning/[0.06] sm:px-5">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground">{c.title}</p>
+                <p className="truncate text-xs text-muted-foreground">{c.client?.name}</p>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1 text-[13px] font-semibold text-primary-dark dark:text-primary">Enviar link<ArrowRight size={14} /></span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+
   const count = (st: string) => approvals.filter((a) => a.status === st).length
   const pending = count('PENDING')
   const changes = count('CHANGES_REQUESTED')
@@ -80,12 +114,14 @@ export function ApprovalsPage() {
 
       {loading ? (
         <ListSkeleton rows={4} thumb={false} />
-      ) : approvals.length === 0 ? (
+      ) : approvals.length === 0 ? (<>
+        {withoutLinkCard}
         <EmptyState
           icon={CheckSquare}
           title="Nenhuma aprovação solicitada ainda"
           description='Abra qualquer conteúdo no Workspace e clique em "Link de aprovação" para enviar ao cliente.'
         />
+      </>
       ) : (<>
         <StatGroup>
           <Stat label="Aguardando cliente" value={pending} icon={Clock} tone={pending ? 'warning' : 'default'} />
@@ -93,6 +129,8 @@ export function ApprovalsPage() {
           <Stat label="Aprovadas" value={approved} icon={CheckCircle2} tone="success" />
           <Stat label="Taxa de aprovação" value={rate === null ? '—' : `${rate}%`} icon={Percent} hint="Aprovadas entre as respondidas" />
         </StatGroup>
+
+        {withoutLinkCard}
 
         <FilterBar pills={tabs} value={filter} onChange={setFilter} query={query} onQuery={setQuery} placeholder="Pesquisar conteúdo ou cliente" label="Filtrar por estado" />
 

@@ -26,7 +26,7 @@ const TONE_DOT: Record<Tone, string> = {
 export function StatGroup({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <div className={cn('-mb-px -mr-px grid grid-cols-2 lg:grid-cols-4 [&>*]:border-b [&>*]:border-r [&>*]:border-border', className)}>
+      <div className={cn('-mb-px -mr-px grid grid-cols-2 lg:grid-cols-4 [&>*]:border-b [&>*]:border-r [&>*]:border-border max-sm:[&>*:last-child:nth-child(odd)]:col-span-2', className)}>
         {children}
       </div>
     </div>

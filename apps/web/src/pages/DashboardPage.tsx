@@ -213,6 +213,47 @@ export function DashboardPage() {
   const pending = overview?.pendingApprovals ?? 0
   const failed = overview?.failedPublications ?? 0
 
+  // Blockers first: when something needs action, the attention centre comes right after the KPIs
+  // (on phones it was ~3,000px down, below empty analytics panels).
+  const attentionFirst = attention.alerts.length > 0
+  const attentionBlock = (
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)] lg:gap-6">
+        <Panel id="dashboard-attention" tabIndex={-1} className="scroll-mt-6 p-3 sm:p-4" aria-label="Centro de atenção">
+          <div className="px-2 pt-2 sm:px-3">
+            <PanelHeader title="Centro de atenção" description="Resolva primeiro o que pode bloquear a operação."
+              action={attention.alerts.length > 0 ? <Badge variant="warning" dot>{attention.alerts.length} {attention.alerts.length > 1 ? 'pendentes' : 'pendente'}</Badge> : undefined} />
+          </div>
+          {core.isLoading || contents.isLoading ? <div aria-busy="true" aria-label="Carregando prioridades" className="space-y-3 p-2">{[0, 1, 2].map(item => <Skeleton key={item} className="h-20" />)}</div>
+            : core.isError ? <p role="status" className="px-2 py-5 text-[13px] text-muted-foreground">As prioridades aparecerão quando o resumo estiver disponível.</p>
+            : <>
+              {contents.isError && <div role="status" className="mb-3 rounded-lg bg-warning/10 p-3 text-xs leading-5 text-foreground">Os totais estão disponíveis, mas não foi possível consultar os detalhes dos conteúdos. <button type="button" onClick={() => void contents.refetch()} className="font-medium underline underline-offset-4">Tentar novamente</button></div>}
+              {attention.alerts.length ? <ul className="space-y-1">{attention.alerts.map(alert => <AttentionRow key={alert.id} alert={alert} />)}</ul> : <div className="flex items-start gap-3 px-2 py-6"><CheckCircle2 size={20} aria-hidden className="mt-0.5 shrink-0 text-primary-dark dark:text-primary-light" /><div><h3 className="text-sm font-medium">Sem bloqueios nesta lista</h3><p className="mt-1 text-[13px] leading-5 text-muted-foreground">Acompanhe o calendário para manter as próximas entregas em dia.</p></div></div>}
+              {attention.planning.length > 0 && <details className="group/planning mx-1 mt-4 rounded-xl bg-muted/40">
+                <summary className={cn('flex cursor-pointer list-none items-center gap-3 rounded-xl p-3 [&::-webkit-details-marker]:hidden', interaction)}>
+                  <CalendarRange size={17} aria-hidden className="shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1"><h3 className="text-[13px] font-medium">Planejamento de {attention.planning.length} {attention.planning.length === 1 ? 'cliente' : 'clientes'}</h3><p className="mt-0.5 text-xs leading-5 text-muted-foreground">Sem publicações nos próximos 7 dias</p></div>
+                  <ChevronDown size={15} aria-hidden className="shrink-0 text-muted-foreground transition-transform group-open/planning:rotate-180 motion-reduce:transition-none" />
+                </summary>
+                <ul className="space-y-1 px-3 pb-3">{attention.planning.map(item => <li key={item.clientId}><Link to="/app/content/calendar" state={{ clientId: item.clientId }} className={cn('flex min-h-10 items-center justify-between gap-3 rounded-md px-2 py-2 text-xs hover:bg-card', interaction)}><span className="min-w-0 truncate">{item.clientName}</span><span className="inline-flex shrink-0 items-center gap-1 font-medium text-primary-dark dark:text-primary-light">Planejar<ArrowRight size={13} aria-hidden /></span></Link></li>)}</ul>
+              </details>}
+            </>}
+        </Panel>
+
+        <Panel aria-label="Atividade recente">
+          <PanelHeader title="Atividade recente" description="Notificações da sua conta." />
+          {notifications.isLoading ? <div className="space-y-3">{[0, 1, 2].map(i => <Skeleton key={i} className="h-12" />)}</div>
+            : activities.length ? <ul className="-mx-2 space-y-1">{activities.map(item => {
+              const candidate = notificationTarget(item)
+              const to = candidate && contents.data?.some(content => candidate === `/app/content/${content.id}`) ? candidate : null
+              const date = new Date(item.createdAt)
+              const body = <><span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary/70" aria-hidden /><div className="min-w-0 flex-1"><h3 className="line-clamp-2 text-[13px] font-medium leading-5">{item.title}</h3><p className="mt-0.5 line-clamp-2 text-xs leading-5 text-muted-foreground">{item.message}</p><time dateTime={item.createdAt} title={format(date, 'd MMM yyyy · HH:mm', { locale: ptBR })} className="mt-1 block text-xs leading-5 text-muted-foreground">{formatDistanceToNowStrict(date, { addSuffix: true, locale: ptBR })}</time></div>{to && <ChevronRight size={14} aria-hidden className="mt-1 shrink-0 text-muted-foreground" />}</>
+              return <li key={item.id}>{to ? <Link to={to} className={cn('flex items-start gap-3 rounded-xl p-2 hover:bg-muted/60', interaction)}>{body}</Link> : <div className="flex items-start gap-3 p-2">{body}</div>}</li>
+            })}</ul>
+            : <div className="flex items-center gap-3 py-4 text-[13px] text-muted-foreground"><Users size={18} aria-hidden />Sem atividade recente.</div>}
+        </Panel>
+      </div>
+  )
+
   return (
     <Page className="space-y-5 lg:space-y-6">
       <WelcomeBanner
@@ -249,14 +290,16 @@ export function DashboardPage() {
                 sparkline={data?.series.map(point => point.published)}
                 footer={data ? (data.kpis.published.delta === null ? 'Primeiro período com dados' : RANGE_SUFFIX[range]) : 'Este mês'} />
               <KpiCard label="Aguardando aprovação" icon={BadgeCheck} tone="warning" to="/app/approvals" alert={pending > 0} value={pending}
-                badge={pending > 0 ? <KpiBadge tone="warning">Ação necessária</KpiBadge> : undefined}
+                badge={pending > 0 ? <KpiBadge tone="warning" className="hidden sm:inline-flex">Ação necessária</KpiBadge> : undefined}
                 footer={(overview?.changesRequested ?? 0) > 0 ? `${overview?.changesRequested} com ajustes pedidos` : 'Em revisão do cliente'} />
               <KpiCard label="Falhas de publicação" icon={AlertCircle} tone="error" to="#dashboard-attention" alert={failed > 0} value={failed}
-                badge={failed > 0 ? <KpiBadge tone="error">Atenção imediata</KpiBadge> : undefined}
+                badge={failed > 0 ? <KpiBadge tone="error" className="hidden sm:inline-flex">Atenção imediata</KpiBadge> : undefined}
                 footer={failed > 0 ? <span className="inline-flex items-center gap-1 font-medium text-error-dark dark:text-error"><AlertTriangle size={13} aria-hidden />Rever no centro de atenção</span> : 'Tudo publicado com sucesso'} />
             </>}
         </section>
       )}
+
+      {attentionFirst && attentionBlock}
 
       {/* Main chart + upcoming */}
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)] lg:gap-6">
@@ -357,42 +400,7 @@ export function DashboardPage() {
         </Panel>
       </div>
 
-      {/* Attention + activity */}
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,1fr)] lg:gap-6">
-        <Panel id="dashboard-attention" tabIndex={-1} className="scroll-mt-6 p-3 sm:p-4" aria-label="Centro de atenção">
-          <div className="px-2 pt-2 sm:px-3">
-            <PanelHeader title="Centro de atenção" description="Resolva primeiro o que pode bloquear a operação."
-              action={attention.alerts.length > 0 ? <Badge variant="warning" dot>{attention.alerts.length} {attention.alerts.length > 1 ? 'pendentes' : 'pendente'}</Badge> : undefined} />
-          </div>
-          {core.isLoading || contents.isLoading ? <div aria-busy="true" aria-label="Carregando prioridades" className="space-y-3 p-2">{[0, 1, 2].map(item => <Skeleton key={item} className="h-20" />)}</div>
-            : core.isError ? <p role="status" className="px-2 py-5 text-[13px] text-muted-foreground">As prioridades aparecerão quando o resumo estiver disponível.</p>
-            : <>
-              {contents.isError && <div role="status" className="mb-3 rounded-lg bg-warning/10 p-3 text-xs leading-5 text-foreground">Os totais estão disponíveis, mas não foi possível consultar os detalhes dos conteúdos. <button type="button" onClick={() => void contents.refetch()} className="font-medium underline underline-offset-4">Tentar novamente</button></div>}
-              {attention.alerts.length ? <ul className="space-y-1">{attention.alerts.map(alert => <AttentionRow key={alert.id} alert={alert} />)}</ul> : <div className="flex items-start gap-3 px-2 py-6"><CheckCircle2 size={20} aria-hidden className="mt-0.5 shrink-0 text-primary-dark dark:text-primary-light" /><div><h3 className="text-sm font-medium">Sem bloqueios nesta lista</h3><p className="mt-1 text-[13px] leading-5 text-muted-foreground">Acompanhe o calendário para manter as próximas entregas em dia.</p></div></div>}
-              {attention.planning.length > 0 && <details className="group/planning mx-1 mt-4 rounded-xl bg-muted/40">
-                <summary className={cn('flex cursor-pointer list-none items-center gap-3 rounded-xl p-3 [&::-webkit-details-marker]:hidden', interaction)}>
-                  <CalendarRange size={17} aria-hidden className="shrink-0 text-muted-foreground" />
-                  <div className="min-w-0 flex-1"><h3 className="text-[13px] font-medium">Planejamento de {attention.planning.length} {attention.planning.length === 1 ? 'cliente' : 'clientes'}</h3><p className="mt-0.5 text-xs leading-5 text-muted-foreground">Sem publicações nos próximos 7 dias</p></div>
-                  <ChevronDown size={15} aria-hidden className="shrink-0 text-muted-foreground transition-transform group-open/planning:rotate-180 motion-reduce:transition-none" />
-                </summary>
-                <ul className="space-y-1 px-3 pb-3">{attention.planning.map(item => <li key={item.clientId}><Link to="/app/content/calendar" state={{ clientId: item.clientId }} className={cn('flex min-h-10 items-center justify-between gap-3 rounded-md px-2 py-2 text-xs hover:bg-card', interaction)}><span className="min-w-0 truncate">{item.clientName}</span><span className="inline-flex shrink-0 items-center gap-1 font-medium text-primary-dark dark:text-primary-light">Planejar<ArrowRight size={13} aria-hidden /></span></Link></li>)}</ul>
-              </details>}
-            </>}
-        </Panel>
-
-        <Panel aria-label="Atividade recente">
-          <PanelHeader title="Atividade recente" description="Notificações da sua conta." />
-          {notifications.isLoading ? <div className="space-y-3">{[0, 1, 2].map(i => <Skeleton key={i} className="h-12" />)}</div>
-            : activities.length ? <ul className="-mx-2 space-y-1">{activities.map(item => {
-              const candidate = notificationTarget(item)
-              const to = candidate && contents.data?.some(content => candidate === `/app/content/${content.id}`) ? candidate : null
-              const date = new Date(item.createdAt)
-              const body = <><span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary/70" aria-hidden /><div className="min-w-0 flex-1"><h3 className="line-clamp-2 text-[13px] font-medium leading-5">{item.title}</h3><p className="mt-0.5 line-clamp-2 text-xs leading-5 text-muted-foreground">{item.message}</p><time dateTime={item.createdAt} title={format(date, 'd MMM yyyy · HH:mm', { locale: ptBR })} className="mt-1 block text-xs leading-5 text-muted-foreground">{formatDistanceToNowStrict(date, { addSuffix: true, locale: ptBR })}</time></div>{to && <ChevronRight size={14} aria-hidden className="mt-1 shrink-0 text-muted-foreground" />}</>
-              return <li key={item.id}>{to ? <Link to={to} className={cn('flex items-start gap-3 rounded-xl p-2 hover:bg-muted/60', interaction)}>{body}</Link> : <div className="flex items-start gap-3 p-2">{body}</div>}</li>
-            })}</ul>
-            : <div className="flex items-center gap-3 py-4 text-[13px] text-muted-foreground"><Users size={18} aria-hidden />Sem atividade recente.</div>}
-        </Panel>
-      </div>
+      {!attentionFirst && attentionBlock}
     </Page>
   )
 }

@@ -89,7 +89,7 @@ function ClientCard({ client, onDescription }: { client: Client; onDescription: 
         </div>
         <span className="mt-0.5"><StatusText status={client.status} /></span>
       </div>
-      <div className="min-h-16">
+      <div className={text ? 'min-h-16' : 'hidden min-h-16 sm:block'}>
         <p ref={description} className={`line-clamp-2 break-words text-sm leading-relaxed ${text ? 'text-foreground/80' : 'text-muted-foreground'}`}>
           {text || 'Descrição não adicionada.'}
         </p>

@@ -19,6 +19,21 @@ api.interceptors.request.use((config) => {
 // only the first succeeds; the second gets 'Invalid or expired refresh token' and would log the
 // user out for no real reason. Sharing one in-flight refresh promise across concurrent 401s fixes
 // that: everyone awaits the same call instead of each redeeming (and invalidating) their own.
+function readSavedSession(): { token?: string; refreshToken?: string } | null {
+  try {
+    return JSON.parse(localStorage.getItem('agencyflow-auth') || 'null')?.state ?? null
+  } catch {
+    return null
+  }
+}
+
+// Keep tabs in sync: when one tab refreshes or logs out, the others pick up the new session.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'agencyflow-auth') void useAuthStore.persist.rehydrate()
+  })
+}
+
 let refreshPromise: Promise<{ accessToken: string; refreshToken: string }> | null = null
 
 api.interceptors.response.use(
@@ -41,6 +56,15 @@ api.interceptors.response.use(
           original.headers.Authorization = `Bearer ${data.accessToken}`
           return api(original)
         } catch {
+          // Another tab may have rotated the token a moment ago and saved the new pair —
+          // adopt it instead of logging out.
+          const saved = readSavedSession()
+          if (saved?.token && saved.refreshToken && saved.refreshToken !== refreshToken) {
+            const current = useAuthStore.getState()
+            setAuth(saved.token, saved.refreshToken, current.user!)
+            original.headers.Authorization = `Bearer ${saved.token}`
+            return api(original)
+          }
           logout()
           window.location.href = '/login'
         }

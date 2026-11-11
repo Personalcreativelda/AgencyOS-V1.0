@@ -79,7 +79,7 @@ export function Sparkline({ values, className }: { values: number[]; className?:
 }
 
 /** Small chip for the KPI card's top-right corner: ↗ 25% / ↘ 3% / urgency label. */
-export function KpiBadge({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'up' | 'down' | 'warning' | 'error' | 'neutral' }) {
+export function KpiBadge({ children, tone = 'neutral', className }: { children: ReactNode; tone?: 'up' | 'down' | 'warning' | 'error' | 'neutral'; className?: string }) {
   const tones = {
     up: 'bg-success/10 text-success-dark dark:text-success',
     down: 'bg-error/10 text-error-dark dark:text-error',
@@ -87,7 +87,7 @@ export function KpiBadge({ children, tone = 'neutral' }: { children: ReactNode; 
     error: 'bg-error/10 text-error-dark dark:text-error',
     neutral: 'bg-muted text-muted-foreground',
   }
-  return <span className={cn('inline-flex shrink-0 items-center gap-0.5 rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums', tones[tone])}>{children}</span>
+  return <span className={cn('inline-flex shrink-0 items-center gap-0.5 rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums', tones[tone], className)}>{children}</span>
 }
 
 /** Trend → KpiBadge (null/undefined → no badge). */

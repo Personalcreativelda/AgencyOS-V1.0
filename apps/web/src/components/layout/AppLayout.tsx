@@ -47,6 +47,10 @@ export function AppLayout() {
   const { pathname } = useLocation()
   const pageTitle = PAGE_TITLES.find(([prefix]) => pathname.startsWith(prefix))?.[1] ?? ''
   const [navOpen, setNavOpen] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  // The page scrolls inside this container (not the window), so the router's default
+  // behaviour never resets it — every new page would open at the previous page's position.
+  useEffect(() => { scrollRef.current?.scrollTo({ top: 0 }) }, [pathname])
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
 
@@ -235,7 +239,7 @@ export function AppLayout() {
         </header>
 
         {/* Page View */}
-        <div className="flex-1 overflow-auto bg-background">
+        <div ref={scrollRef} className="flex-1 overflow-auto bg-background">
           {/* Bottom padding keeps the last item clear of the floating tab bar on phones. */}
           <div id="page-content" tabIndex={-1} className="min-w-0 pb-[calc(5.5rem+env(safe-area-inset-bottom))] outline-none lg:pb-0"><Outlet /></div>
         </div>

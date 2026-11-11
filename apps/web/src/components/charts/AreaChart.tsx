@@ -87,7 +87,11 @@ export function AreaChart({ labels, series, height = 280, formatLabel, className
   }), [series, width, top, n])
 
   // Show at most ~8 x labels so they never collide.
-  const labelEvery = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(innerW / 64))))
+  // Space labels by their real width (11px uppercase ≈ 7px per char + gap), so long ones like
+  // "13 DE OUT." never collide on a phone.
+  const longest = labels.reduce((m, l) => Math.max(m, String(l).length), 0)
+  const slot = Math.max(56, longest * 7 + 18)
+  const labelEvery = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(innerW / slot))))
 
   const pick = (clientX: number) => {
     const rect = wrapRef.current?.getBoundingClientRect()

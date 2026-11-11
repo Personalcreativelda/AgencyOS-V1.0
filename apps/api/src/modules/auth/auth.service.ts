@@ -193,8 +193,15 @@ export async function refreshTokens(token: string) {
   });
   if (!membership) throw new UnauthorizedError('No active agency');
 
-  // Rotate refresh token
-  await prisma.refreshToken.delete({ where: { token } });
+  // Rotate refresh token. The old one stays valid for a short grace window instead of being
+  // deleted at once: two tabs (or the Android app + a browser) refreshing at the same moment
+  // would otherwise log one of them out with "Invalid or expired refresh token".
+  const graceUntil = new Date(Date.now() + 30_000);
+  if (stored.expiresAt > graceUntil) {
+    await prisma.refreshToken.update({ where: { token }, data: { expiresAt: graceUntil } });
+  }
+  // Housekeeping: drop this user's tokens that are already expired.
+  await prisma.refreshToken.deleteMany({ where: { userId: user.id, expiresAt: { lt: new Date() } } });
 
   const newRefreshToken = generateRefreshToken();
   await prisma.refreshToken.create({

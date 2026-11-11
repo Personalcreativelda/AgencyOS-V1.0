@@ -106,9 +106,15 @@ export function AdsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const { data } = await api.get('/clients')
-        setClients(data.data || [])
-        if (data.data?.length > 0) setClientId(data.data[0].id)
+        // Open on a client that actually has a Meta ad account, not just the first one alphabetically.
+        const [{ data }, withAccounts] = await Promise.all([
+          api.get('/clients'),
+          api.get('/ads/accounts').then((r) => r.data as { clientId: string }[]).catch(() => []),
+        ])
+        const list = data.data || []
+        setClients(list)
+        const preferred = list.find((c: any) => withAccounts.some((a) => a.clientId === c.id)) || list[0]
+        if (preferred) setClientId((current) => current || preferred.id)
       } catch (err) {
         console.error(err)
       } finally {
@@ -492,14 +498,19 @@ export function AdsPage() {
                   </Select>
                 </div>
               )}
-              <Segmented label="Período" value={range} onChange={setRange}
-                options={[{ value: 'today', label: 'Hoje' }, { value: '7d', label: '7 dias' }, { value: '30d', label: '30 dias' }]} />
-              <Button type="button" variant="outline" size="icon" className="size-10 p-0" aria-label="Atualizar dados" title="Atualizar dados" onClick={handleSync} disabled={syncing}>
-                <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
-              </Button>
-              <Button type="button" variant="outline" size="icon" className="size-10 p-0 hover:border-error/40 hover:bg-error/10 hover:text-error" aria-label="Desconectar conta" title="Desconectar conta" onClick={handleDisconnect}>
-                <Trash2 size={16} />
-              </Button>
+              {/* Period + icon actions share one row, also on phones */}
+              <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
+                <div className="min-w-0 flex-1 sm:flex-none">
+                  <Segmented label="Período" value={range} onChange={setRange}
+                    options={[{ value: 'today', label: 'Hoje' }, { value: '7d', label: '7 dias' }, { value: '30d', label: '30 dias' }]} />
+                </div>
+                <Button type="button" variant="outline" size="icon" className="size-10 shrink-0 p-0" aria-label="Atualizar dados" title="Atualizar dados" onClick={handleSync} disabled={syncing}>
+                  <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
+                </Button>
+                <Button type="button" variant="outline" size="icon" className="size-10 shrink-0 p-0 hover:border-error/40 hover:bg-error/10 hover:text-error" aria-label="Desconectar conta" title="Desconectar conta" onClick={handleDisconnect}>
+                  <Trash2 size={16} />
+                </Button>
+              </div>
             </div>
           </section>
 
@@ -575,8 +586,43 @@ export function AdsPage() {
                 <p className="text-xs text-muted-foreground font-medium py-6 text-center">
                   Nenhum dado sincronizado ainda pra esse período — clique em "Atualizar".
                 </p>
-              ) : (
-                <div className="-mx-4 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 [scrollbar-width:thin]">
+              ) : (<>
+                {/* Phones: one card per campaign — the table needed sideways scrolling to see spend/results */}
+                <ul className="-mx-1 divide-y divide-border/70 md:hidden">
+                  {(() => {
+                    const q = campaignQuery.trim().toLowerCase()
+                    const visible = (insights.campaigns as any[]).filter((c) =>
+                      (statusTab === 'all' || c.status === statusTab) && (!q || String(c.campaignName || '').toLowerCase().includes(q)))
+                    if (!visible.length) return <li className="py-8 text-center text-xs text-muted-foreground">Nenhuma campanha corresponde a este filtro.</li>
+                    return visible.map((c: any) => {
+                      const canToggle = c.status === 'ACTIVE' || c.status === 'PAUSED'
+                      const isToggling = togglingCampaignId === c.campaignExternalId
+                      return (
+                        <li key={c.campaignExternalId} className="px-1 py-3.5">
+                          <div className="flex items-start gap-3">
+                            <CampaignCreativePreview key={`m-${accountId}-${c.campaignExternalId}`} accountId={accountId} campaignId={c.campaignExternalId} campaignName={c.campaignName} />
+                            <div className="min-w-0 flex-1">
+                              <p className="line-clamp-2 break-words text-[13px] font-semibold leading-snug text-foreground">{c.campaignName}</p>
+                              <Badge dot variant={c.status === 'ACTIVE' ? 'success' : 'default'} className="mt-1.5 text-[11px]">{AD_STATUS_LABELS[c.status] || c.status}</Badge>
+                            </div>
+                            {canToggle && (
+                              <Button type="button" variant="outline" size="sm" onClick={() => handleToggleCampaignStatus(c)} disabled={isToggling}
+                                aria-label={c.status === 'ACTIVE' ? 'Pausar campanha' : 'Reativar campanha'} className="size-9 shrink-0 p-0">
+                                {isToggling ? <Loader2 size={14} className="animate-spin" /> : c.status === 'ACTIVE' ? <Pause size={14} /> : <Play size={14} />}
+                              </Button>
+                            )}
+                          </div>
+                          <dl className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-muted/40 p-2.5 text-center">
+                            <div><dt className="text-[11px] text-muted-foreground">Gasto</dt><dd className="mt-0.5 truncate text-[13px] font-semibold tabular-nums text-foreground">{formatCurrency(c.spend, account?.currency)}</dd></div>
+                            <div><dt className="text-[11px] text-muted-foreground">Resultados</dt><dd className="mt-0.5 text-[13px] font-semibold tabular-nums text-foreground">{c.results}</dd></div>
+                            <div><dt className="text-[11px] text-muted-foreground">Custo/res.</dt><dd className="mt-0.5 truncate text-[13px] font-semibold tabular-nums text-foreground">{c.results ? formatCurrency(c.spend / c.results, account?.currency) : '—'}</dd></div>
+                          </dl>
+                        </li>
+                      )
+                    })
+                  })()}
+                </ul>
+                <div className="hidden overflow-x-auto pb-1 md:block [scrollbar-width:thin]">
                   <table className="w-full min-w-[760px] text-xs">
                     <thead>
                       <tr className="border-b border-border text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -637,7 +683,7 @@ export function AdsPage() {
                     </tbody>
                   </table>
                 </div>
-              )}
+              </>)}
             </CardContent>
           </Card>
 

@@ -36,7 +36,7 @@ export function MetricExplorer({ tiles, rows, labelOf, tooltipOf, caption, empty
     <section className="overflow-hidden rounded-[20px] border border-border/70 bg-card shadow-card">
       {/* KPI tiles */}
       <div className="overflow-hidden border-b border-border/70">
-      <div className="-mb-px -mr-px grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7">
+      <div className="-mb-px -mr-px grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 max-sm:[&>*:last-child:nth-child(odd)]:col-span-2">
         {tiles.map((tile) => {
           const isActive = active?.key === tile.key
           const body = (
