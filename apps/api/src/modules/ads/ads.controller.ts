@@ -293,10 +293,12 @@ function aggregateBreakdown(
 // account on every run. Powers both the "Público" card on the Ads page and the richer context
 // handed to the AI in analyzeAdAccount below, so a recommendation like "aumentar orçamento" can
 // actually be informed by WHO is converting and WHERE, not just aggregate spend/results.
-async function fetchCampaignContext(
+export async function fetchCampaignContext(
   connection: { externalPageId: string | null; accessTokenEncrypted: string | null },
   days: number,
-  campaignFilter?: string
+  campaignFilter?: string,
+  /** Explicit dates (YYYY-MM-DD) — used by monthly reports instead of "last N days". */
+  explicitRange?: { since: string; until: string },
 ) {
   const accessToken = decrypt(connection.accessTokenEncrypted!);
   const actId = connection.externalPageId!;
@@ -305,7 +307,8 @@ async function fetchCampaignContext(
   since.setDate(since.getDate() - (days - 1));
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
   const timeRange = JSON.stringify({ since: fmt(since), until: fmt(until) });
-  const period = days === 1 ? 'date_preset=today' : `time_range=${encodeURIComponent(timeRange)}`;
+  const period = explicitRange ? `time_range=${encodeURIComponent(JSON.stringify(explicitRange))}`
+    : days === 1 ? 'date_preset=today' : `time_range=${encodeURIComponent(timeRange)}`;
   const base = `${GRAPH_URL}/${actId}/insights?level=campaign&${period}&access_token=${accessToken}`;
 
   const [demoRows, placementRows, regionRows, reachRowsAll, actionRowsAll] = await Promise.all([
@@ -528,6 +531,33 @@ export async function setCampaignStatus(req: AuthRequest, res: Response, next: N
 }
 
 // Read-only creative previews. Existing insights and campaign controls keep their contracts.
+/** First creative image of a campaign (larger poster when Meta only has a small thumbnail). */
+export async function fetchCampaignPreviewImage(accessToken: string, campaignId: string): Promise<string | null> {
+  if (!/^\d+$/.test(campaignId)) return null;
+  try {
+    const res = await fetch(`${GRAPH_URL}/${campaignId}/ads?` + new URLSearchParams({
+      fields: 'creative{id,image_url,thumbnail_url}', limit: '5', access_token: accessToken,
+    }), { signal: AbortSignal.timeout(12000) });
+    if (!res.ok) return null;
+    const body = await res.json() as { data?: any[] };
+    const ad = (body.data || []).find((a) => a.creative?.image_url || a.creative?.thumbnail_url);
+    if (!ad) return null;
+    if (ad.creative.image_url) return ad.creative.image_url;
+    if (/^\d+$/.test(ad.creative.id || '')) {
+      const poster = await fetch(`${GRAPH_URL}/${ad.creative.id}?` + new URLSearchParams({
+        fields: 'image_url,thumbnail_url', thumbnail_width: '800', thumbnail_height: '800', access_token: accessToken,
+      }), { signal: AbortSignal.timeout(10000) });
+      if (poster.ok) {
+        const p = await poster.json() as { image_url?: string; thumbnail_url?: string };
+        return p.image_url || p.thumbnail_url || ad.creative.thumbnail_url;
+      }
+    }
+    return ad.creative.thumbnail_url;
+  } catch {
+    return null;
+  }
+}
+
 export async function getCampaignCreatives(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const campaignId = req.params.campaignId;

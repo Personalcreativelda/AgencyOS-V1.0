@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { useAndroidBack } from '@/hooks/useAndroidBack'
+import { OfflineBanner } from '@/components/layout/OfflineBanner'
 import { MobileTabBar } from '@/components/layout/MobileTabBar'
 import { HeaderSearch } from '@/components/layout/HeaderSearch'
 import { LogoMark } from '@/components/brand/Logo'
@@ -248,6 +249,7 @@ export function AppLayout() {
           </div>
 
         </header>
+        <OfflineBanner />
 
         {/* Page View */}
         <div ref={scrollRef} className="flex-1 overflow-auto bg-background">

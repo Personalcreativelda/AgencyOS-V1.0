@@ -166,6 +166,23 @@ export function KpiCard({ label, value, icon: Icon, tone = 'brand', footer, to, 
     </div>
   )
   const cls = 'block h-full min-w-0 rounded-[20px] border border-border/70 bg-card p-4 shadow-card transition-[border-color,box-shadow] duration-200 sm:p-5'
+  // In-page target ("#section"): the page scrolls inside a container, so anchors don't move it —
+  // scroll the section into view and focus it instead.
+  if (to?.startsWith('#')) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          const target = document.getElementById(to.slice(1))
+          target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          target?.focus({ preventScroll: true })
+        }}
+        className={cn(cls, 'w-full text-left hover:border-grey-400 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40')}
+      >
+        {body}
+      </button>
+    )
+  }
   return to ? (
     <Link to={to} className={cn(cls, 'hover:border-grey-400 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40')}>{body}</Link>
   ) : (

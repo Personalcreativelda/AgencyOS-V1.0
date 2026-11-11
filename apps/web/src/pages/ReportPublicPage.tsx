@@ -6,6 +6,7 @@ import api from '@/lib/api'
 import { CONTENT_TYPE_LABELS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
+import { ReportAdsSection } from '@/components/reports/ReportAdsSection'
 
 function GrowthBadge({ pct }: { pct: number | null | undefined }) {
   if (pct == null) return null
@@ -69,20 +70,15 @@ export function ReportPublicPage() {
           body { background: white !important; }
           .print-card { --card: 0 0% 100%; --foreground: 210 24% 16%; --muted: 210 20% 96%; --muted-foreground: 210 10% 42%; --border: 214 15% 87%; color-scheme: light; color: hsl(var(--foreground)); background: white !important; }
           .print-card { box-shadow: none !important; border: 1px solid #DFE3E8 !important; }
+          .print-avoid-break { break-inside: avoid; }
         }
       `}</style>
 
-      <div className="max-w-3xl mx-auto p-4 sm:p-8 space-y-6">
+      <div className="mx-auto max-w-3xl space-y-6 p-4 pb-28 pt-[calc(var(--sat)+1rem)] sm:p-8 sm:pb-28 sm:pt-[calc(var(--sat)+2rem)]">
         {/* Header */}
-        <div className="flex items-center justify-between no-print">
-          <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-            <LogoMark size={18} />
-            <span>AgencyOS</span>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5">
-            <Download size={13} />
-            <span>Baixar PDF</span>
-          </Button>
+        <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground no-print">
+          <LogoMark size={20} />
+          <span>AgencyOS</span>
         </div>
 
         {/* Report follows the site palette on screen; print uses an explicit light palette */}
@@ -131,48 +127,7 @@ export function ReportPublicPage() {
 
           {/* Ads (Meta Ads) — only shown when this client has a connected ad account */}
           {snapshot.ads && (
-            <div className="space-y-3">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <Megaphone size={14} className="text-primary" /> Anúncios Pagos (Meta Ads)
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-4 bg-muted/70 rounded-xl text-center">
-                  <p className="text-lg font-bold text-foreground">
-                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(snapshot.ads.spend)}
-                  </p>
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">Investimento</p>
-                  <GrowthBadge pct={snapshot.adsGrowth?.spendPct} />
-                </div>
-                <div className="p-4 bg-muted/70 rounded-xl text-center">
-                  <p className="text-lg font-bold text-foreground">{snapshot.ads.results}</p>
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">Resultados</p>
-                  <GrowthBadge pct={snapshot.adsGrowth?.resultsPct} />
-                </div>
-                <div className="p-4 bg-muted/70 rounded-xl text-center">
-                  <p className="text-lg font-bold text-foreground">{snapshot.ads.ctr.toFixed(2)}%</p>
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">CTR</p>
-                </div>
-                <div className="p-4 bg-muted/70 rounded-xl text-center">
-                  <p className="text-lg font-bold text-foreground">
-                    {snapshot.ads.costPerResult != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(snapshot.ads.costPerResult) : '—'}
-                  </p>
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mt-1">Custo/Resultado</p>
-                  <GrowthBadge pct={snapshot.adsGrowth?.costPerResultPct} />
-                </div>
-              </div>
-              {snapshot.ads.campaigns?.length > 0 && (
-                <div className="space-y-1.5">
-                  {snapshot.ads.campaigns.map((c: any, i: number) => (
-                    <div key={i} className="flex items-center justify-between gap-2 p-3 bg-muted/70 rounded-xl text-xs">
-                      <span className="font-bold text-foreground truncate min-w-0">{c.campaignName}</span>
-                      <span className="text-muted-foreground shrink-0">
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(c.spend)} · {c.results} resultados
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <ReportAdsSection ads={snapshot.ads} growth={snapshot.adsGrowth} currency={snapshot.ads.currency || report.adsCurrency || 'BRL'} />
           )}
 
           {/* Summary */}
@@ -234,6 +189,17 @@ export function ReportPublicPage() {
         <footer className="text-center text-xs text-muted-foreground py-4 no-print">
           Gerado com AgencyOS — Sistema Operacional de Agências
         </footer>
+      </div>
+
+      {/* Download where the thumb is: bottom bar, above the gesture area */}
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur-md no-print" style={{ paddingBottom: 'var(--sab)' }}>
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-8">
+          <p className="hidden min-w-0 truncate text-[13px] text-muted-foreground sm:block">{report.title}</p>
+          <Button onClick={() => window.print()} className="w-full gap-2 sm:w-auto">
+            <Download size={16} aria-hidden />
+            Baixar relatório em PDF
+          </Button>
+        </div>
       </div>
     </div>
   )

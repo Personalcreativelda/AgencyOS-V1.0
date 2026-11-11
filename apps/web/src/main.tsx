@@ -3,12 +3,18 @@ import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import App from './App'
 import './index.css'
+import { setupServiceWorker } from './lib/serviceWorker'
+
+// Offline mode: keeps the app and the last data on the device (see lib/serviceWorker.ts).
+setupServiceWorker()
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 30 * 1000,
       retry: 1,
+      // Run queries even without connectivity: the service worker answers with the saved copy.
+      networkMode: 'offlineFirst',
     },
   },
 })

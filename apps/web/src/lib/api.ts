@@ -82,7 +82,10 @@ api.interceptors.response.use(
           setAuth(data.accessToken, data.refreshToken, current.user!)
           original.headers.Authorization = `Bearer ${data.accessToken}`
           return api(original)
-        } catch {
+        } catch (refreshError: any) {
+          // No connection / server restarting: keep the session (offline mode shows saved data)
+          // and just fail this request. Only a real "refresh token rejected" ends the session.
+          if (!refreshError?.response) return Promise.reject(error)
           // Another tab may have rotated the token a moment ago and saved the new pair —
           // adopt it instead of logging out.
           const saved = readSavedSession()

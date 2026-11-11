@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent,
+  DndContext, MouseSensor, TouchSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core'
 import { format, addMonths, subMonths } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -102,8 +102,9 @@ export function ContentPage({ view }: ContentPageProps) {
   }, [location.key])
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+    // Mouse: drag after 8px. Touch: long-press (250ms) so a normal swipe still scrolls the page.
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
   )
 
   const kanbanOverrides = useMemo(() => parseKanbanColumns(agency?.kanbanColumns), [agency])
@@ -249,6 +250,19 @@ export function ContentPage({ view }: ContentPageProps) {
     }
   }
 
+  // Shared by drag & drop and the card's "Mover para…" menu.
+  const moveToStatus = async (content: any, newStatus: string) => {
+    if (content.status === newStatus) return
+    const prevContents = contents
+    setContents((cs) => cs.map((c) => (c.id === content.id ? { ...c, status: newStatus } : c)))
+    try {
+      await api.post(`/contents/${content.id}/change-status`, { status: newStatus })
+    } catch (err) {
+      setContents(prevContents)
+      toast.error('Erro ao alterar status', getErrorMessage(err))
+    }
+  }
+
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     if (!over) return
@@ -282,16 +296,7 @@ export function ContentPage({ view }: ContentPageProps) {
         toast.error('Erro ao reagendar conteúdo', getErrorMessage(err))
       }
     } else if (overId.startsWith('status:')) {
-      const newStatus = overId.slice(7)
-      if (content.status === newStatus) return
-      const prevContents = contents
-      setContents((cs) => cs.map((c) => (c.id === content.id ? { ...c, status: newStatus } : c)))
-      try {
-        await api.post(`/contents/${content.id}/change-status`, { status: newStatus })
-      } catch (err) {
-        setContents(prevContents)
-        toast.error('Erro ao alterar status', getErrorMessage(err))
-      }
+      await moveToStatus(content, overId.slice(7))
     }
   }
 
@@ -407,7 +412,7 @@ export function ContentPage({ view }: ContentPageProps) {
           )}
 
           {view === 'board' && (
-            <BoardView contents={contents} columns={boardColumns} onOpenContent={(id) => navigate(`/app/content/${id}`)} onCreate={() => openCreateModal()} />
+            <BoardView contents={contents} columns={boardColumns} onOpenContent={(id) => navigate(`/app/content/${id}`)} onCreate={() => openCreateModal()} onMove={(content, status) => void moveToStatus(content, status)} />
           )}
         </DndContext>
       )}

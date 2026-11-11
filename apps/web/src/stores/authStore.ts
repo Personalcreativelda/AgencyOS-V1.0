@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { clearOfflineData } from '@/lib/serviceWorker'
 
 interface Agency {
   id: string
@@ -34,7 +35,11 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       setAuth: (token, refreshToken, user) => set({ token, refreshToken, user }),
       updateUser: (data) => set((s) => ({ user: s.user ? { ...s.user, ...data } : null })),
-      logout: () => set({ token: null, refreshToken: null, user: null }),
+      logout: () => {
+        // Saved offline data belongs to this session — never show it to the next person on the device.
+        void clearOfflineData()
+        set({ token: null, refreshToken: null, user: null })
+      },
     }),
     {
       name: 'agencyflow-auth',
