@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { SearchTrigger } from '@/components/layout/HeaderSearch'
 import {
   LayoutDashboard, Activity, Users, BadgeCheck, FileBarChart, PanelsTopLeft,
   CalendarRange, Kanban, Plus, Share2, Settings, ChevronDown, ChevronsLeft, X,
@@ -195,10 +196,10 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         onClick={onClose}
         aria-label={rail ? item.label : undefined}
         aria-current={active ? 'page' : undefined}
-        className={cn(itemClass(active), rail ? 'mx-auto size-10 justify-center' : 'h-10 px-3')}
+        className={cn(itemClass(active), rail ? 'mx-auto size-12 justify-center rounded-xl' : 'h-10 px-3')}
       >
         <span className="relative shrink-0">
-          <Icon size={18} className="shrink-0" />
+          <Icon size={rail ? 21 : 18} className="shrink-0" />
           {rail && item.count === 'approvals' && counts.pendingApprovals > 0 && (
             <span aria-hidden className="absolute -right-1 -top-1 size-2 rounded-full bg-warning ring-2 ring-sidebar" />
           )}
@@ -224,9 +225,9 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
       to="/app/settings"
       onClick={onClose}
       aria-label={rail ? 'Configurações' : undefined}
-      className={cn(itemClass(matches(pathname, '/app/settings')), rail ? 'mx-auto size-10 justify-center' : 'h-10 w-full px-3')}
+      className={cn(itemClass(matches(pathname, '/app/settings')), rail ? 'mx-auto size-12 justify-center rounded-xl' : 'h-10 w-full px-3')}
     >
-      <Settings size={18} strokeWidth={1.9} className="shrink-0" />
+      <Settings size={rail ? 21 : 18} strokeWidth={1.9} className="shrink-0" />
       {!rail && <span className="truncate">Configurações</span>}
     </NavLink>
   )
@@ -241,13 +242,13 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         className={cn(
           'fixed inset-y-0 left-0 z-40 isolate flex w-[280px] shrink-0 flex-col border-r border-sidebar-border bg-sidebar pb-[var(--sab)] pt-[var(--sat)] lg:pb-0 lg:pt-0',
           'transition-[width,transform] duration-200 ease-out motion-reduce:transition-none lg:relative lg:translate-x-0',
-          rail ? 'lg:w-[76px]' : 'lg:w-[264px]',
+          rail ? 'lg:w-[88px]' : 'lg:w-[264px]',
           mobileOpen ? 'translate-x-0' : '-translate-x-full invisible lg:visible'
         )}
       >
         {/* Brand */}
         <div className={cn('flex h-16 shrink-0 items-center', rail ? 'justify-center px-0' : 'justify-between gap-3 px-6')}>
-          {rail ? <LogoMark size={34} /> : <Logo size={34} tagline={null} wordmarkClassName="text-[19px] font-bold" />}
+          {rail ? <LogoMark size={38} /> : <Logo size={34} tagline={null} wordmarkClassName="text-[19px] font-bold" />}
           <button
             onClick={onClose}
             aria-label="Fechar menu"
@@ -269,14 +270,19 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
           <ChevronsLeft size={14} className={cn('transition-transform duration-300', collapsed && 'rotate-180')} />
         </button>
 
+        {/* Global search (Ctrl/⌘ K), right under the logo */}
+        <div className={cn('shrink-0 pb-6 pt-6', rail ? 'px-0' : 'px-4')}>
+          <SearchTrigger rail={rail} />
+        </div>
+
         {/* Navigation */}
         <nav className="sidebar-scroll flex-1 overflow-y-auto overflow-x-hidden px-3 pb-4 pt-2">
           {NAV.map((section, index) => {
             if (rail) {
               return (
-                <div key={section.id} className="space-y-1">
+                <div key={section.id}>
                   {index > 0 && <div className="mx-auto my-3 h-px w-9 bg-border" />}
-                  {section.items.map(navItem)}
+                  <div className="space-y-1">{section.items.map(navItem)}</div>
                 </div>
               )
             }

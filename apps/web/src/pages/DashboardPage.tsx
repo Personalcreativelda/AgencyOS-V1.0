@@ -286,10 +286,10 @@ export function DashboardPage() {
                 badge={<TrendBadge value={data?.kpis.published.delta} />}
                 sparkline={data?.series.map(point => point.published)}
                 footer={data ? (data.kpis.published.delta === null ? 'Primeiro período com dados' : RANGE_SUFFIX[range]) : 'Este mês'} />
-              <KpiCard label="Aguardando aprovação" icon={BadgeCheck} tone="warning" to="/app/approvals" alert={pending > 0} value={pending}
+              <KpiCard label="Aguardando aprovação" icon={BadgeCheck} tone="warning" to="/app/approvals" alert={pending > 0} value={pending} cta={pending > 0 ? 'Ver pendentes' : undefined}
                 badge={pending > 0 ? <KpiBadge tone="warning" className="hidden sm:inline-flex">Ação necessária</KpiBadge> : undefined}
                 footer={(overview?.changesRequested ?? 0) > 0 ? `${overview?.changesRequested} com ajustes pedidos` : 'Em revisão do cliente'} />
-              <KpiCard label="Falhas de publicação" icon={AlertCircle} tone="error" to="#dashboard-attention" alert={failed > 0} value={failed}
+              <KpiCard label="Falhas de publicação" icon={AlertCircle} tone="error" to="#dashboard-attention" alert={failed > 0} value={failed} cta={failed > 0 ? 'Ver falhas' : undefined}
                 badge={failed > 0 ? <KpiBadge tone="error" className="hidden sm:inline-flex">Atenção imediata</KpiBadge> : undefined}
                 footer={failed > 0 ? <span className="inline-flex items-center gap-1 font-medium text-error-dark dark:text-error"><AlertTriangle size={13} aria-hidden />Rever no centro de atenção</span> : 'Tudo publicado com sucesso'} />
             </>}

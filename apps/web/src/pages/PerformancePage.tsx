@@ -101,7 +101,7 @@ function SectionHeading({ title, description }: { title: string; description?: s
     {description && <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{description}</p>}</div>
 }
 function KpiCard({ item }: { item: Kpi }) {
-  return <Stat label={item.label} value={item.value} icon={item.icon} hint={item.note} />
+  return <Stat label={item.label} value={item.value} icon={item.icon} title={item.note} />
 }
 function IntegrationStatus({ data, allClients }: { data: Overview; allClients: boolean }) {
   const connected = integrations.filter(item => data.connections.some(row => row.platform === item.platform && row.status === 'ACTIVE')).length

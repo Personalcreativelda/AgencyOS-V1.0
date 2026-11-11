@@ -30,7 +30,8 @@ export function PanelHeader({ title, description, action, divider = true }: {
 /** ↗ 12.5% / ↘ 3.1% chip. `null` means "no previous data to compare with". */
 export function Trend({ value, suffix = 'vs período anterior' }: { value: number | null | undefined; suffix?: string }) {
   if (value === undefined) return null
-  if (value === null) return <span className="text-[13px] text-muted-foreground">Primeiro período com dados</span>
+  // No previous period to compare with: show nothing rather than a caption.
+  if (value === null) return null
   const up = value > 0
   const flat = value === 0
   const Icon = flat ? Minus : up ? ArrowUpRight : ArrowDownRight
@@ -105,7 +106,7 @@ export function TrendBadge({ value }: { value: number | null | undefined }) {
  * KPI card (Stitch dashboard): tinted icon tile + badge on top, then label, big value and a context
  * line with an optional sparkline.
  */
-export function KpiCard({ label, value, icon: Icon, tone = 'brand', footer, to, alert, badge, sparkline }: {
+export function KpiCard({ label, value, icon: Icon, tone = 'brand', footer, to, alert, badge, sparkline, cta }: {
   label: string
   value: ReactNode
   icon: ComponentType<{ size?: number | string; className?: string; strokeWidth?: number | string }>
@@ -118,6 +119,8 @@ export function KpiCard({ label, value, icon: Icon, tone = 'brand', footer, to, 
   badge?: ReactNode
   /** Values for the mini trend line next to the footer. */
   sparkline?: number[]
+  /** Short action shown bottom-right when the card has no trend line (e.g. "Ver pendentes"). */
+  cta?: string
 }) {
   const body = (
     <div className="flex h-full flex-col">
@@ -133,11 +136,15 @@ export function KpiCard({ label, value, icon: Icon, tone = 'brand', footer, to, 
         {value}
       </p>
       {/* No caption text under the number (it repeated what the card already says) — only the trend line. */}
-      {sparkline && (
+      {sparkline ? (
         <div className="mt-auto flex min-h-6 items-end justify-end pt-2">
           <Sparkline values={sparkline} className={cn('hidden sm:block', TONE_TEXT[tone])} />
         </div>
-      )}
+      ) : cta ? (
+        <div className="mt-auto flex min-h-6 items-end justify-end pt-2">
+          <span className={cn('inline-flex items-center gap-1 text-[13px] font-semibold', TONE_TEXT[tone])}>{cta}<span aria-hidden>→</span></span>
+        </div>
+      ) : null}
     </div>
   )
   const cls = 'block h-full min-w-0 rounded-[20px] border border-border/70 bg-card p-4 shadow-card transition-[border-color,box-shadow] duration-200 sm:p-5'

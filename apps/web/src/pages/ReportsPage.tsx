@@ -146,6 +146,7 @@ export function ReportsPage() {
           icon={BarChart2}
           title="Nenhum relatório gerado"
           description="Gere relatórios mensais para seus clientes com síntese estratégica via Brand Brain."
+          action={<Button onClick={() => setShowModal(true)}><Sparkles size={15} />Gerar primeiro relatório</Button>}
         />
       ) : (<>
         <StatGroup>

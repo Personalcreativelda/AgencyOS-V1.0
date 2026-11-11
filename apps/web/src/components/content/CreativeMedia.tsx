@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { getCreativeMedia, type CreativeAsset, type LibraryContent } from './libraryUtils'
 
-export function CreativeThumbnail({ content, className, showLabel = false }: { content: LibraryContent; className?: string; showLabel?: boolean }) {
+export function CreativeThumbnail({ content, className, showLabel = false, cover = false }: { content: LibraryContent; className?: string; showLabel?: boolean; /** Fill the frame (grid tiles already use the network's aspect ratio). */ cover?: boolean }) {
   const media = getCreativeMedia(content)[0]
   const root = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
@@ -29,8 +29,8 @@ export function CreativeThumbnail({ content, className, showLabel = false }: { c
   return (
     <div ref={root} className={cn('relative flex size-full items-center justify-center overflow-hidden bg-muted/60', className)}>
       {(!media || failed || (video && !ready)) && <div className="flex flex-col items-center gap-2 text-muted-foreground"><Icon size={24} strokeWidth={1.5} aria-hidden />{showLabel && (!media || failed) && <span className="text-xs">{failed ? 'Prévia indisponível' : 'Sem mídia associada'}</span>}</div>}
-      {media && !failed && (video ? visible && <video key={media.publicUrl} src={`${media.publicUrl}${media.publicUrl.includes('#') ? '' : '#t=0.1'}`} muted playsInline preload="metadata" tabIndex={-1} aria-hidden onLoadedData={() => setReady(true)} onError={() => setFailed(true)} className={cn('absolute inset-0 size-full object-contain', !ready && 'opacity-0')} />
-        : <img key={media.publicUrl} src={media.publicUrl} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} className="absolute inset-0 size-full object-contain" />)}
+      {media && !failed && (video ? visible && <video key={media.publicUrl} src={`${media.publicUrl}${media.publicUrl.includes('#') ? '' : '#t=0.1'}`} muted playsInline preload="metadata" tabIndex={-1} aria-hidden onLoadedData={() => setReady(true)} onError={() => setFailed(true)} className={cn('absolute inset-0 size-full', cover ? 'object-cover' : 'object-contain', !ready && 'opacity-0')} />
+        : <img key={media.publicUrl} src={media.publicUrl} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} className={cn('absolute inset-0 size-full', cover ? 'object-cover' : 'object-contain')} />)}
     </div>
   )
 }

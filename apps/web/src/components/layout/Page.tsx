@@ -6,8 +6,10 @@ export function Page({ children, className, narrow = false }: { children: ReactN
   return (
     <div
       className={cn(
-        'mx-auto w-full min-w-0 space-y-6 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8',
-        narrow ? 'max-w-3xl' : 'max-w-[1600px]',
+        // Left-aligned with the header (search starts on the same line as the content); the cap only
+        // kicks in on ultrawide screens so lines never get too long.
+        'w-full min-w-0 space-y-6 px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8',
+        narrow ? 'max-w-3xl' : 'max-w-[1920px]',
         className
       )}
     >

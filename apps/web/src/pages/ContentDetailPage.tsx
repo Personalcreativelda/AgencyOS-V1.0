@@ -586,13 +586,13 @@ export function ContentDetailPage() {
   return (
     <Page className="space-y-5 !pt-0">
       <div style={{ '--editor-toolbar-height': `${toolbarHeight}px` } as React.CSSProperties} className="min-w-0 space-y-5">
-      <header ref={toolbarRef} className="sticky top-0 z-20 -mx-1 border-b border-border bg-background/95 px-1 py-4 backdrop-blur-md sm:py-5">
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+      <header ref={toolbarRef} className="sticky top-0 z-20 -mx-1 border-b border-border bg-background/95 px-1 py-3 backdrop-blur-md sm:py-5">
+        <div className="flex flex-col justify-between gap-3 sm:gap-4 lg:flex-row lg:items-center">
           <div className="flex min-w-0 items-center gap-3">
             <Button asChild variant="ghost" size="icon" className="shrink-0"><Link to="/app/content" aria-label="Voltar para criativos"><ArrowLeft size={19} /></Link></Button>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2.5"><h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Editar criativo</h1><StatusBadge status={content.status} /></div>
-              <p className="mt-1 truncate text-xs text-muted-foreground sm:text-[13px]" title={`${content.client?.name || 'Cliente'} · ${content.title}`}>{content.client?.name || 'Cliente'} <span className="px-1">/</span> {content.title}</p>
+              <p className="mt-1 truncate text-xs text-muted-foreground sm:text-[13px]">{content.client?.name || 'Cliente'}</p>
             </div>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -610,7 +610,7 @@ export function ContentDetailPage() {
             </DropdownMenu>
           </div>
         </div>
-        <p role="status" aria-live="polite" className={cn('mt-3 text-xs leading-5', saveError ? 'text-error-dark dark:text-error-light' : isDirty ? 'text-warning-dark dark:text-warning-light' : 'text-muted-foreground')}>{saveMessage}{newComment.trim() && <span className="text-muted-foreground"> · Comentário por enviar</span>}</p>
+        <p role="status" aria-live="polite" className={cn('mt-2 text-xs leading-5 sm:mt-3', !isDirty && !saving && !saveError && 'hidden sm:block', saveError ? 'text-error-dark dark:text-error-light' : isDirty ? 'text-warning-dark dark:text-warning-light' : 'text-muted-foreground')}>{saveMessage}{newComment.trim() && <span className="text-muted-foreground"> · Comentário por enviar</span>}</p>
       </header>
       {(content.platforms || []).some((platform: any) => platform.status === 'FAILED') && (
         <div role="status" className="flex items-start gap-3 rounded-xl border border-error/20 bg-error/5 px-4 py-3">
@@ -687,11 +687,71 @@ export function ContentDetailPage() {
 
           </EditorSection>
         </div>
-        <aside aria-label="Preview social e mídia" className="min-w-0 xl:order-1 xl:sticky xl:top-[calc(var(--editor-toolbar-height)+1rem)]">
+        <aside aria-label="Preview social e mídia" className="order-first min-w-0 xl:order-1 xl:sticky xl:top-[calc(var(--editor-toolbar-height)+1rem)]">
           <Card className="min-w-0 space-y-4 xl:max-h-[calc(100dvh-5rem-var(--editor-toolbar-height))] xl:overflow-y-auto" tabIndex={0} role="region" aria-label="Mídia e pré-visualização">
             <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold">Preview e mídia</h2>
               <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">{CONTENT_TYPE_LABELS[content.contentType]}</span><Button size="icon" variant="ghost" aria-label="Ampliar preview" onClick={() => setPreviewOpen(true)}><Maximize2 size={15} /></Button></div>
+            </div>
+            {/* Main action first: publish right above the post */}
+            <div className="empty:hidden">
+              {previewSelected && (previewPlatform === 'FACEBOOK' || previewPlatform === 'INSTAGRAM' || previewPlatform === 'STORY') && (() => {
+                const targetPlatform = previewPlatform === 'STORY' ? 'INSTAGRAM_STORY' : previewPlatform
+                const connectionPlatform = previewPlatform === 'STORY' ? 'INSTAGRAM' : previewPlatform
+                return connections.some((c) => c.platform === connectionPlatform && c.status === 'ACTIVE') ? (
+                  <Button
+                    size="sm"
+                    onClick={() => handlePublish(targetPlatform)}
+                    loading={publishing === targetPlatform}
+                    className="w-full gap-1.5"
+                  >
+                    {publishing === targetPlatform ? (
+                      <span>Publicando...</span>
+                    ) : (
+                      <>
+                        <Send size={15} />
+                        <span>Publicar {previewPlatform === 'STORY' ? 'Story no Instagram' : `no ${connectionPlatform === 'FACEBOOK' ? 'Facebook' : 'Instagram'}`}</span>
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <span className="block rounded-lg bg-muted/50 px-3 py-2.5 text-center text-xs text-muted-foreground">
+                    Conecte o {connectionPlatform === 'FACEBOOK' ? 'Facebook' : 'Instagram'} em Configurações para publicar direto
+                  </span>
+                )
+              })()}
+
+              {previewSelected && (previewPlatform === 'LINKEDIN' || previewPlatform === 'TIKTOK' || previewPlatform === 'YOUTUBE' || previewPlatform === 'WHATSAPP') && (() => {
+                const targetPlatform = previewPlatform as PublishablePlatform
+                const label = PLATFORM_PUBLISH_LABEL[targetPlatform]
+                return connections.some((c) => c.platform === targetPlatform && c.status === 'ACTIVE') ? (
+                  <Button
+                    size="sm"
+                    onClick={() => handlePublish(targetPlatform)}
+                    loading={publishing === targetPlatform}
+                    className="w-full gap-1.5"
+                  >
+                    {publishing === targetPlatform ? (
+                      <span>
+                        {targetPlatform === 'WHATSAPP'
+                          ? primaryMediaList.length > 1
+                            ? `Publicando ${primaryMediaList.length} imagens... pode levar vários minutos`
+                            : 'Publicando... pode levar até 1 minuto'
+                          : 'Publicando...'}
+                      </span>
+                    ) : (
+                      <>
+                        <Send size={15} />
+                        <span>Publicar no {label}</span>
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <span className="block rounded-lg bg-muted/50 px-3 py-2.5 text-center text-xs text-muted-foreground">
+                    Conecte o {label} em Configurações para publicar direto
+                  </span>
+                )
+              })()}
             </div>
             <div className="hidden xl:block">{preview}</div>
             <button type="button" onClick={() => setPreviewOpen(true)} className="flex w-full items-center gap-3 rounded-lg bg-muted/50 p-3 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 xl:hidden">
@@ -700,7 +760,7 @@ export function ContentDetailPage() {
             </button>
             {isDirty && <p className="text-xs leading-5 text-warning-dark dark:text-warning-light">O preview inclui alterações por guardar. Guarde antes de publicar ou pedir aprovação.</p>}
             {/* Image controls */}
-            <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border">
+            <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
               <Button
                 variant="outline"
                 size="sm"
@@ -724,63 +784,6 @@ export function ContentDetailPage() {
                 onChange={handleUploadCreative}
               />
 
-              {previewSelected && (previewPlatform === 'FACEBOOK' || previewPlatform === 'INSTAGRAM' || previewPlatform === 'STORY') && (() => {
-                const targetPlatform = previewPlatform === 'STORY' ? 'INSTAGRAM_STORY' : previewPlatform
-                const connectionPlatform = previewPlatform === 'STORY' ? 'INSTAGRAM' : previewPlatform
-                return connections.some((c) => c.platform === connectionPlatform && c.status === 'ACTIVE') ? (
-                  <Button
-                    size="sm"
-                    onClick={() => handlePublish(targetPlatform)}
-                    loading={publishing === targetPlatform}
-                    className="gap-1.5 ml-auto"
-                  >
-                    {publishing === targetPlatform ? (
-                      <span>Publicando...</span>
-                    ) : (
-                      <>
-                        <Send size={13} />
-                        <span>Publicar {previewPlatform === 'STORY' ? 'Story no Instagram' : `no ${connectionPlatform === 'FACEBOOK' ? 'Facebook' : 'Instagram'}`}</span>
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <span className="text-[11px] text-muted-foreground font-medium ml-auto">
-                    Conecte o {connectionPlatform === 'FACEBOOK' ? 'Facebook' : 'Instagram'} em Configurações para publicar direto
-                  </span>
-                )
-              })()}
-
-              {previewSelected && (previewPlatform === 'LINKEDIN' || previewPlatform === 'TIKTOK' || previewPlatform === 'YOUTUBE' || previewPlatform === 'WHATSAPP') && (() => {
-                const targetPlatform = previewPlatform as PublishablePlatform
-                const label = PLATFORM_PUBLISH_LABEL[targetPlatform]
-                return connections.some((c) => c.platform === targetPlatform && c.status === 'ACTIVE') ? (
-                  <Button
-                    size="sm"
-                    onClick={() => handlePublish(targetPlatform)}
-                    loading={publishing === targetPlatform}
-                    className="gap-1.5 ml-auto"
-                  >
-                    {publishing === targetPlatform ? (
-                      <span>
-                        {targetPlatform === 'WHATSAPP'
-                          ? primaryMediaList.length > 1
-                            ? `Publicando ${primaryMediaList.length} imagens... pode levar vários minutos`
-                            : 'Publicando... pode levar até 1 minuto'
-                          : 'Publicando...'}
-                      </span>
-                    ) : (
-                      <>
-                        <Send size={13} />
-                        <span>Publicar no {label}</span>
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <span className="text-[11px] text-muted-foreground font-medium ml-auto">
-                    Conecte o {label} em Configurações para publicar direto
-                  </span>
-                )
-              })()}
             </div>
 
             {/* Thumbnail strip for the current set. Images only — video content (REEL/VIDEO/
@@ -792,7 +795,7 @@ export function ContentDetailPage() {
               const showStrip = pendingPreviews.length > 0 || (isImageOnlySet && primaryMediaList.length >= 1)
               if (!showStrip) return null
               return (
-                <div className="flex items-center gap-2 pt-3 border-t border-border overflow-x-auto">
+                <div className="-mt-1 flex items-center gap-2 overflow-x-auto">
                   {uploadingCreative ? (
                     // Replacing the whole set — show only the incoming files as placeholders,
                     // since whatever's currently attached is about to be superseded.

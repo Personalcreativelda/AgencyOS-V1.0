@@ -44,15 +44,34 @@ function ScheduledDate({ content }: { content: LibraryContent }) {
   return date && Number.isFinite(date.getTime()) ? <time dateTime={content.scheduledAt!} title="Data agendada" className="text-xs leading-5 text-muted-foreground">{date.toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</time> : <span className="text-xs leading-5 text-muted-foreground">Sem data agendada</span>
 }
 
+/** Hook first (it is the opening line), then the caption; collapsed to plain readable text. */
+function copyPreview(content: any) {
+  const clean = (v?: string) => String(v || '').replace(/\s+/g, ' ').trim()
+  const hook = clean(content.hook)
+  const caption = clean(content.caption)
+  // Many captions already start with the hook — don't show the same sentence twice.
+  if (!hook) return caption
+  if (!caption || caption.toLowerCase().startsWith(hook.toLowerCase())) return caption || hook
+  return `${hook} ${caption}`
+}
+
 export function ContentGridTile(props: CreativeItemProps) {
   const { content, onPreview } = props
   const media = getCreativeMedia(content)
   const video = media[0]?.mimeType.startsWith('video/') || ['REEL', 'VIDEO', 'STORY'].includes(content.contentType)
   const carousel = content.contentType === 'CAROUSEL'
+  // Square frame for every format: feed creatives are square (e.g. 3208×3208) and show whole;
+  // Stories/Reels get a play badge — the full vertical piece opens in the preview.
+  const vertical = ['STORY', 'REEL'].includes(content.contentType)
   return (
-    <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-card transition-[border-color,box-shadow] duration-150 hover:border-grey-400 hover:shadow-card-hover focus-within:border-primary/60 motion-reduce:transition-none">
-      <button type="button" onClick={onPreview} aria-label={`Pré-visualizar ${content.title}`} className={cn('group/media relative block aspect-square w-full overflow-hidden border-b border-border bg-muted/50 focus-visible:ring-inset sm:aspect-[4/3]', focus)}>
-        <CreativeThumbnail content={content} showLabel />
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-card transition-[border-color,box-shadow] duration-150 hover:border-grey-400 hover:shadow-card-hover focus-within:border-primary/60 motion-reduce:transition-none">
+      <button type="button" onClick={onPreview} aria-label={`Pré-visualizar ${content.title}`} className={cn('group/media relative block aspect-square w-full overflow-hidden border-b border-border bg-muted/50 focus-visible:ring-inset', focus)}>
+        <CreativeThumbnail content={content} showLabel cover={vertical} />
+        {vertical && media.length > 0 && (
+          <span aria-hidden className="absolute inset-0 flex items-center justify-center">
+            <span className="flex size-14 items-center justify-center rounded-full bg-[#000]/55 text-[#fff] ring-1 ring-[#fff]/30 backdrop-blur-sm transition-transform group-hover/media:scale-105"><Play size={24} className="ml-0.5" fill="currentColor" /></span>
+          </span>
+        )}
         <span className="absolute left-2 top-2 inline-flex max-w-[calc(100%-1rem)] items-center gap-1.5 rounded-md border border-border/60 bg-card/95 px-1.5 py-0.5 text-[11px] font-medium text-foreground sm:left-3 sm:top-3 sm:px-2 sm:py-1 sm:text-xs">
           {carousel ? <Layers size={13} aria-hidden /> : video ? <Play size={12} aria-hidden /> : <FileText size={13} aria-hidden />}
           {CONTENT_TYPE_LABELS[content.contentType] || content.contentType}{carousel && media.length > 0 && <span className="tabular-nums">· {media.length}</span>}
@@ -61,7 +80,9 @@ export function ContentGridTile(props: CreativeItemProps) {
         <span className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-[#000]/35 to-transparent px-3 pb-3 pt-6 opacity-0 transition-opacity group-hover/media:opacity-100 group-focus-visible/media:opacity-100 motion-reduce:transition-none"><span className="inline-flex items-center gap-1.5 rounded-md bg-card px-2 py-1 text-xs font-medium text-foreground"><Eye size={13} aria-hidden />Pré-visualizar</span></span>
       </button>
       <div className="flex flex-1 flex-col gap-2.5 p-3 sm:gap-3 sm:p-4">
-        <div className="min-w-0"><h3 className="min-h-10 text-[13px] font-semibold leading-5 sm:text-sm"><Link to={`/app/content/${content.id}`} title={content.title} className={cn('line-clamp-2 rounded-sm hover:underline hover:underline-offset-4', focus)}>{content.title}</Link></h3>
+        <div className="min-w-0"><h3 className="text-[13px] font-semibold leading-5 sm:text-sm"><Link to={`/app/content/${content.id}`} title={content.title} className={cn('line-clamp-1 rounded-sm hover:underline hover:underline-offset-4', focus)}>{content.title}</Link></h3>
+          {/* First lines of the copy fill the space under the title (fixed 2-line height keeps the grid aligned) */}
+          <p className="mt-1 hidden min-h-10 break-words text-[13px] leading-5 text-muted-foreground sm:line-clamp-2">{copyPreview(content) || <span className="italic text-muted-foreground/70">Sem legenda ainda</span>}</p>
           <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2"><p className="truncate text-xs leading-5 text-muted-foreground" title={content.client?.name}>{content.client?.name || 'Cliente não disponível'}</p><Platforms content={content} /></div>
           <ScheduledDate content={content} />
         </div>

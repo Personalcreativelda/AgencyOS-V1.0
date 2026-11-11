@@ -17,7 +17,9 @@ interface AreaChartProps {
   className?: string
 }
 
-const PAD = { top: 16, right: 12, bottom: 28, left: 36 }
+const PAD = { top: 16, right: 12, bottom: 28, left: 44 }
+// Axis ticks: 80000 -> "80 mil", 1200000 -> "1,2 mi" (pt-BR compact notation).
+const compact = new Intl.NumberFormat('pt-BR', { notation: 'compact', maximumFractionDigits: 1 })
 
 /** Monotone cubic path through the points (no overshoot below zero, smooth like the reference). */
 function smoothPath(points: [number, number][]) {
@@ -129,7 +131,7 @@ export function AreaChart({ labels, series, height = 280, formatLabel, className
           {ticks.map((t) => (
             <g key={t}>
               <line x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} className="stroke-border" strokeDasharray={t === 0 ? undefined : '3 4'} />
-              <text x={PAD.left - 10} y={y(t)} dy="0.32em" textAnchor="end" className="fill-muted-foreground text-[11px] tabular-nums">{t}</text>
+              <text x={PAD.left - 10} y={y(t)} dy="0.32em" textAnchor="end" className="fill-muted-foreground text-[11px] tabular-nums">{compact.format(t)}</text>
             </g>
           ))}
 

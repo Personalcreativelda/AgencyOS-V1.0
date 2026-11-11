@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/Input'
 import { Textarea } from '@/components/ui/Textarea'
 import { Label } from '@/components/ui/Label'
 import { Badge } from '@/components/ui/Badge'
+import { Meta } from '@/components/ui/List'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Card } from '@/components/ui/Card'
 import { UploadableAvatar } from '@/components/ui/UploadableAvatar'
@@ -436,12 +437,11 @@ export function ClientDetailPage() {
               <h1 className="truncate text-[26px] font-bold tracking-[-0.02em] text-foreground">{client.name}</h1>
               <Badge dot variant={client.status === 'ACTIVE' ? 'success' : client.status === 'PAUSED' ? 'warning' : 'default'}>{client.status === 'ACTIVE' ? 'Ativo' : client.status === 'PAUSED' ? 'Pausado' : client.status}</Badge>
             </div>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-              <span>{client.industry || 'Setor não informado'}</span>
-              <span aria-hidden className="text-muted-foreground/50">·</span>
-              <span>Cliente desde {new Date(client.createdAt).toLocaleDateString('pt-BR')}</span>
-              {client.accountManager?.name && <><span aria-hidden className="text-muted-foreground/50">·</span><span>Gestor: {client.accountManager.name}</span></>}
-            </p>
+            <Meta className="mt-1.5 text-sm" items={[
+              client.industry || 'Setor não informado',
+              `Cliente desde ${new Date(client.createdAt).toLocaleDateString('pt-BR')}`,
+              client.accountManager?.name && `Gestor: ${client.accountManager.name}`,
+            ]} />
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">

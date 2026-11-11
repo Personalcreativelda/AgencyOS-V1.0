@@ -21,7 +21,7 @@ type Props = {
   onRetry: () => void; onCreate: () => void; onDelete: (id: string, title: string) => void
 }
 const ALL = '__all'
-const gridClass = 'grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4'
+const gridClass = 'grid grid-cols-2 items-start gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5'
 
 export function ContentLibrary(props: Props) {
   const navigate = useNavigate()

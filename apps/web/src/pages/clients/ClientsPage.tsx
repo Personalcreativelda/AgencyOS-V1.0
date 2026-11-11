@@ -99,7 +99,7 @@ function ClientCard({ client, onDescription }: { client: Client; onDescription: 
       </div>
       <div className="mt-auto flex min-w-0 items-center gap-3 border-t border-border/70 pt-4 text-[13px] leading-5 text-muted-foreground">
         <span className="inline-flex shrink-0 items-center gap-1.5 font-medium text-foreground/80"><FileText size={14} aria-hidden /><span className="tabular-nums">{contents === 0 ? 'Sem conteúdos' : `${contents} ${contents === 1 ? 'conteúdo' : 'conteúdos'}`}</span></span>
-        <span className="inline-flex min-w-0 items-center gap-1.5" title={client.accountManager?.name || 'Gestor não atribuído'}><User size={14} className="shrink-0" aria-hidden /><span className="truncate">{client.accountManager?.name || 'Sem gestor'}</span></span>
+        {client.accountManager?.name && <span className="inline-flex min-w-0 items-center gap-1.5" title={`Gestor: ${client.accountManager.name}`}><User size={14} className="shrink-0" aria-hidden /><span className="truncate">{client.accountManager.name}</span></span>}
         <ChevronRight size={15} aria-hidden className="ml-auto shrink-0 transition-colors group-hover:text-foreground group-focus-within:text-foreground motion-reduce:transition-none" />
       </div>
     </article>
@@ -117,7 +117,7 @@ function ClientRow({ client }: { client: Client }) {
           <span className="block truncate text-[13px] text-muted-foreground">{client.industry?.trim() || 'Setor não informado'}</span>
         </span>
         <span className="hidden w-32 shrink-0 text-[13px] tabular-nums text-muted-foreground md:block">{contents === 0 ? 'Sem conteúdos' : `${contents} ${contents === 1 ? 'conteúdo' : 'conteúdos'}`}</span>
-        <span className="hidden w-40 shrink-0 truncate text-[13px] text-muted-foreground lg:block">{client.accountManager?.name || 'Sem gestor'}</span>
+        <span className="hidden w-40 shrink-0 truncate text-[13px] text-muted-foreground lg:block">{client.accountManager?.name || '—'}</span>
         <span className="w-24 shrink-0 text-right"><StatusText status={client.status} /></span>
         <ChevronRight size={16} aria-hidden className="shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
       </Link>
