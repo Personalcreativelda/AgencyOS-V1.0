@@ -5,6 +5,7 @@ import { NotFoundError, ValidationError } from '../../common/middleware/errorHan
 import { encrypt, decrypt, maskSecret } from '../../common/crypto';
 import { GRAPH_URL, GRAPH_VERSION, buildMetaRedirectUri, getAgencyMetaCredentials, exchangeCodeForLongLivedToken } from '../../integrations/meta/metaClient';
 import { handleAdsMetaAuth } from '../ads/ads.controller';
+import { requireEvolutionConfig, type EvolutionConfig } from '../../integrations/agencyIntegrations';
 import {
   LINKEDIN_API_URL, LINKEDIN_AUTH_URL, buildLinkedInRedirectUri, getAgencyLinkedInCredentials, exchangeLinkedInCode, linkedInHeaders, linkedInApiError,
 } from '../../integrations/linkedin/linkedinClient';
@@ -1129,7 +1130,8 @@ export async function publishToYouTube(params: {
 }
 
 // ─── WHATSAPP (EVOLUTION API — self-hosted) ─────────────────────────────────
-// Docs: https://doc.evolution-api.com — set EVOLUTION_API_URL / EVOLUTION_API_KEY in .env
+// Docs: https://doc.evolution-api.com — each agency sets its server URL + API key in Redes sociais › Agência
+// (integrations/agencyIntegrations.ts); EVOLUTION_API_URL/KEY in .env is only the fallback.
 //
 // One connection PER AGENCY, not per client: the agency connects its own WhatsApp number once,
 // and that same number sends creative previews to every client's phone for approval. Clients
@@ -1181,19 +1183,9 @@ function instanceNameForAgency(agencyId: string) {
   return `agencyos-agency-${agencyId}`;
 }
 
-function evolutionHeaders() {
-  return { 'Content-Type': 'application/json', apikey: process.env.EVOLUTION_API_KEY || '' };
-}
-
-function assertEvolutionConfigured() {
-  if (!process.env.EVOLUTION_API_URL) {
-    throw new ValidationError('EVOLUTION_API_URL não configurado no servidor. Veja .env.example.');
-  }
-}
-
-async function disconnectEvolutionInstance(instanceName: string) {
-  await fetch(`${process.env.EVOLUTION_API_URL}/instance/logout/${instanceName}`, { method: 'DELETE', headers: evolutionHeaders() }).catch(() => {});
-  await fetch(`${process.env.EVOLUTION_API_URL}/instance/delete/${instanceName}`, { method: 'DELETE', headers: evolutionHeaders() }).catch(() => {});
+async function disconnectEvolutionInstance(evo: EvolutionConfig, instanceName: string) {
+  await fetch(`${evo.url}/instance/logout/${instanceName}`, { method: 'DELETE', headers: evo.headers }).catch(() => {});
+  await fetch(`${evo.url}/instance/delete/${instanceName}`, { method: 'DELETE', headers: evo.headers }).catch(() => {});
 }
 
 export async function getWhatsAppSettings(req: AuthRequest, res: Response, next: NextFunction) {
@@ -1206,13 +1198,13 @@ export async function getWhatsAppSettings(req: AuthRequest, res: Response, next:
 
 export async function whatsappConnect(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    assertEvolutionConfigured();
+    const evo = await requireEvolutionConfig(req.user!.agencyId);
     const agencyId = req.user!.agencyId;
     const instanceName = instanceNameForAgency(agencyId);
 
-    const createRes = await fetch(`${process.env.EVOLUTION_API_URL}/instance/create`, {
+    const createRes = await fetch(`${evo.url}/instance/create`, {
       method: 'POST',
-      headers: evolutionHeaders(),
+      headers: evo.headers,
       body: JSON.stringify({ instanceName, qrcode: true, integration: 'WHATSAPP-BAILEYS' }),
     });
     const createData = await createRes.json() as any;
@@ -1229,11 +1221,11 @@ export async function whatsappConnect(req: AuthRequest, res: Response, next: Nex
 
 export async function whatsappStatus(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    assertEvolutionConfigured();
+    const evo = await requireEvolutionConfig(req.user!.agencyId);
     const agencyId = req.user!.agencyId;
     const instanceName = instanceNameForAgency(agencyId);
-    const stateRes = await fetch(`${process.env.EVOLUTION_API_URL}/instance/connectionState/${instanceName}`, {
-      headers: evolutionHeaders(),
+    const stateRes = await fetch(`${evo.url}/instance/connectionState/${instanceName}`, {
+      headers: evo.headers,
     });
     const stateData = await stateRes.json() as any;
     const rawState = stateData.instance?.state || stateData.state || 'close';
@@ -1250,9 +1242,9 @@ export async function whatsappStatus(req: AuthRequest, res: Response, next: Next
 
 export async function whatsappDisconnect(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    assertEvolutionConfigured();
+    const evo = await requireEvolutionConfig(req.user!.agencyId);
     const agencyId = req.user!.agencyId;
-    await disconnectEvolutionInstance(instanceNameForAgency(agencyId));
+    await disconnectEvolutionInstance(evo, instanceNameForAgency(agencyId));
     await deleteWhatsAppSettingsRow(agencyId);
     res.status(204).send();
   } catch (err: any) {
@@ -1267,7 +1259,7 @@ export async function sendWhatsAppMedia(params: {
   agencyId: string; phone: string; caption: string; mediaUrl?: string; mediaType?: 'image' | 'video';
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    assertEvolutionConfigured();
+    const evo = await requireEvolutionConfig(params.agencyId);
     const instanceName = instanceNameForAgency(params.agencyId);
     const number = params.phone.replace(/\D/g, '');
     const endpoint = params.mediaUrl ? 'sendMedia' : 'sendText';
@@ -1275,9 +1267,9 @@ export async function sendWhatsAppMedia(params: {
       ? { number, mediatype: params.mediaType || 'image', media: params.mediaUrl, caption: params.caption }
       : { number, text: params.caption };
 
-    const sendRes = await fetch(`${process.env.EVOLUTION_API_URL}/message/${endpoint}/${instanceName}`, {
+    const sendRes = await fetch(`${evo.url}/message/${endpoint}/${instanceName}`, {
       method: 'POST',
-      headers: evolutionHeaders(),
+      headers: evo.headers,
       body: JSON.stringify(body),
     });
     const sendData = await sendRes.json() as any;
@@ -1290,16 +1282,16 @@ export async function sendWhatsAppMedia(params: {
 
 export async function whatsappSend(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    assertEvolutionConfigured();
+    const evo = await requireEvolutionConfig(req.user!.agencyId);
     const { phone, message } = req.body;
     if (!phone || !message) {
       return res.status(400).json({ error: 'phone e message são obrigatórios.' });
     }
 
     const instanceName = instanceNameForAgency(req.user!.agencyId);
-    const sendRes = await fetch(`${process.env.EVOLUTION_API_URL}/message/sendText/${instanceName}`, {
+    const sendRes = await fetch(`${evo.url}/message/sendText/${instanceName}`, {
       method: 'POST',
-      headers: evolutionHeaders(),
+      headers: evo.headers,
       body: JSON.stringify({ number: phone.replace(/\D/g, ''), text: message }),
     });
     const sendData = await sendRes.json() as any;
@@ -1317,7 +1309,7 @@ export async function whatsappSend(req: AuthRequest, res: Response, next: NextFu
 // Content/ContentPlatform status — this is a private share, not a public platform publish.
 export async function sendContentViaWhatsApp(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    assertEvolutionConfigured();
+    const evo = await requireEvolutionConfig(req.user!.agencyId);
     const { contentId } = req.body;
     if (!contentId) return res.status(400).json({ error: 'contentId is required' });
 
@@ -1366,7 +1358,7 @@ export async function sendContentViaWhatsApp(req: AuthRequest, res: Response, ne
 
 export async function connectClientWhatsApp(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    assertEvolutionConfigured();
+    const evo = await requireEvolutionConfig(req.user!.agencyId);
     const { clientId, instanceName } = req.body;
     if (!clientId || !instanceName) return res.status(400).json({ error: 'clientId e instanceName são obrigatórios.' });
 
@@ -1374,7 +1366,7 @@ export async function connectClientWhatsApp(req: AuthRequest, res: Response, nex
     if (!client) throw new NotFoundError('Client not found');
 
     const name = String(instanceName).trim();
-    const stateRes = await fetch(`${process.env.EVOLUTION_API_URL}/instance/connectionState/${name}`, { headers: evolutionHeaders() });
+    const stateRes = await fetch(`${evo.url}/instance/connectionState/${name}`, { headers: evo.headers });
     const stateData = await stateRes.json().catch(() => ({})) as any;
     const rawState = stateData.instance?.state || stateData.state;
     if (!stateRes.ok || rawState !== 'open') {
@@ -1394,13 +1386,13 @@ export async function connectClientWhatsApp(req: AuthRequest, res: Response, nex
 // our storage, which can run longer still — so the timeout has real margin above that, not a
 // round number. It exists to guard against the documented sendStatus hang bug, not to fire on
 // normal (if slow) latency.
-async function sendOneWhatsAppStatus(instanceName: string, params: { type: 'text' | 'image' | 'video'; content: string; caption: string }) {
+async function sendOneWhatsAppStatus(evo: EvolutionConfig, instanceName: string, params: { type: 'text' | 'image' | 'video'; content: string; caption: string }) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 180_000);
   try {
-    const statusRes = await fetch(`${process.env.EVOLUTION_API_URL}/message/sendStatus/${instanceName}`, {
+    const statusRes = await fetch(`${evo.url}/message/sendStatus/${instanceName}`, {
       method: 'POST',
-      headers: evolutionHeaders(),
+      headers: evo.headers,
       signal: controller.signal,
       body: JSON.stringify({ ...params, backgroundColor: '#075E54', font: 1, allContacts: true }),
     });
@@ -1430,7 +1422,7 @@ export async function publishToWhatsAppStatus(params: {
   let sentCount = 0;
   let totalCount = 0;
   try {
-    assertEvolutionConfigured();
+    const evo = await requireEvolutionConfig(agencyId);
     const content = await prisma.content.findFirst({
       where: { id: contentId, agencyId, deletedAt: null },
       include: { assets: { where: { role: 'PRIMARY' }, include: { asset: true }, orderBy: { sortOrder: 'asc' } } },
@@ -1455,7 +1447,7 @@ export async function publishToWhatsAppStatus(params: {
     if (mediaList.length > 0) {
       for (const media of mediaList) {
         if (!media.publicUrl) throw new Error('Uma das mídias não tem URL pública disponível ainda. Tente novamente em instantes.');
-        await sendOneWhatsAppStatus(connection.externalPageId, {
+        await sendOneWhatsAppStatus(evo, connection.externalPageId, {
           type: media.mimeType.startsWith('video/') ? 'video' : 'image',
           content: media.publicUrl,
           caption,
@@ -1463,7 +1455,7 @@ export async function publishToWhatsAppStatus(params: {
         sentCount++;
       }
     } else {
-      await sendOneWhatsAppStatus(connection.externalPageId, { type: 'text', content: caption || content.title, caption });
+      await sendOneWhatsAppStatus(evo, connection.externalPageId, { type: 'text', content: caption || content.title, caption });
       sentCount++;
     }
 

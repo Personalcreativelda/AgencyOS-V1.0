@@ -102,7 +102,7 @@ model Agency {
 // (linkedin.com/developers), TikTok App (developers.tiktok.com) and Google Cloud project
 // (console.cloud.google.com, for YouTube uploads) so Facebook/Instagram/LinkedIn/TikTok/
 // YouTube connections aren't tied to one shared app for the whole SaaS. WhatsApp (Evolution
-// API) stays server-configured via env — it's self-hosted infra, not a per-tenant credential.
+// API) and the TikTok Ads app are also per agency (server env only as a developer fallback).
 model AgencySocialSettings {
   id                             String   @id @default(uuid())
   agencyId                       String   @unique @map("agency_id")
@@ -114,6 +114,10 @@ model AgencySocialSettings {
   tiktokClientSecretEncrypted    String?  @map("tiktok_client_secret_encrypted")
   youtubeClientId                String?  @map("youtube_client_id")
   youtubeClientSecretEncrypted   String?  @map("youtube_client_secret_encrypted")
+  evolutionApiUrl                String?  @map("evolution_api_url")
+  evolutionApiKeyEncrypted       String?  @map("evolution_api_key_encrypted")
+  tiktokAdsAppId                 String?  @map("tiktok_ads_app_id")
+  tiktokAdsAppSecretEncrypted    String?  @map("tiktok_ads_app_secret_encrypted")
   createdAt                      DateTime @default(now()) @map("created_at")
   updatedAt                      DateTime @updatedAt @map("updated_at")
 

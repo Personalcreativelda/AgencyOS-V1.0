@@ -1,3 +1,4 @@
+import * as integrations from '../../integrations/agencyIntegrations';
 import { Router } from 'express';
 import * as ctrl from './social.controller';
 import { authenticate } from '../../common/middleware/auth';
@@ -39,6 +40,13 @@ router.get('/youtube/settings', ctrl.getYouTubeSettings);
 router.put('/youtube/settings', ctrl.saveYouTubeSettings);
 router.delete('/youtube/settings', ctrl.deleteYouTubeSettings);
 router.get('/youtube/connect', ctrl.youtubeConnect);
+
+router.get('/evolution/settings', integrations.getEvolutionSettings);
+router.put('/evolution/settings', integrations.saveEvolutionSettings);
+router.delete('/evolution/settings', integrations.deleteEvolutionSettings);
+router.get('/tiktok-ads/settings', integrations.getTikTokAdsSettings);
+router.put('/tiktok-ads/settings', integrations.saveTikTokAdsSettings);
+router.delete('/tiktok-ads/settings', integrations.deleteTikTokAdsSettings);
 
 router.get('/whatsapp/settings', ctrl.getWhatsAppSettings);
 router.post('/whatsapp/connect', ctrl.whatsappConnect);

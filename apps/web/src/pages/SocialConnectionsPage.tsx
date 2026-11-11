@@ -29,6 +29,7 @@ import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
 import { getErrorMessage } from '@/lib/errors'
 import { Page, PageHeader } from '@/components/layout/Page'
+import { CredentialSettingsRow } from '@/components/social/CredentialSettingsRow'
 
 // Built from wherever the app is actually running (works for localhost, staging, prod,
 // Coolify's auto-generated domain, a custom domain — no manual "figure out your API URL" step).
@@ -281,7 +282,7 @@ export function SocialConnectionsPage() {
 
   // WhatsApp Status (per-client, Evolution API) — no OAuth, no agency-level settings needed:
   // just the client's already-paired Evolution instance name, reusing the agency's own
-  // Evolution API server (EVOLUTION_API_URL/KEY) that already works for the agency-level
+  // Evolution API server (configured in Redes sociais › Agência) that already works for the agency-level
   // WhatsApp connection below.
   const [showWhatsappConnectModal, setShowWhatsappConnectModal] = useState(false)
   const [whatsappInstanceInput, setWhatsappInstanceInput] = useState('')
@@ -963,6 +964,25 @@ export function SocialConnectionsPage() {
                 </div>
               </div>
 
+              {/* TikTok Ads app row (Marketing API — separate from the TikTok publishing app) */}
+              <CredentialSettingsRow
+                endpoint="/social/tiktok-ads/settings"
+                title="TikTok Ads (app de anúncios)"
+                icon={<SiTiktok size={20} />}
+                iconClassName="flex size-10 shrink-0 items-center justify-center rounded-xl border-transparent text-[#fff]"
+                iconStyle={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}
+                emptyHint="Necessário para ler campanhas do TikTok Ads dos clientes"
+                summary={(d) => `App ID: ${d.tiktokAdsAppId}`}
+                dialogDescription="Crie um app em business-api.tiktok.com (TikTok for Business › Marketing API) e cole aqui o App ID e o Secret."
+                notice={<div className="rounded-xl border border-border bg-muted/40 px-3.5 py-3 text-xs leading-relaxed text-muted-foreground">
+                  URL de redirecionamento para colar no app: <span className="break-all font-mono text-foreground">{`${window.location.origin}/api/v1/ad-platforms/tiktok/callback`}</span>
+                </div>}
+                fields={[
+                  { name: 'tiktokAdsAppId', label: 'App ID', placeholder: 'Ex.: 7312345678901234567', current: 'tiktokAdsAppId' },
+                  { name: 'tiktokAdsAppSecret', label: 'Secret', secret: true, current: 'tiktokAdsAppSecretMasked' },
+                ]}
+              />
+
               {/* YouTube App row */}
               <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3.5 min-w-0">
@@ -992,6 +1012,21 @@ export function SocialConnectionsPage() {
                   )}
                 </div>
               </div>
+
+              {/* WhatsApp server (Evolution API) — each agency uses its own server */}
+              <CredentialSettingsRow
+                endpoint="/social/evolution/settings"
+                title="Servidor do WhatsApp (Evolution API)"
+                icon={<SiWhatsapp size={19} />}
+                iconClassName="flex size-10 shrink-0 items-center justify-center rounded-xl border-transparent bg-[#25D366]/10 text-[#25D366]"
+                emptyHint="Necessário para enviar aprovações e publicar no Status do WhatsApp"
+                summary={(d) => d.evolutionApiUrl}
+                dialogDescription="O servidor Evolution API da agência. O AgencyOS testa a ligação antes de salvar."
+                fields={[
+                  { name: 'evolutionApiUrl', label: 'URL do servidor', placeholder: 'https://evolution.suaagencia.com', current: 'evolutionApiUrl' },
+                  { name: 'evolutionApiKey', label: 'API Key global', secret: true, current: 'evolutionApiKeyMasked', help: 'É a AUTHENTICATION_API_KEY configurada no seu servidor Evolution.' },
+                ]}
+              />
 
               {/* WhatsApp row */}
               <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
@@ -1029,7 +1064,7 @@ export function SocialConnectionsPage() {
               {/* Email (SMTP) row */}
               <div className="flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-11 h-11 rounded-2xl bg-info/10 text-info-dark flex items-center justify-center shrink-0">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-info/10 text-info-dark">
                     <Mail size={19} />
                   </div>
                   <div className="min-w-0">

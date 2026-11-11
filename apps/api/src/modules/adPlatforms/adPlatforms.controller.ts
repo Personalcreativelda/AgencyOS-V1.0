@@ -5,6 +5,7 @@ import { prisma } from '../../database/prisma';
 import { encrypt, decrypt } from '../../common/crypto';
 import { AppError, NotFoundError, ValidationError } from '../../common/middleware/errorHandler';
 import { getAgencyLinkedInCredentials } from '../../integrations/linkedin/linkedinClient';
+import { getTikTokAdsCredentials } from '../../integrations/agencyIntegrations';
 
 type Platform = 'tiktok' | 'linkedin';
 type Option = { id: string; name: string; currency: string | null };
@@ -51,16 +52,13 @@ function readState(value: string) {
   return data;
 }
 async function credentials(platform: Platform, agencyId: string) {
-  if (platform === 'tiktok') {
-    const id = process.env.TIKTOK_ADS_APP_ID;
-    const secret = process.env.TIKTOK_ADS_APP_SECRET;
-    return id && secret ? { id, secret } : null;
-  }
+  // Configured per agency in Redes sociais › Agência; server env is only the developer fallback.
+  if (platform === 'tiktok') return getTikTokAdsCredentials(agencyId);
+  const agency = await getAgencyLinkedInCredentials(agencyId);
+  if (agency) return { id: agency.clientId, secret: agency.clientSecret };
   const id = process.env.LINKEDIN_ADS_CLIENT_ID;
   const secret = process.env.LINKEDIN_ADS_CLIENT_SECRET;
-  if (id && secret) return { id, secret };
-  const agency = await getAgencyLinkedInCredentials(agencyId);
-  return agency ? { id: agency.clientId, secret: agency.clientSecret } : null;
+  return id && secret ? { id, secret } : null;
 }
 
 async function tikTokJson(path: string, token?: string, init?: RequestInit) {
@@ -126,8 +124,8 @@ export async function settings(req: AuthRequest, res: Response, next: NextFuncti
     const platform = parsePlatform(req.params.platform);
     const configured = !!await credentials(platform, req.user!.agencyId);
     res.json({ configured, callbackUrl: callbackUrl(platform),
-      setup: platform === 'tiktok' ? 'TIKTOK_ADS_APP_ID e TIKTOK_ADS_APP_SECRET no servidor' :
-        'Aplicação LinkedIn em Redes Sociais → Agência, ou LINKEDIN_ADS_CLIENT_ID e LINKEDIN_ADS_CLIENT_SECRET no servidor',
+      setup: platform === 'tiktok' ? 'Configure o App ID e o Secret do TikTok Ads em Redes sociais › Agência' :
+        'Configure a aplicação LinkedIn em Redes sociais › Agência',
       requiredAccess: platform === 'tiktok' ? 'TikTok for Business: Read Ad Account Information e Reporting' :
         'LinkedIn Advertising API aprovada, com r_ads e r_ads_reporting',
     });

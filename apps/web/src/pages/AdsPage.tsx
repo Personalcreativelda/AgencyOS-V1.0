@@ -541,7 +541,6 @@ export function AdsPage() {
                 <StatGroup className="lg:grid-cols-5 [&>*]:bg-muted/30">
                   {audienceKpis.map((k) => <Stat key={k.label} label={k.label} value={k.value} icon={k.icon} />)}
                 </StatGroup>
-                <p className="max-w-4xl text-[11px] leading-relaxed text-muted-foreground">Contatos iniciados incluem conversas ou leads reportados pela Meta. A taxa usa cliques no link como base e não representa pessoas únicas.</p>
                 <AudienceBreakdown
                   regions={audience.regions}
                   demographics={audience.demographics}

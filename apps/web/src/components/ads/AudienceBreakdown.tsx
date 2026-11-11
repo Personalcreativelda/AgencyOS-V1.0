@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
-import { MapPin, Target, Users } from 'lucide-react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
+import { Info, MapPin, Target, Users } from 'lucide-react'
+import { Segmented } from '@/components/dashboard/DashboardWidgets'
 import { DonutChart, DonutLegend, type DonutSlice } from '@/components/charts/DonutChart'
 
 export type AudienceSegment = {
@@ -22,6 +22,13 @@ const PALETTE = ['#00A76F', '#00B8D9', '#8E33FF', '#FFAB00', '#FF5630']
 const OTHERS = '#919EAB'
 const MAX_SLICES = 5
 
+// Meta returns placements like "whatsapp · status" — show proper product names.
+const BRANDS: Record<string, string> = { whatsapp: 'WhatsApp', facebook: 'Facebook', instagram: 'Instagram', messenger: 'Messenger', audience_network: 'Audience Network', threads: 'Threads' }
+const prettify = (label: string) => label
+  .split(' · ')
+  .map((part) => BRANDS[part.toLowerCase()] || part.replace(/_/g, ' ').replace(/^\p{Ll}/u, (c) => c.toUpperCase()))
+  .join(' · ')
+
 interface AudienceBreakdownProps {
   regions: AudienceSegment[]
   demographics: AudienceSegment[]
@@ -42,17 +49,17 @@ export function AudienceBreakdown({ regions, demographics, placements, formatMon
 
   return (
     <section className="min-w-0 space-y-4" aria-label="Comparação por região, público e posicionamento">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-        <p id={`${id}-scale`} className="max-w-xl text-xs leading-relaxed text-muted-foreground">Participação de cada item no total da métrica escolhida. Os valores não representam pessoas únicas.</p>
-        <div className="w-full shrink-0 sm:w-44">
-          <label htmlFor={`${id}-metric`} className="mb-1.5 block text-xs font-medium text-muted-foreground">Comparar por</label>
-          <Select value={metric} onValueChange={value => setMetric(value as Metric)}>
-            <SelectTrigger id={`${id}-metric`}><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {(Object.keys(METRICS) as Metric[]).map(key => <SelectItem key={key} value={key}>{METRICS[key]}</SelectItem>)}
-            </SelectContent>
-          </Select>
+      <div className="flex flex-col gap-3 border-t border-border/70 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="text-[15px] font-semibold text-foreground">Distribuição por público</h3>
+          <p id={`${id}-scale`} className="mt-0.5 text-[13px] text-muted-foreground">Participação de cada item no total de {METRICS[metric].toLowerCase()}.</p>
         </div>
+        <Segmented
+          label="Comparar por"
+          value={metric}
+          onChange={setMetric}
+          options={(Object.keys(METRICS) as Metric[]).map((key) => ({ value: key, label: METRICS[key] }))}
+        />
       </div>
       <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*:last-child]:col-span-2 2xl:grid-cols-3 2xl:[&>*:last-child]:col-span-1">
         {groups.map((group, index) => {
@@ -61,7 +68,7 @@ export function AudienceBreakdown({ regions, demographics, placements, formatMon
           const rows = [...group.rows].sort((a, b) => value(b) - value(a)).filter((row) => value(row) > 0)
           const top = rows.slice(0, MAX_SLICES)
           const rest = rows.slice(MAX_SLICES).reduce((sum, row) => sum + value(row), 0)
-          const slices: DonutSlice[] = top.map((row, i) => ({ key: `${row.label}-${i}`, label: row.label, value: value(row), color: PALETTE[i] }))
+          const slices: DonutSlice[] = top.map((row, i) => ({ key: `${row.label}-${i}`, label: prettify(row.label), value: value(row), color: PALETTE[i] }))
           if (rest > 0) slices.push({ key: 'others', label: `Outros (${rows.length - MAX_SLICES})`, value: rest, color: OTHERS })
           const total = slices.reduce((sum, slice) => sum + slice.value, 0)
           const titleId = `${id}-group-${index}`
@@ -89,6 +96,10 @@ export function AudienceBreakdown({ regions, demographics, placements, formatMon
           )
         })}
       </div>
+      <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
+        <Info size={14} aria-hidden className="mt-0.5 shrink-0" />
+        <span>Contatos incluem conversas e leads reportados pela Meta. Os valores são agregados por entrega do anúncio e não representam pessoas únicas.</span>
+      </p>
     </section>
   )
 }

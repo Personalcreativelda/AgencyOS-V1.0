@@ -153,7 +153,7 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
   value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex w-full items-center gap-0.5 rounded-full border border-border bg-card p-1 shadow-card sm:inline-flex sm:w-auto">
+    <div role="radiogroup" aria-label={label} className="flex w-full max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-card p-1 shadow-card [scrollbar-width:none] sm:inline-flex sm:w-auto [&::-webkit-scrollbar]:hidden">
       {options.map((o) => (
         <button
           key={o.value}
@@ -161,7 +161,7 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
           role="radio"
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
-          className={cn('h-8 flex-1 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold transition-colors sm:flex-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+          className={cn('h-8 flex-1 shrink-0 whitespace-nowrap rounded-full px-3 text-[13px] sm:px-3.5 font-semibold transition-colors sm:flex-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
             value === o.value ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}
         >
           {o.label}
