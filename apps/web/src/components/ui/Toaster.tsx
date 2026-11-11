@@ -10,9 +10,15 @@ const ICONS: Record<ToastVariant, typeof CheckCircle2> = {
 }
 
 const ICON_STYLES: Record<ToastVariant, string> = {
-  success: 'text-success',
-  error: 'text-error',
-  info: 'text-primary',
+  success: 'bg-success/10 text-success-dark dark:text-success',
+  error: 'bg-error/10 text-error-dark dark:text-error',
+  info: 'bg-info/10 text-info-dark dark:text-info',
+}
+
+const BAR: Record<ToastVariant, string> = {
+  success: 'before:bg-success',
+  error: 'before:bg-error',
+  info: 'before:bg-info',
 }
 
 /** Mounted once near the app root. Renders every toast currently in `useToastStore`,
@@ -31,17 +37,18 @@ export function Toaster() {
             open
             onOpenChange={(open) => { if (!open) dismiss(t.id) }}
             className={cn(
-              'flex items-start gap-3 rounded-2xl border border-border bg-card p-4 shadow-dialog w-full',
+              'relative flex w-full items-start gap-3 overflow-hidden rounded-2xl border border-border bg-card p-4 pl-5 shadow-dialog',
+              'before:absolute before:inset-y-0 before:left-0 before:w-1', BAR[t.variant],
               'data-[state=open]:animate-fade-in data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)]'
             )}
           >
-            <Icon size={18} className={cn('shrink-0 mt-0.5', ICON_STYLES[t.variant])} />
-            <div className="flex-1 min-w-0 space-y-0.5">
-              <ToastPrimitive.Title className="text-sm font-bold text-foreground leading-snug">
+            <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-full', ICON_STYLES[t.variant])}><Icon size={17} /></span>
+            <div className="min-w-0 flex-1 space-y-0.5 pt-1">
+              <ToastPrimitive.Title className="text-sm font-semibold leading-snug text-foreground">
                 {t.title}
               </ToastPrimitive.Title>
               {t.description && (
-                <ToastPrimitive.Description className="text-xs text-muted-foreground font-medium leading-snug">
+                <ToastPrimitive.Description className="text-[13px] leading-snug text-muted-foreground">
                   {t.description}
                 </ToastPrimitive.Description>
               )}

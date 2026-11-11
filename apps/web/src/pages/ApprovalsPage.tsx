@@ -11,6 +11,7 @@ import { Page, PageHeader } from '@/components/layout/Page'
 import { ListCard, ListSkeleton, listRowClass, Meta } from '@/components/ui/List'
 import { cn } from '@/lib/utils'
 import { Stat, StatGroup } from '@/components/ui/Stat'
+import { FilterBar } from '@/components/ui/FilterPills'
 
 type Filter = 'all' | 'PENDING' | 'CHANGES_REQUESTED' | 'APPROVED'
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
@@ -93,34 +94,7 @@ export function ApprovalsPage() {
           <Stat label="Taxa de aprovação" value={rate === null ? '—' : `${rate}%`} icon={Percent} hint="Aprovadas entre as respondidas" />
         </StatGroup>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]" role="tablist" aria-label="Filtrar por estado">
-            {tabs.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                role="tab"
-                aria-selected={filter === t.key}
-                onClick={() => setFilter(t.key)}
-                className={cn(
-                  'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-colors',
-                  filter === t.key ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                )}
-              >
-                {t.label}
-                <span className={cn('rounded-full px-1.5 text-[11px] tabular-nums', filter === t.key ? 'bg-background/20' : 'bg-muted')}>{t.count}</span>
-              </button>
-            ))}
-          </div>
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Pesquisar conteúdo ou cliente"
-            aria-label="Pesquisar conteúdo ou cliente"
-            className="h-9 w-full rounded-full border border-border bg-background px-4 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:border-primary sm:w-64"
-          />
-        </div>
+        <FilterBar pills={tabs} value={filter} onChange={setFilter} query={query} onQuery={setQuery} placeholder="Pesquisar conteúdo ou cliente" label="Filtrar por estado" />
 
         {visible.length === 0 ? (
           <p className="rounded-[20px] border border-dashed border-border py-10 text-center text-sm text-muted-foreground">Nenhuma aprovação corresponde a este filtro.</p>

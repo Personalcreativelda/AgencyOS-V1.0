@@ -188,6 +188,15 @@ const YOUTUBE_WIZARD_STEPS: { title: string; items: string[] }[] = [
   },
 ]
 
+const PLATFORM_NAMES: Record<string, string> = {
+  FACEBOOK: 'Página do Facebook',
+  INSTAGRAM: 'Instagram profissional',
+  LINKEDIN: 'Página do LinkedIn',
+  TIKTOK: 'TikTok',
+  YOUTUBE: 'Canal do YouTube',
+  WHATSAPP: 'WhatsApp Status',
+}
+
 export function SocialConnectionsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
@@ -1081,7 +1090,7 @@ export function SocialConnectionsPage() {
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <Button type="button" variant="outline" onClick={handleConnectMeta} loading={connectingMeta} disabled={!metaSettings?.configured} className="justify-center gap-1.5">
+                    <Button type="button" variant="outline" onClick={handleConnectMeta} loading={connectingMeta} disabled={!metaSettings?.configured} className="h-11 justify-center gap-2 rounded-xl">
                       {!connectingMeta && (
                         <>
                           <SiFacebook size={14} className="text-[#0866FF]" />
@@ -1089,7 +1098,7 @@ export function SocialConnectionsPage() {
                         </>
                       )}
                     </Button>
-                    <Button type="button" variant="outline" onClick={handleConnectMeta} loading={connectingMeta} disabled={!metaSettings?.configured} className="justify-center gap-1.5">
+                    <Button type="button" variant="outline" onClick={handleConnectMeta} loading={connectingMeta} disabled={!metaSettings?.configured} className="h-11 justify-center gap-2 rounded-xl">
                       {!connectingMeta && (
                         <>
                           <BrandIcon platform="INSTAGRAM" size={14} />
@@ -1097,7 +1106,7 @@ export function SocialConnectionsPage() {
                         </>
                       )}
                     </Button>
-                    <Button type="button" variant="outline" onClick={handleConnectLinkedin} loading={connectingLinkedin} disabled={!linkedinSettings?.configured} className="justify-center gap-1.5">
+                    <Button type="button" variant="outline" onClick={handleConnectLinkedin} loading={connectingLinkedin} disabled={!linkedinSettings?.configured} className="h-11 justify-center gap-2 rounded-xl">
                       {!connectingLinkedin && (
                         <>
                           <FaLinkedin size={14} className="text-[#0A66C2]" />
@@ -1105,7 +1114,7 @@ export function SocialConnectionsPage() {
                         </>
                       )}
                     </Button>
-                    <Button type="button" variant="outline" onClick={handleConnectTiktok} loading={connectingTiktok} disabled={!tiktokSettings?.configured} className="justify-center gap-1.5">
+                    <Button type="button" variant="outline" onClick={handleConnectTiktok} loading={connectingTiktok} disabled={!tiktokSettings?.configured} className="h-11 justify-center gap-2 rounded-xl">
                       {!connectingTiktok && (
                         <>
                           <SiTiktok size={14} className="shrink-0 text-foreground" />
@@ -1113,7 +1122,7 @@ export function SocialConnectionsPage() {
                         </>
                       )}
                     </Button>
-                    <Button type="button" variant="outline" onClick={handleConnectYoutube} loading={connectingYoutube} disabled={!youtubeSettings?.configured} className="justify-center gap-1.5">
+                    <Button type="button" variant="outline" onClick={handleConnectYoutube} loading={connectingYoutube} disabled={!youtubeSettings?.configured} className="h-11 justify-center gap-2 rounded-xl">
                       {!connectingYoutube && (
                         <>
                           <SiYoutube size={14} className="text-[#FF0000]" />
@@ -1121,51 +1130,58 @@ export function SocialConnectionsPage() {
                         </>
                       )}
                     </Button>
-                    <Button type="button" variant="outline" onClick={openWhatsappConnectModal} disabled={!socialClientId} className="justify-center gap-1.5">
+                    <Button type="button" variant="outline" onClick={openWhatsappConnectModal} disabled={!socialClientId} className="h-11 justify-center gap-2 rounded-xl">
                       <SiWhatsapp size={14} className="text-[#25D366]" />
                       <span>Conectar WhatsApp</span>
                     </Button>
                   </div>
-                  <p className="text-[11px] text-muted-foreground font-medium">
-                    {!metaSettings?.configured && 'Configure o Meta App da agência na aba Agência para liberar a conexão de Facebook e Instagram. '}
-                    {!linkedinSettings?.configured && 'Configure o LinkedIn App da agência na aba Agência para liberar a conexão de LinkedIn. '}
-                    {!tiktokSettings?.configured && 'Configure o TikTok App da agência na aba Agência para liberar a conexão de TikTok. '}
-                    {!youtubeSettings?.configured && 'Configure o YouTube App da agência na aba Agência para liberar a conexão de YouTube. '}
-                    Facebook e Instagram usam o mesmo login da Meta (a página precisa ter uma conta do Instagram profissional vinculada). LinkedIn conecta a uma Página de Empresa. TikTok e YouTube publicam apenas vídeo — TikTok fica em modo privado até o app passar pela auditoria do TikTok, e o YouTube exige reconectar a cada 7 dias até o app passar pela verificação do Google. WhatsApp publica como Status, usando uma instância do Evolution API já pareada ao número do cliente.
-                  </p>
+                  {(!metaSettings?.configured || !linkedinSettings?.configured || !tiktokSettings?.configured || !youtubeSettings?.configured) && (
+                    <p className="rounded-xl border border-warning/25 bg-warning/[0.06] px-3.5 py-2.5 text-xs text-foreground/80">
+                      Alguns botões estão desativados porque o app dessa rede ainda não foi configurado na aba <span className="font-semibold">Agência</span>.
+                    </p>
+                  )}
+                  <details className="group rounded-xl border border-border bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground">
+                    <summary className="cursor-pointer select-none font-medium text-foreground/80 marker:text-muted-foreground">Requisitos de cada rede</summary>
+                    <p className="mt-2 leading-relaxed">Facebook e Instagram usam o mesmo login da Meta (a página precisa ter uma conta do Instagram profissional vinculada). LinkedIn conecta a uma Página de Empresa. TikTok e YouTube publicam apenas vídeo — TikTok fica em modo privado até o app passar pela auditoria do TikTok, e o YouTube exige reconectar a cada 7 dias até o app passar pela verificação do Google. WhatsApp publica como Status, usando uma instância do Evolution API já pareada ao número do cliente.</p>
+                  </details>
 
-                  <div className="space-y-2 pt-2 border-t border-border">
+                  <div className="border-t border-border/70 pt-5">
+                    <h4 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Canais conectados deste cliente</h4>
                     {loadingConnections ? (
-                      <Skeleton className="h-14 w-full rounded-xl" />
+                      <Skeleton className="h-16 w-full rounded-xl" />
                     ) : connections.length === 0 ? (
-                      <p className="text-xs text-muted-foreground italic">Nenhuma conta conectada para este cliente ainda.</p>
+                      <p className="rounded-2xl border border-dashed border-border py-8 text-center text-sm text-muted-foreground">Nenhuma conta conectada para este cliente ainda.</p>
                     ) : (
-                      connections.map((conn) => (
-                        <div key={conn.id} className="flex items-center justify-between p-3.5 bg-muted rounded-xl border border-border">
-                          <div className="flex items-center gap-3">
-                            {conn.platform === 'FACEBOOK' && <SiFacebook size={16} className="text-[#0866FF]" />}
-                            {conn.platform === 'INSTAGRAM' && <BrandIcon platform="INSTAGRAM" size={16} />}
-                            {conn.platform === 'LINKEDIN' && <FaLinkedin size={16} className="text-[#0A66C2]" />}
-                            {conn.platform === 'TIKTOK' && (
-                              <SiTiktok size={16} className="shrink-0 text-foreground" />
-                            )}
-                            {conn.platform === 'YOUTUBE' && <SiYoutube size={16} className="text-[#FF0000]" />}
-                            {conn.platform === 'WHATSAPP' && <SiWhatsapp size={16} className="text-[#25D366]" />}
-                            <div>
-                              <p className="text-xs font-bold text-foreground">{conn.accountName || conn.platform}</p>
-                              <Badge variant={conn.status === 'ACTIVE' ? 'success' : 'warning'} className="mt-0.5">
-                                {conn.status === 'ACTIVE' ? 'Conectado' : conn.status === 'PENDING' ? 'Aguardando' : 'Desconectado'}
-                              </Badge>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleDeleteConnection(conn.id)}
-                            className="p-1.5 text-muted-foreground hover:text-error rounded-lg transition-colors"
-                          >
-                            <Unplug size={15} />
-                          </button>
-                        </div>
-                      ))
+                      <ul className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border">
+                        {connections.map((conn) => {
+                          const active = conn.status === 'ACTIVE'
+                          const synced = conn.updatedAt || conn.createdAt
+                          return (
+                            <li key={conn.id} className="flex items-center gap-3.5 bg-card px-4 py-3.5">
+                              <span className="relative flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50">
+                                <BrandIcon platform={conn.platform} size={20} />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <p className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-sm">
+                                  <span className="truncate font-semibold text-foreground">{conn.accountName || PLATFORM_NAMES[conn.platform] || conn.platform}</span>
+                                  <span className="text-xs text-muted-foreground">· {PLATFORM_NAMES[conn.platform] || conn.platform}</span>
+                                </p>
+                                <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+                                  <span className={cn('inline-flex items-center gap-1 font-medium', active ? 'text-success-dark dark:text-success' : 'text-warning-dark dark:text-warning')}>
+                                    <span className={cn('size-1.5 rounded-full', active ? 'bg-success' : 'bg-warning')} />
+                                    {active ? 'Ativa' : conn.status === 'PENDING' ? 'Aguardando' : 'Desconectada'}
+                                  </span>
+                                  {synced && <><span aria-hidden>·</span><span>Atualizada em {new Date(synced).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span></>}
+                                </p>
+                              </div>
+                              <Button type="button" variant="outline" size="sm" onClick={() => handleDeleteConnection(conn.id)} className="shrink-0">
+                                <Unplug size={14} />
+                                <span className="hidden sm:inline">Desconectar</span>
+                              </Button>
+                            </li>
+                          )
+                        })}
+                      </ul>
                     )}
                   </div>
                 </>
@@ -1198,8 +1214,8 @@ export function SocialConnectionsPage() {
 
               <ul className="space-y-2.5">
                 {META_WIZARD_STEPS[metaWizardStep - 1].items.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-xs text-foreground/90 font-medium">
-                    <span className="w-4 h-4 rounded-full bg-secondary/15 text-secondary text-[10px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                  <li key={i} className="flex items-start gap-3 text-sm leading-relaxed text-foreground/85">
+                    <span className="mt-px flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-card text-xs font-semibold text-foreground">{i + 1}</span>
                     <span>{item}</span>
                   </li>
                 ))}
@@ -1317,8 +1333,8 @@ export function SocialConnectionsPage() {
 
               <ul className="space-y-2.5">
                 {LINKEDIN_WIZARD_STEPS[linkedinWizardStep - 1].items.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-xs text-foreground/90 font-medium">
-                    <span className="w-4 h-4 rounded-full bg-[#0A66C2]/15 text-[#0A66C2] text-[10px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                  <li key={i} className="flex items-start gap-3 text-sm leading-relaxed text-foreground/85">
+                    <span className="mt-px flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-card text-xs font-semibold text-foreground">{i + 1}</span>
                     <span>{item}</span>
                   </li>
                 ))}
@@ -1435,11 +1451,8 @@ export function SocialConnectionsPage() {
 
               <ul className="space-y-2.5">
                 {TIKTOK_WIZARD_STEPS[tiktokWizardStep - 1].items.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-xs text-foreground/90 font-medium">
-                    <span
-                      className="w-4 h-4 rounded-full text-[10px] font-extrabold flex items-center justify-center shrink-0 mt-0.5 text-[#fff]"
-                      style={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}
-                    >
+                  <li key={i} className="flex items-start gap-3 text-sm leading-relaxed text-foreground/85">
+                    <span className="mt-px flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-card text-xs font-semibold text-foreground">
                       {i + 1}
                     </span>
                     <span>{item}</span>
@@ -1558,8 +1571,8 @@ export function SocialConnectionsPage() {
 
               <ul className="space-y-2.5">
                 {YOUTUBE_WIZARD_STEPS[youtubeWizardStep - 1].items.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-xs text-foreground/90 font-medium">
-                    <span className="w-4 h-4 rounded-full bg-[#FF0000]/15 text-[#FF0000] text-[10px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                  <li key={i} className="flex items-start gap-3 text-sm leading-relaxed text-foreground/85">
+                    <span className="mt-px flex size-6 shrink-0 items-center justify-center rounded-full border border-border bg-card text-xs font-semibold text-foreground">{i + 1}</span>
                     <span>{item}</span>
                   </li>
                 ))}

@@ -23,6 +23,7 @@ import { Stat, StatGroup } from '@/components/ui/Stat'
 import { AudienceBreakdown, type AudienceSegment } from '@/components/ads/AudienceBreakdown'
 import { CampaignCreativePreview } from '@/components/ads/CampaignCreativePreview'
 import { MetricExplorer } from '@/components/charts/MetricExplorer'
+import { FilterBar } from '@/components/ui/FilterPills'
 import { Segmented } from '@/components/dashboard/DashboardWidgets'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -568,34 +569,7 @@ export function AdsPage() {
                   { key: 'PAUSED' as const, label: 'Pausadas', count: all.filter((c) => c.status === 'PAUSED').length },
                 ]
                 return (
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]" role="tablist" aria-label="Filtrar campanhas por estado">
-                      {tabs.map((t) => (
-                        <button
-                          key={t.key}
-                          type="button"
-                          role="tab"
-                          aria-selected={statusTab === t.key}
-                          onClick={() => setStatusTab(t.key)}
-                          className={cn(
-                            'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-colors',
-                            statusTab === t.key ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-                          )}
-                        >
-                          {t.label}
-                          <span className={cn('rounded-full px-1.5 text-[11px] tabular-nums', statusTab === t.key ? 'bg-background/20' : 'bg-muted')}>{t.count}</span>
-                        </button>
-                      ))}
-                    </div>
-                    <input
-                      type="search"
-                      value={campaignQuery}
-                      onChange={(e) => setCampaignQuery(e.target.value)}
-                      placeholder="Pesquisar campanha"
-                      aria-label="Pesquisar campanha"
-                      className="h-9 w-full rounded-full border border-border bg-background px-4 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:border-primary sm:w-60"
-                    />
-                  </div>
+                  <FilterBar pills={tabs} value={statusTab} onChange={setStatusTab} query={campaignQuery} onQuery={setCampaignQuery} placeholder="Pesquisar campanha" label="Filtrar campanhas por estado" />
                 )
               })()}
               {loadingInsights ? <Skeleton className="h-28 rounded-xl" /> : !insights?.campaigns?.length ? (

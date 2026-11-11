@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Plus, BarChart2, Sparkles, ExternalLink, Copy, Check, Trash2, FileBarChart } from 'lucide-react'
+import { Plus, BarChart2, Sparkles, ExternalLink, Copy, Check, Trash2, FileBarChart, CalendarCheck, Users, FileClock } from 'lucide-react'
 import api from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -14,6 +14,8 @@ import { getErrorMessage } from '@/lib/errors'
 import { Page, PageHeader } from '@/components/layout/Page'
 import { ListCard, ListSkeleton, listRowClass, Meta } from '@/components/ui/List'
 import { cn } from '@/lib/utils'
+import { Stat, StatGroup } from '@/components/ui/Stat'
+import { FilterBar } from '@/components/ui/FilterPills'
 
 export function ReportsPage() {
   const [reports, setReports] = useState<any[]>([])
@@ -21,6 +23,8 @@ export function ReportsPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [filter, setFilter] = useState<'all' | 'PUBLISHED' | 'DRAFT'>('all')
+  const [query, setQuery] = useState('')
 
   // New Report Modal
   const [showModal, setShowModal] = useState(false)
@@ -106,6 +110,19 @@ export function ReportsPage() {
     })
   }
 
+  // Derived only from what the API already returns — no invented metrics.
+  const now = new Date()
+  const thisMonth = reports.filter((r) => { const d = new Date(r.createdAt); return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() })
+  const coveredClients = new Set(thisMonth.map((r) => r.clientId || r.client?.id))
+  const missing = clients.filter((c) => !coveredClients.has(c.id)).length
+  const isPublished = (r: any) => r.status === 'PUBLISHED' || !!r.publicToken
+  const published = reports.filter(isPublished).length
+  const drafts = reports.length - published
+  const q = query.trim().toLowerCase()
+  const visible = reports.filter((r) =>
+    (filter === 'all' || (filter === 'PUBLISHED' ? isPublished(r) : !isPublished(r))) &&
+    (!q || `${r.title} ${r.client?.name || ''}`.toLowerCase().includes(q)))
+
   return (
     <Page>
       <PageHeader
@@ -127,9 +144,33 @@ export function ReportsPage() {
           title="Nenhum relatório gerado"
           description="Gere relatórios mensais para seus clientes com síntese estratégica via Brand Brain."
         />
-      ) : (
+      ) : (<>
+        <StatGroup>
+          <Stat label="Relatórios gerados" value={reports.length} icon={FileBarChart} />
+          <Stat label="Gerados este mês" value={thisMonth.length} icon={CalendarCheck} tone={thisMonth.length ? 'success' : 'default'} />
+          <Stat label="Clientes sem relatório este mês" value={missing} icon={Users} tone={missing ? 'warning' : 'success'} hint="Clientes ativos sem relatório criado no mês atual" />
+          <Stat label="Rascunhos" value={drafts} icon={FileClock} />
+        </StatGroup>
+
+        <FilterBar
+          pills={[
+            { key: 'all', label: 'Todos', count: reports.length },
+            { key: 'PUBLISHED', label: 'Publicados', count: published },
+            { key: 'DRAFT', label: 'Rascunhos', count: drafts },
+          ]}
+          value={filter}
+          onChange={setFilter}
+          query={query}
+          onQuery={setQuery}
+          placeholder="Pesquisar relatório ou cliente"
+          label="Filtrar relatórios"
+        />
+
+        {visible.length === 0 ? (
+          <p className="rounded-[20px] border border-dashed border-border py-10 text-center text-sm text-muted-foreground">Nenhum relatório corresponde a este filtro.</p>
+        ) : (
         <ListCard>
-          {reports.map((rep) => (
+          {visible.map((rep) => (
             <div key={rep.id} className={cn(listRowClass(false), 'flex-wrap sm:flex-nowrap')}>
               <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
                 <FileBarChart size={18} />
@@ -146,7 +187,9 @@ export function ReportsPage() {
               </div>
 
               <div className="flex w-full items-center gap-2 pl-14 sm:w-auto sm:pl-0">
-                <Badge dot variant="success" className="mr-auto sm:mr-1">Publicado</Badge>
+                {isPublished(rep)
+                  ? <Badge dot variant="success" className="mr-auto sm:mr-1">Publicado</Badge>
+                  : <Badge dot variant="default" className="mr-auto sm:mr-1">Rascunho</Badge>}
                 {rep.publicToken && (
                   <>
                     <Button variant="outline" size="sm" onClick={() => handleCopyLink(rep.publicToken)} aria-label="Copiar link do relatório">
@@ -174,7 +217,8 @@ export function ReportsPage() {
             </div>
           ))}
         </ListCard>
-      )}
+        )}
+      </>)}
 
       {/* New Report Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
