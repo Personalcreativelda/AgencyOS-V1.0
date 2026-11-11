@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/Skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select'
 import { FilterMenu, FilterField } from '@/components/ui/FilterMenu'
+import { ViewToggle } from '@/components/ui/ViewToggle'
 import { ContentGridTile, ContentListRow } from '@/components/planner/ContentGridTile'
 import { CreativePreview } from './CreativeMedia'
 import { selectLibraryContents, type LibraryContent, type LibrarySort } from './libraryUtils'
@@ -20,7 +21,7 @@ type Props = {
   onRetry: () => void; onCreate: () => void; onDelete: (id: string, title: string) => void
 }
 const ALL = '__all'
-const gridClass = 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'
+const gridClass = 'grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 2xl:grid-cols-4'
 
 export function ContentLibrary(props: Props) {
   const navigate = useNavigate()
@@ -37,7 +38,7 @@ export function ContentLibrary(props: Props) {
   const controlLabel = 'mb-1.5 block text-xs font-medium text-muted-foreground'
   return (
     <div className="space-y-5">
-      <section aria-label="Pesquisa e filtros de criativos" className="space-y-3 rounded-[20px] border border-border/70 bg-card p-4 shadow-card sm:p-5">
+      <section aria-label="Pesquisa e filtros de conteúdos" className="space-y-2.5">
         <div className="flex flex-wrap items-center gap-2.5">
           <div role="search" className="min-w-0 flex-1 basis-[220px]">
             <label htmlFor="creative-search" className="sr-only">Pesquisar na biblioteca</label>
@@ -49,14 +50,12 @@ export function ContentLibrary(props: Props) {
             <FilterField label="Rede social"><Select value={props.platform || ALL} onValueChange={value => props.onPlatformChange(value === ALL ? '' : value)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value={ALL}>Todas as redes</SelectItem>{Object.entries(PLATFORM_LABELS).map(([key, label]) => <SelectItem key={key} value={key}>{label}</SelectItem>)}</SelectContent></Select></FilterField>
             <FilterField label="Ordenar por"><Select value={sort} onValueChange={value => setSort(value as LibrarySort)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="recent">Mais recentes</SelectItem><SelectItem value="updated">Última alteração</SelectItem><SelectItem value="title">Título · A–Z</SelectItem><SelectItem value="scheduled">Data agendada</SelectItem></SelectContent></Select></FilterField>
           </FilterMenu>
+          <ViewToggle value={props.mode === 'grid' ? 'grid' : 'list'} onChange={view => props.onModeChange(view === 'grid' ? 'grid' : 'rows')} />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-h-10 flex-wrap items-center gap-3">
-            <p role="status" aria-atomic="true" className="text-[13px] font-medium text-muted-foreground">{props.loading ? 'Carregando biblioteca…' : props.error ? 'Biblioteca indisponível' : search.trim() ? `${filtered.length} de ${props.contents.length} criativos` : `${filtered.length} ${filtered.length === 1 ? 'criativo' : 'criativos'}`}</p>
+          <div className="flex min-h-6 flex-wrap items-center gap-3">
+            <p role="status" aria-atomic="true" className="text-[13px] font-medium text-muted-foreground">{props.loading ? 'Carregando biblioteca…' : props.error ? 'Biblioteca indisponível' : search.trim() ? `${filtered.length} de ${props.contents.length} conteúdos` : `${filtered.length} ${filtered.length === 1 ? 'conteúdo' : 'conteúdos'}`}</p>
             {hasFilters && <Button variant="ghost" size="sm" onClick={reset}>Limpar filtros</Button>}
-          </div>
-          <div role="group" aria-label="Visualização da biblioteca" className="inline-flex gap-0.5 rounded-lg border border-border bg-muted/50 p-0.5">
-            {([{ mode: 'grid', label: 'Grelha', icon: LayoutGrid }, { mode: 'rows', label: 'Lista', icon: List }] as const).map(item => <button key={item.mode} type="button" onClick={() => props.onModeChange(item.mode)} aria-label={`Mostrar ${item.label.toLowerCase()}`} aria-pressed={props.mode === item.mode} className={cn('inline-flex min-h-9 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 motion-reduce:transition-none', props.mode === item.mode ? 'bg-card text-foreground shadow-z1' : 'text-muted-foreground hover:text-foreground')}><item.icon size={15} aria-hidden />{item.label}</button>)}
           </div>
         </div>
       </section>
@@ -79,7 +78,7 @@ export function ContentLibrary(props: Props) {
               return <Item key={content.id} content={content} onClick={() => navigate(`/app/content/${content.id}`)} onPreview={() => setPreview(content)} onDelete={() => props.onDelete(content.id, content.title)} />
             })}
           </div>
-          {filtered.length > visible && <div className="mt-5 flex flex-col items-center gap-2"><p className="text-xs text-muted-foreground">{visible} de {filtered.length} criativos</p><Button variant="outline" onClick={() => setVisible(value => value + 24)}>Mostrar mais</Button></div>}
+          {filtered.length > visible && <div className="mt-5 flex flex-col items-center gap-2"><p className="text-xs text-muted-foreground">{visible} de {filtered.length} conteúdos</p><Button variant="outline" onClick={() => setVisible(value => value + 24)}>Mostrar mais</Button></div>}
         </>}
       </section>
       <CreativePreview content={preview} onClose={() => setPreview(null)} />

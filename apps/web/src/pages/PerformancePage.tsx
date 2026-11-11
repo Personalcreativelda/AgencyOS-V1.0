@@ -17,6 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { Page, PageHeader, PageIcon } from '@/components/layout/Page'
 import { Stat, StatGroup } from '@/components/ui/Stat'
+import { FilterMenu, FilterField } from '@/components/ui/FilterMenu'
+import { AreaChart } from '@/components/charts/AreaChart'
 
 type Period = 'today' | '7d' | '30d' | '90d'
 type Tab = 'overview' | 'social' | 'ads' | 'website'
@@ -113,28 +115,38 @@ function IntegrationStatus({ data, allClients }: { data: Overview; allClients: b
       </div>
     })}</div></Card>
 }
+const SOURCE_COLORS: Record<string, string> = { META_ADS: '#0467DF', GOOGLE_ADS: '#00A76F', GOOGLE_ANALYTICS: '#E37400' }
+const SOURCE_LABELS: Record<string, string> = { META_ADS: 'Meta Ads', GOOGLE_ADS: 'Google Ads', GOOGLE_ANALYTICS: 'GA4' }
+
 function Chart({ data, metric, source }: { data: Overview; metric: ChartMetric; source: ChartSource }) {
-  const series = useMemo(() => {
+  const { labels, dates, series } = useMemo(() => {
     const allowed = metric === 'sessions' || metric === 'views' ? ['GOOGLE_ANALYTICS'] : ['META_ADS', 'GOOGLE_ADS']
     const matching = data.reports.filter(report => report.data && allowed.includes(report.platform) && (source === 'all' || source === report.platform))
-    const byDate = new Map<string, number>()
-    for (const report of matching) for (const day of report.data!.daily) {
-      byDate.set(day.date, (byDate.get(day.date) || 0) + Number(day[metric] || 0))
+    const dateSet = new Set<string>()
+    const byPlatform = new Map<string, Map<string, number>>()
+    for (const report of matching) {
+      const perDate = byPlatform.get(report.platform) || new Map<string, number>()
+      for (const day of report.data!.daily) {
+        dateSet.add(day.date)
+        perDate.set(day.date, (perDate.get(day.date) || 0) + Number(day[metric] || 0))
+      }
+      byPlatform.set(report.platform, perDate)
     }
-    return [...byDate].sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => ({ date, value }))
+    const dates = [...dateSet].sort()
+    return {
+      dates,
+      labels: dates.map(dateLabel),
+      series: [...byPlatform].map(([platform, perDate]) => ({
+        key: platform, label: SOURCE_LABELS[platform] || platform, color: SOURCE_COLORS[platform] || '#00A76F',
+        values: dates.map(date => perDate.get(date) || 0),
+      })),
+    }
   }, [data, metric, source])
-  if (!series.length) return <div className="flex h-52 items-center justify-center rounded-xl border border-dashed border-border px-4 text-center text-sm text-muted-foreground">Sem dados diários disponíveis para este indicador no período selecionado.</div>
-  const maximum = Math.max(...series.map(row => row.value), 1) * 1.15
-  const x = (index: number) => 16 + index / Math.max(series.length - 1, 1) * 728
-  const y = (value: number) => 190 - value / maximum * 165
-  const path = series.map((row, index) => `${index ? 'L' : 'M'} ${x(index).toFixed(1)} ${y(row.value).toFixed(1)}`).join(' ')
-  const area = `${path} L ${x(series.length - 1).toFixed(1)} 190 L 16 190 Z`
-  return <div className="min-w-0"><svg viewBox="0 0 760 205" preserveAspectRatio="none" className="h-48 w-full sm:h-64" role="img" aria-label={`${chartMetrics[metric]} por dia`}>
-    <defs><linearGradient id="performance-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#00A76F" stopOpacity="0.22" /><stop offset="100%" stopColor="#00A76F" stopOpacity="0" /></linearGradient></defs>
-    {[25, 66, 108, 149, 190].map(line => <line key={line} x1="16" x2="744" y1={line} y2={line} className="stroke-border" strokeWidth="1" strokeDasharray="4 5" />)}
-    <path d={area} fill="url(#performance-area)" /><path d={path} fill="none" stroke="#00A76F" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-    {series.length === 1 && <circle cx={x(0)} cy={y(series[0].value)} r="5" fill="#00A76F" />}
-  </svg><div className="flex justify-between text-[10px] font-medium text-muted-foreground"><span>{dateLabel(series[0].date)}</span><span>{dateLabel(series[series.length - 1].date)}</span></div></div>
+  if (!dates.length) return <div className="flex h-52 items-center justify-center rounded-xl border border-dashed border-border px-4 text-center text-sm text-muted-foreground">Sem dados diários disponíveis para este indicador no período selecionado.</div>
+  return <div className="min-w-0">
+    {series.length > 1 && <div className="mb-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">{series.map(item => <span key={item.key} className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: item.color }} />{item.label}</span>)}</div>}
+    <AreaChart labels={labels} series={series} height={260} formatLabel={index => dateLabel(dates[index])} />
+  </div>
 }
 function Evolution({ data }: { data: Overview }) {
   const [metric, setMetric] = useState<ChartMetric>('impressions')
@@ -274,18 +286,23 @@ export function PerformancePage() {
   const detailItem = social.find(item => item.platform === details)
 
   return <Page><PageHeader
-      icon={<PageIcon className="bg-primary/10 text-primary"><Activity size={22} /></PageIcon>}
       title="Performance"
       description="Acompanhe anúncios, websites e publicações dos seus clientes em um só lugar."
-      actions={<div className="grid w-full gap-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:w-auto md:grid-cols-[200px_180px_auto] md:items-end"><div className="min-w-0"><label className="mb-1.5 block text-[13px] font-medium text-foreground/85">Cliente</label><Select value={clientId} onValueChange={setClientId}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os clientes</SelectItem>{data?.clients.map(client => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}</SelectContent></Select></div><div className="min-w-0"><label className="mb-1.5 block text-[13px] font-medium text-foreground/85">Período</label><Select value={period} onValueChange={value => setPeriod(value as Period)}><SelectTrigger className="h-10"><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(periods) as Period[]).map(key => <SelectItem key={key} value={key}>{periods[key]}</SelectItem>)}</SelectContent></Select></div><Button variant="subtle" className="h-10 w-full sm:self-end" onClick={() => void load(true)} disabled={refreshing || loading}><RefreshCw size={15} className={refreshing ? 'animate-spin' : ''} />Atualizar</Button></div>}
+      actions={<>
+        <FilterMenu active={(clientId !== 'all' ? 1 : 0) + (period !== '30d' ? 1 : 0)} onClear={() => { setClientId('all'); setPeriod('30d') }}>
+          <FilterField label="Cliente"><Select value={clientId} onValueChange={setClientId}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os clientes</SelectItem>{data?.clients.map(client => <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>)}</SelectContent></Select></FilterField>
+          <FilterField label="Período"><Select value={period} onValueChange={value => setPeriod(value as Period)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{(Object.keys(periods) as Period[]).map(key => <SelectItem key={key} value={key}>{periods[key]}</SelectItem>)}</SelectContent></Select></FilterField>
+        </FilterMenu>
+        <Button variant="outline" size="icon" className="size-10 p-0" aria-label="Atualizar dados" title="Atualizar dados" onClick={() => void load(true)} disabled={refreshing || loading}><RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} /></Button>
+      </>}
     />
     {error && <Card className="border-error/30 bg-error/5 p-4 text-sm text-foreground" role="alert">{error} <button type="button" onClick={() => void load()} className="ml-2 font-bold text-primary hover:underline">Tentar novamente</button></Card>}
-    {loading && !data ? <Card className="p-8 text-center text-sm text-muted-foreground"><RefreshCw size={18} className="mx-auto mb-3 animate-spin" />Carregando dados das contas conectadas…</Card> : data && <Tabs value={tab} onValueChange={value => setTab(value as Tab)}><TabsList className="flex w-full max-w-full justify-start overflow-x-auto whitespace-nowrap sm:w-auto">{([['overview', 'Visão Geral'], ['social', 'Redes Sociais'], ['ads', 'Publicidade'], ['website', 'Website / GA4']] as [Tab, string][]).map(([id, label]) => <TabsTrigger key={id} value={id} className="shrink-0">{label}</TabsTrigger>)}</TabsList>
-      <div className="mt-5 space-y-6"><IntegrationStatus data={data} allClients={allClients} /><section className="space-y-4"><SectionHeading title={allClients ? 'Visão da Agência' : `Indicadores de ${selectedClient?.name || 'cliente'}`} description={`Indicadores das contas conectadas · ${periods[period]}`} /><StatGroup>{kpis.map(item => <KpiCard key={item.label} item={item} />)}</StatGroup></section></div>
-      <TabsContent value="overview" className="mt-6 space-y-7">{allClients && <AgencyTable data={data} />}<Evolution data={data} /><SocialCards data={data} onDetails={setDetails} /><AdsSection data={data} /><WebsiteSection data={data} /><RecentPosts data={data} /><DataStatus data={data} /></TabsContent>
-      <TabsContent value="social" className="mt-6 space-y-7"><SocialCards data={data} onDetails={setDetails} /><RecentPosts data={data} /><DataStatus data={data} /></TabsContent>
-      <TabsContent value="ads" className="mt-6 space-y-7"><Evolution data={data} /><AdsSection data={data} /><DataStatus data={data} /></TabsContent>
-      <TabsContent value="website" className="mt-6 space-y-7"><WebsiteSection data={data} /><DataStatus data={data} /></TabsContent>
+    {loading && !data ? <Card className="p-8 text-center text-sm text-muted-foreground"><RefreshCw size={18} className="mx-auto mb-3 animate-spin" />Carregando dados das contas conectadas…</Card> : data && <Tabs value={tab} onValueChange={value => setTab(value as Tab)}><TabsList className="flex w-full max-w-full justify-start overflow-x-auto whitespace-nowrap sm:w-auto">{([['overview', 'Visão geral'], ['social', 'Redes sociais'], ['ads', 'Publicidade'], ['website', 'Website / GA4']] as [Tab, string][]).map(([id, label]) => <TabsTrigger key={id} value={id} className="shrink-0">{label}</TabsTrigger>)}</TabsList>
+      <TabsContent value="overview" className="mt-6 space-y-6"><section className="space-y-4"><SectionHeading title={allClients ? 'Visão da Agência' : `Indicadores de ${selectedClient?.name || 'cliente'}`} description={`Indicadores das contas conectadas · ${periods[period]}`} /><StatGroup>{kpis.map(item => <KpiCard key={item.label} item={item} />)}</StatGroup></section><Evolution data={data} />{allClients && <AgencyTable data={data} />}<IntegrationStatus data={data} allClients={allClients} /></TabsContent>
+      <TabsContent value="social" className="mt-6 space-y-6"><SocialCards data={data} onDetails={setDetails} /><RecentPosts data={data} /></TabsContent>
+      <TabsContent value="ads" className="mt-6 space-y-6"><AdsSection data={data} /></TabsContent>
+      <TabsContent value="website" className="mt-6 space-y-6"><WebsiteSection data={data} /></TabsContent>
+      <div className="mt-8"><DataStatus data={data} /></div>
     </Tabs>}
     <Dialog open={!!details} onOpenChange={open => { if (!open) setDetails(null) }}><DialogContent size="lg"><DialogHeader><DialogTitle>{detailItem?.label} · detalhes</DialogTitle><DialogDescription>Contas e publicações registadas no AgencyOS.</DialogDescription></DialogHeader>{details && data && <div className="space-y-3"><div className="grid grid-cols-2 gap-4">{[['Contas conectadas', data.connections.filter(row => row.platform === details && row.status === 'ACTIVE').length], ['Publicações no período', data.posts.filter(post => post.platform === details).length]].map(([label, value]) => <div key={label} className="rounded-xl border border-border bg-muted/30 p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-lg font-bold text-foreground">{value}</p></div>)}</div><p className="text-xs text-muted-foreground">As permissões atuais de publicação desta rede não incluem métricas orgânicas de alcance, interações ou seguidores.</p><Link to="/app/social" className="inline-flex text-xs font-bold text-primary hover:underline">Gerir ligações →</Link></div>}</DialogContent></Dialog>
   </Page>

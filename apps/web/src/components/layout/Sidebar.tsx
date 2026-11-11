@@ -260,7 +260,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Primary action, always one click away (Stitch dashboard) */}
-        <div className={cn('shrink-0 pb-3', rail ? 'px-0' : 'px-4')}>
+        <div className={cn('hidden shrink-0 pb-3 lg:block', rail ? 'px-0' : 'px-4')}>
           {rail ? (
             <RailTooltip label="Criar conteúdo">
               <button type="button" aria-label="Criar conteúdo" onClick={() => { onClose(); navigate('/app/content?novo=1') }}

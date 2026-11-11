@@ -139,6 +139,10 @@ export function AreaChart({ labels, series, height = 280, formatLabel, className
             <path key={`l-${p.key}`} d={p.line} fill="none" stroke={p.color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
           ))}
 
+          {n === 1 && series.map((s) => (
+            <circle key={`single-${s.key}`} cx={x(0)} cy={y(s.values[0] ?? 0)} r={6} fill={s.color} className="stroke-card" strokeWidth={3} />
+          ))}
+
           {hover !== null && (
             <g>
               <line x1={x(hover)} x2={x(hover)} y1={PAD.top} y2={PAD.top + innerH} className="stroke-foreground/20" />

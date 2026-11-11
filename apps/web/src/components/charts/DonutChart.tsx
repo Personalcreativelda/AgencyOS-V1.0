@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface DonutSlice {
@@ -11,6 +12,8 @@ interface DonutChartProps {
   slices: DonutSlice[]
   /** Big number in the centre (defaults to the sum of slices). */
   total?: number
+  /** Custom centre content (e.g. a formatted currency); overrides `total`. */
+  display?: ReactNode
   caption?: string
   size?: number
   thickness?: number
@@ -21,7 +24,7 @@ interface DonutChartProps {
  * Ring chart with rounded segment caps and small gaps, total in the centre. Pure SVG.
  * Pair it with <DonutLegend>.
  */
-export function DonutChart({ slices, total, caption, size = 200, thickness = 22, className }: DonutChartProps) {
+export function DonutChart({ slices, total, display, caption, size = 200, thickness = 22, className }: DonutChartProps) {
   const sum = slices.reduce((a, s) => a + s.value, 0)
   const r = (size - thickness) / 2
   const c = 2 * Math.PI * r
@@ -58,22 +61,22 @@ export function DonutChart({ slices, total, caption, size = 200, thickness = 22,
         })}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="text-[34px] font-bold leading-none tracking-[-0.03em] tabular-nums text-foreground">{total ?? sum}</span>
+        <span className={cn('font-bold leading-none tracking-[-0.03em] tabular-nums text-foreground', display !== undefined ? 'max-w-[70%] break-words text-[18px]' : size < 170 ? 'text-[28px]' : 'text-[34px]')}>{display ?? total ?? sum}</span>
         {caption && <span className="mt-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{caption}</span>}
       </div>
     </div>
   )
 }
 
-export function DonutLegend({ slices, className }: { slices: DonutSlice[]; className?: string }) {
+export function DonutLegend({ slices, className, format = (v) => String(v) }: { slices: DonutSlice[]; className?: string; format?: (value: number) => string }) {
   const sum = slices.reduce((a, s) => a + s.value, 0) || 1
   return (
     <ul className={cn('space-y-2.5', className)}>
       {slices.map((s) => (
         <li key={s.key} className="flex items-center gap-2.5 text-sm">
           <span className="size-2.5 shrink-0 rounded-full" style={{ background: s.color }} />
-          <span className="min-w-0 flex-1 truncate text-foreground/80">{s.label}</span>
-          <span className="tabular-nums font-semibold text-foreground">{s.value}</span>
+          <span className="min-w-0 flex-1 truncate text-foreground/80" title={s.label}>{s.label}</span>
+          <span className="tabular-nums font-semibold text-foreground">{format(s.value)}</span>
           <span className="w-10 text-right tabular-nums text-xs text-muted-foreground">{Math.round((s.value / sum) * 100)}%</span>
         </li>
       ))}

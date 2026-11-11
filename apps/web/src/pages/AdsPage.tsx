@@ -22,6 +22,10 @@ import { Page, PageHeader, PageIcon } from '@/components/layout/Page'
 import { Stat, StatGroup } from '@/components/ui/Stat'
 import { AudienceBreakdown, type AudienceSegment } from '@/components/ads/AudienceBreakdown'
 import { CampaignCreativePreview } from '@/components/ads/CampaignCreativePreview'
+import { MetricExplorer } from '@/components/charts/MetricExplorer'
+import { Segmented } from '@/components/dashboard/DashboardWidgets'
+import { format } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 const ACTION_LABELS: Record<string, { label: string; variant: 'error' | 'success' | 'warning' | 'default' }> = {
   PAUSE: { label: 'Pausar', variant: 'error' },
@@ -39,6 +43,19 @@ type AudienceInsights = {
   regions: Segment[]; demographics: Segment[]; placements: Segment[]
   contacts: number; linkClicks: number; contactRate: number | null
   reach: number | null; frequency: number | null
+}
+
+const AD_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: 'Ativa', PAUSED: 'Pausada', DISABLED: 'Desativada', ARCHIVED: 'Arquivada', DELETED: 'Excluída',
+  CAMPAIGN_PAUSED: 'Campanha pausada', ADSET_PAUSED: 'Conjunto pausado', IN_PROCESS: 'Em análise', WITH_ISSUES: 'Com problemas',
+}
+
+// KPI tiles that can drive the chart, by label.
+const CHARTABLE: Record<string, { color: string; pick: (row: Record<string, string | number>) => number }> = {
+  'Investimento': { color: '#00A76F', pick: (r) => Number(r.spend || 0) },
+  'Impressões': { color: '#00B8D9', pick: (r) => Number(r.impressions || 0) },
+  'Cliques': { color: '#8E33FF', pick: (r) => Number(r.clicks || 0) },
+  'Resultados': { color: '#FFAB00', pick: (r) => Number(r.results || 0) },
 }
 
 export function AdsPage() {
@@ -59,6 +76,8 @@ export function AdsPage() {
   // either campaign individually, and nothing on the page said which campaign a number belonged
   // to. This scopes the cards (and, below, the AI analysis) to one campaign at a time.
   const [campaignFilter, setCampaignFilter] = useState('')
+  const [statusTab, setStatusTab] = useState<'all' | 'ACTIVE' | 'PAUSED'>('all')
+  const [campaignQuery, setCampaignQuery] = useState('')
   const [insights, setInsights] = useState<any>(null)
   const [loadingInsights, setLoadingInsights] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -428,124 +447,82 @@ export function AdsPage() {
         />
       ) : (
         <>
-          {/* Account bar */}
-          <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-muted/60 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
-            <div className="flex min-w-0 items-center gap-3 sm:gap-3.5">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary-dark sm:h-11 sm:w-11 sm:rounded-2xl">
-                <BrandIcon platform="META_ADS" size={19} />
-              </div>
+          {/* Account + scope toolbar: one surface, same controls as the rest of the app */}
+          <section aria-label="Conta e período" className="flex min-w-0 flex-col gap-4 rounded-[20px] border border-border/70 bg-card p-4 shadow-card sm:p-5 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 items-center gap-3.5">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-muted/60">
+                <BrandIcon platform="META_ADS" size={20} />
+              </span>
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   {accounts.length > 1 ? (
-                    <div className="min-w-0 w-full max-w-64 sm:w-56">
+                    <div className="w-full min-w-0 max-w-64 sm:w-56">
                       <Select value={accountId} onValueChange={setAccountId}>
-                        <SelectTrigger className="h-9 text-[13px]"><SelectValue /></SelectTrigger>
+                        <SelectTrigger aria-label="Conta de anúncios"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {accounts.map((a) => <SelectItem key={a.id} value={a.id}>{a.accountName}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
                   ) : (
-                    <p className="min-w-0 truncate text-xs font-extrabold text-foreground sm:text-sm">{account?.accountName}</p>
+                    <p className="min-w-0 truncate text-[15px] font-semibold text-foreground">{account?.accountName}</p>
                   )}
-                  <Badge variant={account?.status === 'ACTIVE' ? 'success' : 'default'}>{account?.status}</Badge>
+                  <Badge dot variant={account?.status === 'ACTIVE' ? 'success' : 'default'}>{AD_STATUS_LABELS[account?.status] || account?.status}</Badge>
                 </div>
-                <p className="mt-1 text-[11px] font-medium leading-relaxed text-muted-foreground">
-                  {loadingInsights ? 'A consultar métricas...' : insights?.lastSyncedAt ? `${range === 'today' ? 'Consultado' : 'Sincronizado'} ${new Date(insights.lastSyncedAt).toLocaleString('pt-BR')}` : 'Ainda não sincronizado'}
+                <p className="mt-0.5 truncate text-[13px] text-muted-foreground">
+                  {loadingInsights ? 'Consultando métricas…' : insights?.lastSyncedAt ? `${range === 'today' ? 'Consultado' : 'Sincronizado'} ${new Date(insights.lastSyncedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}` : 'Ainda não sincronizado'}
                 </p>
               </div>
             </div>
 
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto lg:shrink-0 lg:justify-end">
-              <div className="flex min-w-0 flex-1 items-center gap-1 rounded-xl border border-border bg-card p-1 sm:flex-none">
-                {(['today', '7d', '30d'] as const).map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setRange(r)}
-                    className={cn(
-                      'flex-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 sm:flex-none sm:px-3',
-                      range === r ? 'bg-primary text-[#fff]' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                    )}
-                  >
-                    {r === 'today' ? 'Hoje' : r === '7d' ? '7 dias' : '30 dias'}
-                  </button>
-                ))}
-              </div>
-              <Button type="button" variant="outline" size="sm" onClick={handleSync} loading={syncing} className="min-w-0 flex-1 border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted sm:flex-none">
-                {!syncing && <RefreshCw size={14} />}
-                <span>Atualizar</span>
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {/* Campaign scope — totals, chart and Brand Brain analysis follow it; the campaigns
+                 table below always lists every campaign. */}
+              {insights?.campaigns?.length > 1 && (
+                <div className="w-full min-w-0 sm:w-64">
+                  <Select value={campaignFilter || '__all__'} onValueChange={(v) => setCampaignFilter(v === '__all__' ? '' : v)}>
+                    <SelectTrigger aria-label="Campanha"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all__">Todas as campanhas</SelectItem>
+                      {insights.campaigns.map((c: any) => (
+                        <SelectItem key={c.campaignExternalId} value={c.campaignExternalId}>{c.campaignName}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <Segmented label="Período" value={range} onChange={setRange}
+                options={[{ value: 'today', label: 'Hoje' }, { value: '7d', label: '7 dias' }, { value: '30d', label: '30 dias' }]} />
+              <Button type="button" variant="outline" size="icon" className="size-10 p-0" aria-label="Atualizar dados" title="Atualizar dados" onClick={handleSync} disabled={syncing}>
+                <RefreshCw size={16} className={syncing ? 'animate-spin' : ''} />
               </Button>
-              <button
-                type="button"
-                title="Desconectar conta"
-                onClick={handleDisconnect}
-                className="shrink-0 rounded-xl p-2 text-muted-foreground transition-colors hover:bg-error/10 hover:text-error focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-              >
-                <Trash2 size={15} />
-              </button>
+              <Button type="button" variant="outline" size="icon" className="size-10 p-0 hover:border-error/40 hover:bg-error/10 hover:text-error" aria-label="Desconectar conta" title="Desconectar conta" onClick={handleDisconnect}>
+                <Trash2 size={16} />
+              </Button>
             </div>
-          </div>
-
-          {/* Campaign scope — the cards and "Analisar com Brand Brain" below reflect whichever
-             is picked here; the campaigns table further down always lists every campaign
-             regardless, so switching this never hides a campaign, only what the summary/AI
-             focuses on. */}
-          {insights?.campaigns?.length > 1 && (
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-              <span className="shrink-0 text-xs font-medium text-muted-foreground">Mostrando:</span>
-              <div className="w-full min-w-0 sm:w-72 lg:w-80">
-                <Select value={campaignFilter || '__all__'} onValueChange={(v) => setCampaignFilter(v === '__all__' ? '' : v)}>
-                  <SelectTrigger className="h-9 text-[13px]"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">Todas as campanhas (combinado)</SelectItem>
-                    {insights.campaigns.map((c: any) => (
-                      <SelectItem key={c.campaignExternalId} value={c.campaignExternalId}>{c.campaignName}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
+          </section>
 
           {/* KPIs */}
           {loadingInsights ? (
             <Skeleton className="h-[236px] rounded-2xl min-[1440px]:h-[118px]" />
           ) : insights && (<>
-            {/* Phones: Meta Business Suite style summary — one sentence + 2-column metric tiles */}
-            <section aria-label="Resumo dos anúncios" className="space-y-3 md:hidden">
-              <div className="flex items-start justify-between gap-3">
-                <h2 className="text-lg font-bold tracking-tight text-foreground">Resumo dos anúncios</h2>
-              </div>
-              <p className="text-[15px] leading-relaxed text-foreground/85">
-                <span className="font-semibold text-foreground">{clients.find((c) => c.id === clientId)?.name || account?.accountName || 'Esta conta'}</span>
-                {' '}investiu <span className="font-semibold text-foreground">{formatCurrency(insights.totals.spend, account?.currency)}</span>
-                {' '}em {insights.campaigns?.length || 0} {(insights.campaigns?.length || 0) === 1 ? 'campanha' : 'campanhas'}
-                {' '}{range === 'today' ? 'hoje' : range === '7d' ? 'nos últimos 7 dias' : 'nos últimos 30 dias'}.
-              </p>
-              <div className="grid grid-cols-2 gap-2.5">
-                {kpis.map((k: any, i: number) => (
-                  <div key={k.label} className={cn('flex min-h-[124px] flex-col rounded-2xl bg-muted/70 p-4 dark:bg-muted', kpis.length % 2 === 1 && i === kpis.length - 1 && 'col-span-2 min-h-0')}>
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-[15px] leading-snug text-foreground/85">{k.label}</span>
-                      <button
-                        type="button"
-                        aria-label={`Sobre ${k.label}`}
-                        title={k.hint || `${k.label} no período selecionado`}
-                        onClick={() => toast.info(k.label, k.hint || `${k.label} no período selecionado.`)}
-                        className="-mr-1 -mt-1 flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-card hover:text-foreground"
-                      >
-                        <Info size={17} />
-                      </button>
-                    </div>
-                    <p className="mt-auto pt-3 text-[26px] font-bold leading-none tracking-[-0.02em] tabular-nums text-foreground">{k.value}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-            <StatGroup className="hidden min-[1440px]:grid-cols-7 md:grid">
-              {kpis.map((k: any) => <Stat key={k.label} label={k.label} value={k.value} icon={k.icon} title={k.hint} />)}
-            </StatGroup>
+            {/* One sentence summary (Meta Business Suite style) */}
+            <p className="text-[15px] leading-relaxed text-foreground/85">
+              <span className="font-semibold text-foreground">{clients.find((c) => c.id === clientId)?.name || account?.accountName || 'Esta conta'}</span>
+              {' '}investiu <span className="font-semibold text-foreground">{formatCurrency(insights.totals.spend, account?.currency)}</span>
+              {' '}em {insights.campaigns?.length || 0} {(insights.campaigns?.length || 0) === 1 ? 'campanha' : 'campanhas'}
+              {' '}{range === 'today' ? 'hoje' : range === '7d' ? 'nos últimos 7 dias' : 'nos últimos 30 dias'}.
+            </p>
+
+            {/* KPI tiles drive the chart below — no duplicated metric pickers */}
+            <MetricExplorer
+              tiles={kpis.map((k: any) => ({ ...k, key: k.label, chart: CHARTABLE[k.label] }))}
+              rows={range === 'today' ? (insights.hourly || []) : (insights.daily || [])}
+              labelOf={(row) => range === 'today' ? String(row.hour) : format(new Date(`${String(row.date).slice(0, 10)}T12:00:00`), 'd MMM', { locale: ptBR })}
+              tooltipOf={(row) => range === 'today' ? `Hoje, ${row.hour}` : format(new Date(`${String(row.date).slice(0, 10)}T12:00:00`), "EEEE, d 'de' MMM", { locale: ptBR })}
+              caption={range === 'today' ? 'Por hora · fuso da conta de anúncios' : 'Por dia'}
+              empty={range === 'today' ? 'Ainda sem entregas registradas hoje.' : 'Sem dados diários neste período.'}
+            />
           </>)}
 
           {/* Live Meta breakdowns are aggregate estimates, never individual locations. */}
@@ -582,7 +559,45 @@ export function AdsPage() {
                 <CardDescription className="mt-1">{range === 'today' ? 'Hoje' : range === '7d' ? 'Últimos 7 dias' : 'Últimos 30 dias'}</CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="min-w-0 space-y-2">
+            <CardContent className="min-w-0 space-y-3">
+              {!!insights?.campaigns?.length && (() => {
+                const all = insights.campaigns as any[]
+                const tabs = [
+                  { key: 'all' as const, label: 'Todas', count: all.length },
+                  { key: 'ACTIVE' as const, label: 'Ativas', count: all.filter((c) => c.status === 'ACTIVE').length },
+                  { key: 'PAUSED' as const, label: 'Pausadas', count: all.filter((c) => c.status === 'PAUSED').length },
+                ]
+                return (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]" role="tablist" aria-label="Filtrar campanhas por estado">
+                      {tabs.map((t) => (
+                        <button
+                          key={t.key}
+                          type="button"
+                          role="tab"
+                          aria-selected={statusTab === t.key}
+                          onClick={() => setStatusTab(t.key)}
+                          className={cn(
+                            'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-colors',
+                            statusTab === t.key ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                          )}
+                        >
+                          {t.label}
+                          <span className={cn('rounded-full px-1.5 text-[11px] tabular-nums', statusTab === t.key ? 'bg-background/20' : 'bg-muted')}>{t.count}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="search"
+                      value={campaignQuery}
+                      onChange={(e) => setCampaignQuery(e.target.value)}
+                      placeholder="Pesquisar campanha"
+                      aria-label="Pesquisar campanha"
+                      className="h-9 w-full rounded-full border border-border bg-background px-4 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:border-primary sm:w-60"
+                    />
+                  </div>
+                )
+              })()}
               {loadingInsights ? <Skeleton className="h-28 rounded-xl" /> : !insights?.campaigns?.length ? (
                 <p className="text-xs text-muted-foreground font-medium py-6 text-center">
                   Nenhum dado sincronizado ainda pra esse período — clique em "Atualizar".
@@ -601,14 +616,21 @@ export function AdsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {insights.campaigns.map((c: any) => {
+                      {(() => {
+                        const q = campaignQuery.trim().toLowerCase()
+                        const visible = (insights.campaigns as any[]).filter((c) =>
+                          (statusTab === 'all' || c.status === statusTab) && (!q || String(c.campaignName || '').toLowerCase().includes(q)))
+                        if (!visible.length) return (
+                          <tr><td colSpan={6} className="py-8 text-center text-xs text-muted-foreground">Nenhuma campanha corresponde a este filtro.</td></tr>
+                        )
+                        return visible.map((c: any) => {
                         const canToggle = c.status === 'ACTIVE' || c.status === 'PAUSED'
                         const isToggling = togglingCampaignId === c.campaignExternalId
                         return (
                           <tr key={c.campaignExternalId} className="border-b border-border/60 transition-colors last:border-0 hover:bg-muted/40">
                             <td className="max-w-[24rem] py-3.5 pr-4 font-medium leading-relaxed text-foreground"><div className="flex items-center gap-3"><CampaignCreativePreview key={`${accountId}-${c.campaignExternalId}`} accountId={accountId} campaignId={c.campaignExternalId} campaignName={c.campaignName} /><span className="min-w-0 break-words">{c.campaignName}</span></div></td>
                             <td className="whitespace-nowrap py-3.5 pr-4">
-                              <Badge variant={c.status === 'ACTIVE' ? 'success' : 'default'} className="text-[10px]">{c.status}</Badge>
+                              <Badge dot variant={c.status === 'ACTIVE' ? 'success' : 'default'} className="text-[10px]">{AD_STATUS_LABELS[c.status] || c.status}</Badge>
                             </td>
                             <td className="whitespace-nowrap py-3.5 pr-4 text-right font-semibold tabular-nums text-foreground">{formatCurrency(c.spend, account?.currency)}</td>
                             <td className="whitespace-nowrap py-3.5 pr-4 text-right tabular-nums text-foreground">{c.results}</td>
@@ -637,7 +659,8 @@ export function AdsPage() {
                             </td>
                           </tr>
                         )
-                      })}
+                      })
+                      })()}
                     </tbody>
                   </table>
                 </div>

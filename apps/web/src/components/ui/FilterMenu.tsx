@@ -22,14 +22,14 @@ export function FilterMenu({ active, onClear, children, className }: FilterMenuP
         <button
           type="button"
           className={cn(
-            'inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border px-3.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+            'relative inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border px-3 text-sm font-semibold transition-colors sm:px-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
             active ? 'border-primary/40 bg-primary/10 text-primary-dark dark:text-primary-light' : 'border-border bg-card text-foreground hover:bg-muted',
             className
           )}
         >
           <ListFilter size={16} aria-hidden />
-          Filtros
-          {active > 0 && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold tabular-nums text-[#fff]">{active}</span>}
+          <span className="sr-only sm:not-sr-only">Filtros</span>
+          {active > 0 && <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold tabular-nums text-[#fff] ring-2 ring-background sm:static sm:ring-0">{active}</span>}
         </button>
       </Popover.Trigger>
       <Popover.Portal>

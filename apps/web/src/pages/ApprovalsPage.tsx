@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CheckSquare, ExternalLink, MessageSquareWarning, Trash2 } from 'lucide-react'
+import { CheckCircle2, CheckSquare, Clock, ExternalLink, MessageSquareWarning, Percent, Trash2 } from 'lucide-react'
 import api from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Button } from '@/components/ui/Button'
@@ -10,10 +10,16 @@ import { getErrorMessage } from '@/lib/errors'
 import { Page, PageHeader } from '@/components/layout/Page'
 import { ListCard, ListSkeleton, listRowClass, Meta } from '@/components/ui/List'
 import { cn } from '@/lib/utils'
+import { Stat, StatGroup } from '@/components/ui/Stat'
+
+type Filter = 'all' | 'PENDING' | 'CHANGES_REQUESTED' | 'APPROVED'
+const fmtDate = (d: string) => new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
 
 export function ApprovalsPage() {
   const [approvals, setApprovals] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<Filter>('all')
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -47,6 +53,23 @@ export function ApprovalsPage() {
     }
   }
 
+  const count = (st: string) => approvals.filter((a) => a.status === st).length
+  const pending = count('PENDING')
+  const changes = count('CHANGES_REQUESTED')
+  const approved = count('APPROVED')
+  const decided = approvals.filter((a) => a.status !== 'PENDING').length
+  const rate = decided ? Math.round((approved / decided) * 100) : null
+  const tabs: { key: Filter; label: string; count: number }[] = [
+    { key: 'all', label: 'Todas', count: approvals.length },
+    { key: 'PENDING', label: 'Pendentes', count: pending },
+    { key: 'CHANGES_REQUESTED', label: 'Ajustes pedidos', count: changes },
+    { key: 'APPROVED', label: 'Aprovadas', count: approved },
+  ]
+  const q = query.trim().toLowerCase()
+  const visible = approvals.filter((a) =>
+    (filter === 'all' || a.status === filter) &&
+    (!q || `${a.content?.title || ''} ${a.client?.name || ''}`.toLowerCase().includes(q)))
+
   return (
     <Page>
       <PageHeader
@@ -62,10 +85,50 @@ export function ApprovalsPage() {
           title="Nenhuma aprovação solicitada ainda"
           description='Abra qualquer conteúdo no Workspace e clique em "Link de aprovação" para enviar ao cliente.'
         />
-      ) : (
+      ) : (<>
+        <StatGroup>
+          <Stat label="Aguardando cliente" value={pending} icon={Clock} tone={pending ? 'warning' : 'default'} />
+          <Stat label="Ajustes pedidos" value={changes} icon={MessageSquareWarning} tone={changes ? 'error' : 'default'} />
+          <Stat label="Aprovadas" value={approved} icon={CheckCircle2} tone="success" />
+          <Stat label="Taxa de aprovação" value={rate === null ? '—' : `${rate}%`} icon={Percent} hint="Aprovadas entre as respondidas" />
+        </StatGroup>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none]" role="tablist" aria-label="Filtrar por estado">
+            {tabs.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                role="tab"
+                aria-selected={filter === t.key}
+                onClick={() => setFilter(t.key)}
+                className={cn(
+                  'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium transition-colors',
+                  filter === t.key ? 'border-foreground bg-foreground text-background' : 'border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                )}
+              >
+                {t.label}
+                <span className={cn('rounded-full px-1.5 text-[11px] tabular-nums', filter === t.key ? 'bg-background/20' : 'bg-muted')}>{t.count}</span>
+              </button>
+            ))}
+          </div>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Pesquisar conteúdo ou cliente"
+            aria-label="Pesquisar conteúdo ou cliente"
+            className="h-9 w-full rounded-full border border-border bg-background px-4 text-[13px] outline-none transition-colors placeholder:text-muted-foreground focus:border-primary sm:w-64"
+          />
+        </div>
+
+        {visible.length === 0 ? (
+          <p className="rounded-[20px] border border-dashed border-border py-10 text-center text-sm text-muted-foreground">Nenhuma aprovação corresponde a este filtro.</p>
+        ) : (
         <ListCard>
-          {approvals.map((appr) => {
+          {visible.map((appr) => {
             const lastAction = appr.actions?.[0]
+            const expired = appr.status === 'PENDING' && appr.expiresAt && new Date(appr.expiresAt) < new Date()
             return (
               <div key={appr.id} className={cn(listRowClass(false), 'flex-col items-stretch gap-3 sm:gap-3')}>
                 <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap sm:gap-4">
@@ -75,8 +138,12 @@ export function ApprovalsPage() {
                       className="mt-1"
                       items={[
                         <span className="font-medium text-foreground/80">{appr.client?.name}</span>,
-                        `Enviado em ${new Date(appr.sentAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`,
-                      ]}
+                        `Enviado em ${new Date(appr.sentAt || appr.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+                        appr.status === 'PENDING' && (appr.viewedAt ? `Visto em ${fmtDate(appr.viewedAt)}` : 'Ainda não aberto'),
+                        appr.status === 'PENDING' && appr.expiresAt && (expired
+                          ? <span className="font-medium text-error-dark dark:text-error">Link expirado</span>
+                          : `Expira em ${fmtDate(appr.expiresAt)}`),
+                      ].filter(Boolean)}
                     />
                   </div>
 
@@ -113,7 +180,8 @@ export function ApprovalsPage() {
             )
           })}
         </ListCard>
-      )}
+        )}
+      </>)}
     </Page>
   )
 }

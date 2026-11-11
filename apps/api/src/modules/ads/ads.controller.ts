@@ -590,6 +590,8 @@ export async function getAdInsights(req: AuthRequest, res: Response, next: NextF
     // while server-local/UTC date boundaries could select yesterday for another timezone.
     let rows: any[];
     let lastSyncedAt: Date | null;
+    // "Hoje" has a single day, so the chart uses Meta's hourly breakdown (ad account timezone).
+    let hourlyRows: { campaignExternalId: string; hour: string; spend: number; impressions: number; clicks: number; results: number }[] = [];
     if (isToday) {
       if (!connection.accessTokenEncrypted || !connection.externalPageId) throw new NotFoundError('Ad account not found or disconnected');
       const accessToken = decrypt(connection.accessTokenEncrypted);
@@ -609,6 +611,21 @@ export async function getAdInsights(req: AuthRequest, res: Response, next: NextF
         results: Number(pickPrimaryAction(row.actions)?.value || 0),
       }));
       lastSyncedAt = new Date();
+      try {
+        const hourly = await fetchAllMetaInsightRows(`${GRAPH_URL}/${actId}/insights?level=campaign&date_preset=today&breakdowns=hourly_stats_aggregated_by_advertiser_time_zone&fields=campaign_id,spend,impressions,clicks,actions&limit=500&access_token=${accessToken}`);
+        hourlyRows = hourly.map((row: any) => ({
+          campaignExternalId: row.campaign_id,
+          // "08:00:00 - 08:59:59" -> "08:00"
+          hour: String(row.hourly_stats_aggregated_by_advertiser_time_zone || '').slice(0, 5),
+          spend: Number(row.spend || 0),
+          impressions: Number(row.impressions || 0),
+          clicks: Number(row.clicks || 0),
+          results: Number(pickPrimaryAction(row.actions)?.value || 0),
+        })).filter((row: any) => /^\d{2}:\d{2}$/.test(row.hour));
+      } catch {
+        // The hourly chart is optional — never fail the totals because of it.
+        hourlyRows = [];
+      }
     } else {
       const range = req.query.range === '30d' ? 30 : 7;
       const since = new Date();
@@ -661,7 +678,28 @@ export async function getAdInsights(req: AuthRequest, res: Response, next: NextF
       byCampaign.set(r.campaignExternalId, agg);
     }
 
+    // Day-by-day series for the "Evolução diária" chart, same campaign scope as the totals.
+    // Synced rows carry their own `date`; live "today" rows don't, so they collapse into today.
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const dailyMap = new Map<string, { date: string; spend: number; impressions: number; clicks: number; results: number }>();
+    for (const r of scopedRows as any[]) {
+      const key = r.date ? new Date(r.date).toISOString().slice(0, 10) : todayKey;
+      const day = dailyMap.get(key) || { date: key, spend: 0, impressions: 0, clicks: 0, results: 0 };
+      day.spend += r.spend; day.impressions += r.impressions; day.clicks += r.clicks; day.results += r.results || 0;
+      dailyMap.set(key, day);
+    }
+
+    const hourlyMap = new Map<string, { hour: string; spend: number; impressions: number; clicks: number; results: number }>()
+    for (const r of hourlyRows) {
+      if (campaignFilter && r.campaignExternalId !== campaignFilter) continue
+      const slot = hourlyMap.get(r.hour) || { hour: r.hour, spend: 0, impressions: 0, clicks: 0, results: 0 }
+      slot.spend += r.spend; slot.impressions += r.impressions; slot.clicks += r.clicks; slot.results += r.results
+      hourlyMap.set(r.hour, slot)
+    }
+
     res.json({
+      daily: [...dailyMap.values()].sort((a, b) => a.date.localeCompare(b.date)),
+      hourly: [...hourlyMap.values()].sort((a, b) => a.hour.localeCompare(b.hour)),
       totals: {
         ...totals,
         ctr: totals.impressions ? (totals.clicks / totals.impressions) * 100 : 0,

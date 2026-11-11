@@ -13,6 +13,8 @@ import { confirmDialog } from '@/lib/confirm'
 import { useAuthStore } from '@/stores/authStore'
 import { Page, PageHeader, PageIcon } from '@/components/layout/Page'
 import { Stat, StatGroup } from '@/components/ui/Stat'
+import { MetricTrend, RankedBars } from '@/components/charts/MetricTrend'
+import { Panel, PanelHeader } from '@/components/dashboard/DashboardWidgets'
 
 type Kind = 'ads' | 'analytics'
 type Range = 'today' | '7d' | '30d'
@@ -31,13 +33,12 @@ function Metric({ label, value, icon }: { label: string; value: string; icon: ty
 }
 
 function Breakdown({ title, rows, valueKey }: { title: string; rows: any[]; valueKey: string }) {
-  return <Card className="p-4 sm:p-5 min-w-0">
-    <h3 className="font-bold text-foreground mb-4">{title}</h3>
-    {rows.length ? <div className="space-y-3">{rows.map((row, index) => <div key={`${row.label}-${index}`} className="flex items-center justify-between gap-4 text-sm border-b border-border/70 pb-2 last:border-0 last:pb-0">
-      <span className="min-w-0 truncate text-muted-foreground" title={row.label}>{row.label}</span>
-      <span className="font-semibold text-foreground shrink-0">{number(row[valueKey])}</span>
-    </div>)}</div> : <p className="text-sm text-muted-foreground">Sem dados neste período.</p>}
-  </Card>
+  return <Panel>
+    <PanelHeader title={title} />
+    {rows?.length
+      ? <RankedBars rows={rows.slice(0, 8).map((row: any) => ({ label: row.label, value: Number(row[valueKey] || 0) }))} format={number} />
+      : <p className="text-sm text-muted-foreground">Sem dados neste período.</p>}
+  </Panel>
 }
 
 export function GooglePerformancePage() {
@@ -262,6 +263,17 @@ export function GooglePerformancePage() {
           <Metric label="Conversões" value={number(insights.totals.conversions)} icon={Users} />
           <Metric label="Custo/conversão" value={money(insights.totals.costPerConversion, insights.currency)} icon={TrendingUp} />
         </StatGroup>
+        <MetricTrend
+          title="Evolução diária"
+          description="Desempenho das campanhas dia a dia."
+          rows={insights.daily || []}
+          metrics={[
+            { key: 'clicks', label: 'Cliques', series: [{ key: 'clicks', label: 'Cliques', color: '#00A76F', pick: (r) => Number(r.clicks || 0) }] },
+            { key: 'impressions', label: 'Impressões', series: [{ key: 'impressions', label: 'Impressões', color: '#00B8D9', pick: (r) => Number(r.impressions || 0) }] },
+            { key: 'spend', label: 'Investimento', formatTotal: (v) => money(v, insights.currency), series: [{ key: 'spend', label: 'Investimento', color: '#8E33FF', pick: (r) => Number(r.spend || 0) }] },
+            { key: 'conversions', label: 'Conversões', series: [{ key: 'conversions', label: 'Conversões', color: '#FFAB00', pick: (r) => Number(r.conversions || 0) }] },
+          ]}
+        />
         <Card className="p-4 sm:p-5 min-w-0"><h2 className="font-bold text-foreground mb-4">Campanhas</h2>
           <div className="overflow-x-auto"><table className="w-full min-w-[780px] text-sm"><thead><tr className="border-b border-border text-left text-xs text-muted-foreground">
             <th className="pb-3 pr-4">Campanha</th><th className="pb-3 pr-4">Status</th><th className="pb-3 pr-4 text-right">Gasto</th><th className="pb-3 pr-4 text-right">Cliques</th><th className="pb-3 pr-4 text-right">Impressões</th><th className="pb-3 pr-4 text-right">Conversões</th>{canManage && <th className="pb-3 text-right">Ação</th>}
@@ -282,6 +294,17 @@ export function GooglePerformancePage() {
           <Metric label="Taxa de envolvimento" value={percent(insights.totals.engagementRate * 100)} icon={TrendingUp} />
           <Metric label="Eventos principais" value={number(insights.totals.keyEvents)} icon={BarChart3} />
         </StatGroup>
+        <MetricTrend
+          title="Tráfego do website"
+          description="Sessões e visualizações de página por dia."
+          rows={insights.daily || []}
+          metrics={[
+            { key: 'traffic', label: 'Sessões e visualizações', series: [
+              { key: 'sessions', label: 'Sessões', color: '#00A76F', pick: (r) => Number(r.sessions || 0) },
+              { key: 'views', label: 'Visualizações', color: '#00B8D9', pick: (r) => Number(r.views || 0) },
+            ] },
+          ]}
+        />
         <div className="grid gap-4 lg:grid-cols-3"><Breakdown title="Páginas mais vistas" rows={insights.pages} valueKey="views" />
           <Breakdown title="Origem do tráfego" rows={insights.channels} valueKey="sessions" />
           <Breakdown title="Países" rows={insights.countries} valueKey="sessions" /></div>

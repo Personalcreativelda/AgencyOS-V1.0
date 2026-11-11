@@ -50,18 +50,18 @@ export function ContentGridTile(props: CreativeItemProps) {
   const video = media[0]?.mimeType.startsWith('video/') || ['REEL', 'VIDEO', 'STORY'].includes(content.contentType)
   const carousel = content.contentType === 'CAROUSEL'
   return (
-    <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card transition-colors duration-150 hover:border-muted-foreground/50 focus-within:border-primary/60 motion-reduce:transition-none">
-      <button type="button" onClick={onPreview} aria-label={`Pré-visualizar ${content.title}`} className={cn('group/media relative block aspect-[4/3] w-full overflow-hidden border-b border-border bg-muted/50 focus-visible:ring-inset', focus)}>
+    <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-card transition-[border-color,box-shadow] duration-150 hover:border-grey-400 hover:shadow-card-hover focus-within:border-primary/60 motion-reduce:transition-none">
+      <button type="button" onClick={onPreview} aria-label={`Pré-visualizar ${content.title}`} className={cn('group/media relative block aspect-square w-full overflow-hidden border-b border-border bg-muted/50 focus-visible:ring-inset sm:aspect-[4/3]', focus)}>
         <CreativeThumbnail content={content} showLabel />
-        <span className="absolute left-3 top-3 inline-flex max-w-[calc(100%-1.5rem)] items-center gap-1.5 rounded-md border border-border/60 bg-card/95 px-2 py-1 text-xs font-medium text-foreground">
+        <span className="absolute left-2 top-2 inline-flex max-w-[calc(100%-1rem)] items-center gap-1.5 rounded-md border border-border/60 bg-card/95 px-1.5 py-0.5 text-[11px] font-medium text-foreground sm:left-3 sm:top-3 sm:px-2 sm:py-1 sm:text-xs">
           {carousel ? <Layers size={13} aria-hidden /> : video ? <Play size={12} aria-hidden /> : <FileText size={13} aria-hidden />}
           {CONTENT_TYPE_LABELS[content.contentType] || content.contentType}{carousel && media.length > 0 && <span className="tabular-nums">· {media.length}</span>}
         </span>
         {video && media.length > 0 && <span className="absolute inset-0 flex items-center justify-center"><span className="flex size-11 items-center justify-center rounded-full bg-[#000]/60 text-[#fff] transition-colors group-hover/media:bg-[#000]/75 motion-reduce:transition-none"><Play size={20} aria-hidden className="ml-0.5" /></span></span>}
         <span className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-[#000]/35 to-transparent px-3 pb-3 pt-6 opacity-0 transition-opacity group-hover/media:opacity-100 group-focus-visible/media:opacity-100 motion-reduce:transition-none"><span className="inline-flex items-center gap-1.5 rounded-md bg-card px-2 py-1 text-xs font-medium text-foreground"><Eye size={13} aria-hidden />Pré-visualizar</span></span>
       </button>
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="min-w-0"><h3 className="min-h-10 text-sm font-semibold leading-5"><Link to={`/app/content/${content.id}`} title={content.title} className={cn('line-clamp-2 rounded-sm hover:underline hover:underline-offset-4', focus)}>{content.title}</Link></h3>
+      <div className="flex flex-1 flex-col gap-2.5 p-3 sm:gap-3 sm:p-4">
+        <div className="min-w-0"><h3 className="min-h-10 text-[13px] font-semibold leading-5 sm:text-sm"><Link to={`/app/content/${content.id}`} title={content.title} className={cn('line-clamp-2 rounded-sm hover:underline hover:underline-offset-4', focus)}>{content.title}</Link></h3>
           <div className="mt-1.5 flex min-w-0 items-center justify-between gap-2"><p className="truncate text-xs leading-5 text-muted-foreground" title={content.client?.name}>{content.client?.name || 'Cliente não disponível'}</p><Platforms content={content} /></div>
           <ScheduledDate content={content} />
         </div>

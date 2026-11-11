@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/Dialog'
 import { Page, PageHeader } from '@/components/layout/Page'
 import { FilterMenu, FilterField } from '@/components/ui/FilterMenu'
+import { ViewToggle } from '@/components/ui/ViewToggle'
 
 type Client = {
   id: string; name: string; industry?: string | null; description?: string | null
@@ -26,7 +27,7 @@ type Client = {
 type ClientPage = { data: Client[]; total: number; page: number; limit: number }
 const statusLabels: Record<string, string> = { ACTIVE: 'Ativo', PAUSED: 'Pausado', INACTIVE: 'Inativo', ARCHIVED: 'Arquivado', CHURNED: 'Encerrado' }
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt')
-const gridClass = 'grid auto-rows-fr grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3 lg:gap-5'
+const gridClass = 'grid auto-rows-fr grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 2xl:grid-cols-3 lg:gap-5'
 // Soft tinted tiles for clients without a logo (stable per name).
 const INITIAL_TONES = [
   'bg-primary/10 text-primary-dark dark:text-primary-light',
@@ -180,50 +181,40 @@ export function ClientsPage() {
     <Page>
       <PageHeader title="Clientes" description="As marcas da agência, seus Brand Brains e conteúdos associados."
         actions={<Button asChild><Link to="/app/clients/new"><Plus size={16} aria-hidden />Novo cliente</Link></Button>} />
-      <section aria-label="Pesquisa e filtros de clientes" className="rounded-[20px] border border-border/70 bg-card p-3 shadow-card sm:p-4">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-          <div role="search" className="min-w-0 xl:w-[300px]">
+      <section aria-label="Pesquisa e filtros de clientes" className="space-y-2.5">
+        <div className="flex items-center gap-2.5">
+          <div role="search" className="min-w-0 flex-1">
             <label htmlFor="client-search" className="sr-only">Pesquisar clientes</label>
-            <Input id="client-search" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar por nome, setor ou gestor…" icon={<Search aria-hidden />} aria-controls="clients-results" autoComplete="off" />
+            <Input id="client-search" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar clientes…" icon={<Search aria-hidden />} aria-controls="clients-results" autoComplete="off" />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div role="radiogroup" aria-label="Status" className="inline-flex items-center gap-0.5 rounded-full border border-border bg-muted/50 p-1">
-              {[...STATUS_FILTERS, ...statuses.filter(value => !STATUS_FILTERS.some(option => option.value === value)).map(value => ({ value, label: statusLabels[value] || value }))].map(option => (
-                <button key={option.value} type="button" role="radio" aria-checked={status === option.value} onClick={() => setStatus(option.value)}
-                  className={`h-8 rounded-full px-3.5 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${status === option.value ? 'bg-card text-foreground shadow-z1' : 'text-muted-foreground hover:text-foreground'}`}>
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            <FilterMenu active={manager !== 'all' ? 1 : 0} onClear={() => setManager('all')}>
-              <FilterField label="Gestor">
-                <Select value={manager} onValueChange={setManager}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="all">Todos os gestores</SelectItem><SelectItem value="unassigned">Sem gestor</SelectItem>{managers.map(value => <SelectItem key={value.id} value={value.id}>{value.name}</SelectItem>)}</SelectContent>
-                </Select>
-              </FilterField>
-              <FilterField label="Ordenar por">
-                <Select value={sort} onValueChange={setSort}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="name-asc">Nome · A–Z</SelectItem><SelectItem value="name-desc">Nome · Z–A</SelectItem><SelectItem value="contents">Mais conteúdos</SelectItem><SelectItem value="recent">Mais recentes</SelectItem></SelectContent>
-                </Select>
-              </FilterField>
-            </FilterMenu>
+          <FilterMenu active={manager !== 'all' ? 1 : 0} onClear={() => setManager('all')}>
+            <FilterField label="Gestor">
+              <Select value={manager} onValueChange={setManager}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="all">Todos os gestores</SelectItem><SelectItem value="unassigned">Sem gestor</SelectItem>{managers.map(value => <SelectItem key={value.id} value={value.id}>{value.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </FilterField>
+            <FilterField label="Ordenar por">
+              <Select value={sort} onValueChange={setSort}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent><SelectItem value="name-asc">Nome · A–Z</SelectItem><SelectItem value="name-desc">Nome · Z–A</SelectItem><SelectItem value="contents">Mais conteúdos</SelectItem><SelectItem value="recent">Mais recentes</SelectItem></SelectContent>
+              </Select>
+            </FilterField>
+          </FilterMenu>
+          <ViewToggle value={view} onChange={changeView} />
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <div role="radiogroup" aria-label="Status" className="-mx-1 flex min-w-0 items-center gap-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {[...STATUS_FILTERS, ...statuses.filter(value => !STATUS_FILTERS.some(option => option.value === value)).map(value => ({ value, label: statusLabels[value] || value }))].map(option => (
+              <button key={option.value} type="button" role="radio" aria-checked={status === option.value} onClick={() => setStatus(option.value)}
+                className={`h-8 shrink-0 rounded-full border px-3.5 text-[13px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${status === option.value ? 'border-foreground bg-foreground text-background' : 'border-border bg-card text-muted-foreground hover:text-foreground'}`}>
+                {option.label}
+              </button>
+            ))}
           </div>
-          <div className="flex items-center justify-between gap-3 xl:ml-auto">
-            <p role="status" aria-live="polite" aria-atomic="true" className="text-[13px] font-medium text-muted-foreground">
-              {query.isLoading ? 'Carregando clientes…' : query.isError ? 'Lista indisponível' : hasFilters ? `${filtered.length} de ${clients.length} clientes` : `${clients.length} ${clients.length === 1 ? 'cliente cadastrado' : 'clientes cadastrados'}`}
-            </p>
-            {hasFilters && <Button variant="ghost" size="sm" onClick={resetFilters}>Limpar</Button>}
-            <div role="radiogroup" aria-label="Visualização" className="inline-flex items-center gap-0.5 rounded-xl border border-border p-1">
-              {([['grid', LayoutGrid, 'Grade'], ['list', List, 'Lista']] as const).map(([value, Icon, label]) => (
-                <button key={value} type="button" role="radio" aria-checked={view === value} aria-label={label} title={label} onClick={() => changeView(value)}
-                  className={`flex size-8 items-center justify-center rounded-lg transition-colors ${view === value ? 'bg-primary/10 text-primary-dark dark:text-primary-light' : 'text-muted-foreground hover:text-foreground'}`}>
-                  <Icon size={17} />
-                </button>
-              ))}
-            </div>
-          </div>
+          <p role="status" aria-live="polite" aria-atomic="true" className="shrink-0 text-[13px] text-muted-foreground">
+            {query.isLoading ? 'Carregando…' : query.isError ? 'Indisponível' : hasFilters ? `${filtered.length} de ${clients.length}` : `${clients.length} ${clients.length === 1 ? 'cliente' : 'clientes'}`}
+          </p>
         </div>
       </section>
       <section id="clients-results" aria-label="Lista de clientes" aria-busy={query.isFetching}>
