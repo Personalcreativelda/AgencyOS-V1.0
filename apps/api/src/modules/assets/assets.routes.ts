@@ -36,12 +36,20 @@ const upload = multer({
 // already stalled from the frontend's point of view. Catching it here, right where it's thrown,
 // keeps the failure fast and its message specific (file too large vs wrong type) instead of a
 // generic "Internal server error".
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const sizeMb = (bytes: number) => (bytes / 1024 / 1024).toFixed(1).replace('.', ',');
+/** Images over 5 MB are refused with a message that names the file (videos keep the 100 MB limit). */
+function oversizedImage(files: Express.Multer.File[]) {
+  const big = files.find(f => f.mimetype.startsWith('image/') && f.size > MAX_IMAGE_BYTES);
+  return big ? `"${big.originalname}" tem ${sizeMb(big.size)} MB e o limite para imagens é 5 MB. Exporte em JPG ou comprima a imagem e tente novamente.` : null;
+}
+
 function handleUploadError(err: unknown, _req: Request, res: Response, next: NextFunction) {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: 'Arquivo muito grande — o limite é 100MB.', statusCode: 400 });
+      return res.status(400).json({ error: 'Ficheiro demasiado grande: imagens até 5 MB e vídeos até 100 MB.', statusCode: 400 });
     }
-    return res.status(400).json({ error: `Erro no upload: ${err.message}`, statusCode: 400 });
+    return res.status(400).json({ error: 'Não foi possível receber o ficheiro. Tente novamente.', statusCode: 400 });
   }
   next(err);
 }
@@ -67,7 +75,9 @@ router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
 
 router.post('/upload', upload.single('file'), handleUploadError, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    if (!req.file) return res.status(400).json({ error: 'Nenhum ficheiro foi enviado.' });
+    const tooBig = oversizedImage([req.file]);
+    if (tooBig) return res.status(400).json({ error: tooBig });
 
     const { clientId, contentId, name } = req.body;
     // Derived from the actual file, not trusted from the client — this is what
@@ -125,6 +135,8 @@ const uploadBatch = multer({
 router.post('/upload-batch', uploadBatch.array('files', MAX_CAROUSEL_IMAGES), handleUploadError, async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const files = req.files as Express.Multer.File[] | undefined;
+    const tooBigBatch = oversizedImage(files || []);
+    if (tooBigBatch) return res.status(400).json({ error: tooBigBatch });
     if (!files || files.length === 0) return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
 
     const { contentId } = req.body;

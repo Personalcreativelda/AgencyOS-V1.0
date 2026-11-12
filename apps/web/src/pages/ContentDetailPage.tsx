@@ -21,7 +21,7 @@ import { SocialPreview, type SocialPlatform } from '@/components/SocialPreview'
 import { useThemeStore } from '@/stores/themeStore'
 import { toast } from '@/lib/toast'
 import { confirmDialog } from '@/lib/confirm'
-import { getErrorMessage } from '@/lib/errors'
+import { assertUploadable, getErrorMessage } from '@/lib/errors'
 import { Page } from '@/components/layout/Page'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/DropdownMenu'
@@ -362,6 +362,12 @@ export function ContentDetailPage() {
   const handleUploadCreative = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
+    // Size/format checked before uploading: the user sees exactly which file is the problem.
+    try { assertUploadable(files) } catch (err) {
+      toast.error('Não foi possível enviar o criativo', getErrorMessage(err))
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
     const previews = files.map((f) => URL.createObjectURL(f))
     setPendingPreviews(previews)
     setUploadingCreative(true)
@@ -446,6 +452,11 @@ export function ContentDetailPage() {
       return
     }
     const accepted = files.slice(0, room)
+    try { assertUploadable(accepted) } catch (err) {
+      toast.error('Não foi possível adicionar as imagens', getErrorMessage(err))
+      if (addMoreInputRef.current) addMoreInputRef.current.value = ''
+      return
+    }
     const previews = accepted.map((f) => URL.createObjectURL(f))
     setPendingPreviews(previews)
     setAddingMore(true)

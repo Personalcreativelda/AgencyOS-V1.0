@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { useAuthStore } from '@/stores/authStore'
+import { friendlyMessage } from './errors'
 
 const api = axios.create({
   baseURL: '/api/v1',
@@ -67,7 +68,8 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config
-    if (error.response?.status === 401 && !original._retry) {
+    // Wrong password on /auth/login is a 401 too: show it, don't treat it as an expired session.
+    if (error.response?.status === 401 && !original?._retry && !/^\/auth\/(login|register|google)/.test(String(original?.url || ''))) {
       original._retry = true
       const { refreshToken, setAuth, logout } = useAuthStore.getState()
       if (refreshToken) {
@@ -85,7 +87,7 @@ api.interceptors.response.use(
         } catch (refreshError: any) {
           // No connection / server restarting: keep the session (offline mode shows saved data)
           // and just fail this request. Only a real "refresh token rejected" ends the session.
-          if (!refreshError?.response) return Promise.reject(error)
+          if (!refreshError?.response) return Promise.reject(withFriendlyMessage(error))
           // Another tab may have rotated the token a moment ago and saved the new pair —
           // adopt it instead of logging out.
           const saved = readSavedSession()
@@ -103,8 +105,27 @@ api.interceptors.response.use(
         window.location.href = '/login'
       }
     }
-    return Promise.reject(error)
+    return Promise.reject(withFriendlyMessage(error))
   }
 )
+
+/**
+ * Every failed request carries one clear message for the user (`response.data.error` is replaced
+ * by it), so screens that show `err.response?.data?.error` never display English, HTML or stack
+ * traces. The original details are logged for the development team.
+ */
+function withFriendlyMessage(error: any) {
+  if (!error || error.code === 'ERR_CANCELED') return error
+  const message = friendlyMessage(error)
+  if (import.meta.env.DEV || error.response?.status >= 500) {
+    console.warn('[API]', error.config?.method?.toUpperCase(), error.config?.url, error.response?.status, error.response?.data ?? error.message)
+  }
+  error.friendlyMessage = message
+  if (error.response) {
+    const data = error.response.data
+    error.response.data = data && typeof data === 'object' && !Array.isArray(data) ? { ...data, error: message, technicalError: data.error } : { error: message }
+  }
+  return error
+}
 
 export default api

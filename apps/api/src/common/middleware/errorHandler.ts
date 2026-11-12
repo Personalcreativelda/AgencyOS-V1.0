@@ -95,17 +95,25 @@ export function errorHandler(
     });
   }
 
+  // Body over express.json's limit, or a malformed JSON body.
+  if ((err as any).type === 'entity.too.large') {
+    return res.status(413).json({ error: 'O conteúdo enviado é demasiado grande. Reduza o tamanho e tente novamente.', statusCode: 413 });
+  }
+  if ((err as any).type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Os dados enviados não são válidos. Atualize a página e tente novamente.', statusCode: 400 });
+  }
+
   // Prisma errors
   if ((err as any).code === 'P2002') {
     return res.status(409).json({
-      error: 'A record with this value already exists.',
+      error: 'Já existe um registo com estes dados.',
       statusCode: 409,
     });
   }
 
   if ((err as any).code === 'P2025') {
     return res.status(404).json({
-      error: 'Record not found.',
+      error: 'Não encontrámos este item. Pode ter sido apagado.',
       statusCode: 404,
     });
   }
@@ -113,7 +121,7 @@ export function errorHandler(
   console.error('Unhandled error:', err);
 
   return res.status(500).json({
-    error: 'Internal server error',
+    error: 'O servidor teve um problema ao processar o pedido. Tente novamente em instantes.',
     statusCode: 500,
   });
 }

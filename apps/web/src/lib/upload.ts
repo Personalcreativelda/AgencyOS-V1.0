@@ -1,6 +1,8 @@
 import api from './api'
+import { assertUploadable } from './errors'
 
 export async function uploadFile(file: File, extra: Record<string, string> = {}) {
+  assertUploadable([file])
   const formData = new FormData()
   formData.append('file', file)
   formData.append('type', 'IMAGE')
