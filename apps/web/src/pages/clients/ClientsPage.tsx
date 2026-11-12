@@ -28,7 +28,8 @@ type Client = {
 type ClientPage = { data: Client[]; total: number; page: number; limit: number }
 const statusLabels: Record<string, string> = { ACTIVE: 'Ativo', PAUSED: 'Pausado', INACTIVE: 'Inativo', ARCHIVED: 'Arquivado', CHURNED: 'Encerrado' }
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt')
-const gridClass = 'grid auto-rows-fr grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 2xl:grid-cols-3 lg:gap-5'
+// Equal-height rows only when cards sit side by side; on phones each card keeps its own height.
+const gridClass = 'grid grid-cols-1 gap-3 sm:gap-4 md:auto-rows-fr md:grid-cols-2 2xl:grid-cols-3 lg:gap-5'
 // Soft tinted tiles for clients without a logo (stable per name).
 const INITIAL_TONES = [
   'bg-primary/10 text-primary-dark dark:text-primary-light',

@@ -25,7 +25,7 @@ export function ViewToggle({ value, onChange, className }: { value: View; onChan
           onClick={() => onChange(option.value)}
           className={cn(
             'flex size-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-            value === option.value ? 'bg-primary/10 text-primary-dark dark:text-primary-light' : 'text-muted-foreground hover:text-foreground'
+            value === option.value ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
           )}
         >
           <option.icon size={17} />

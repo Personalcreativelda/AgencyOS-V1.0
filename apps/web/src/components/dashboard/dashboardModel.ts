@@ -85,6 +85,9 @@ function quotedTitle(message: string) {
 }
 
 export function getUpcomingPublications(contents: DashboardContent[], now: number) {
-  return contents.filter(content => content.status === 'SCHEDULED' && content.scheduledAt && Date.parse(content.scheduledAt) >= now)
+  // Anything with a future date that hasn't gone out yet (approved, in review, drafts…), not only
+  // status SCHEDULED — an approved post for tomorrow is an upcoming publication.
+  const done = ['PUBLISHED', 'ARCHIVED', 'FAILED']
+  return contents.filter(content => !done.includes(content.status) && content.scheduledAt && Date.parse(content.scheduledAt) >= now)
     .sort((a, b) => Date.parse(a.scheduledAt!) - Date.parse(b.scheduledAt!)).slice(0, 4)
 }

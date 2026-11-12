@@ -1,14 +1,8 @@
 import type { ReactNode } from 'react'
-import { BarChart3, CheckCircle2, Share2 } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
 import { MadeBy } from '@/components/brand/MadeBy'
 import { ThemeMenu } from '@/components/ui/ThemeMenu'
 
-const POINTS = [
-  { icon: CheckCircle2, title: 'Aprovações em 1 clique', text: 'Portal direto para o cliente aprovar ou pedir ajustes, sem login.' },
-  { icon: Share2, title: 'Publicação em 6 redes', text: 'Instagram, Facebook, LinkedIn, TikTok, YouTube e WhatsApp.' },
-  { icon: BarChart3, title: 'Relatórios automáticos', text: 'Métricas de anúncios e orgânico consolidadas para cada cliente.' },
-]
 
 /**
  * Split auth layout (Stitch "Login" screen): brand panel on the left from `lg`, the form on the
@@ -44,19 +38,6 @@ export function AuthShell({ children }: { children: ReactNode }) {
           <p className="mt-5 max-w-md text-[17px] leading-relaxed text-[#fff]/80">
             Planeje, aprove e publique conteúdo para todos os clientes — com o Brand Brain aprendendo cada marca.
           </p>
-          <ul className="mt-10 space-y-5">
-            {POINTS.map((p) => (
-              <li key={p.title} className="flex items-start gap-4">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-[#fff]/20 bg-[#fff]/10">
-                  <p.icon size={19} />
-                </span>
-                <span>
-                  <span className="block text-[15px] font-semibold">{p.title}</span>
-                  <span className="mt-0.5 block text-sm text-[#fff]/70">{p.text}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
         </div>
 
         <MadeBy tone="onBrand" className="relative justify-start" />
@@ -81,13 +62,6 @@ export function AuthShell({ children }: { children: ReactNode }) {
         </div>
         <h1 className="relative mt-7 max-w-xs text-[26px] font-bold leading-[1.15] tracking-[-0.02em]">O sistema operacional da sua agência</h1>
         <p className="relative mt-2 max-w-sm text-[15px] leading-relaxed text-[#fff]/80">Planeje, aprove e publique para todos os clientes.</p>
-        <ul className="relative mt-5 flex flex-wrap gap-2">
-          {POINTS.map((p) => (
-            <li key={p.title} className="inline-flex items-center gap-1.5 rounded-full border border-[#fff]/20 bg-[#fff]/10 px-3 py-1.5 text-[13px] font-medium">
-              <p.icon size={14} aria-hidden />{p.title}
-            </li>
-          ))}
-        </ul>
       </header>
 
       {/* Form side */}

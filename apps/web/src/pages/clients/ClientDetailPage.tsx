@@ -137,7 +137,7 @@ export function ClientDetailPage() {
 
   // Contact info (email/phone/website) — edited inline, separate from the brand-profile tabs
   const [editingContact, setEditingContact] = useState(false)
-  const [contactForm, setContactForm] = useState({ email: '', phone: '', website: '' })
+  const [contactForm, setContactForm] = useState({ email: '', phone: '', website: '', description: '' })
   const [savingContact, setSavingContact] = useState(false)
 
   // Forms
@@ -162,7 +162,7 @@ export function ClientDetailPage() {
         api.get(`/brand/clients/${id}/reference-images`),
       ])
       setClient(cRes.data)
-      setContactForm({ email: cRes.data.email || '', phone: cRes.data.phone || '', website: cRes.data.website || '' })
+      setContactForm({ email: cRes.data.email || '', phone: cRes.data.phone || '', website: cRes.data.website || '', description: cRes.data.description || '' })
       setProfile(profRes.data || {})
       setRules(rulesRes.data || [])
       setColors(colorsRes.data || [])
@@ -474,17 +474,25 @@ export function ClientDetailPage() {
                 <Input id="contactWebsite" type="text" placeholder="https://marca.com.br" value={contactForm.website} onChange={(e) => setContactForm({ ...contactForm, website: e.target.value })} />
               </div>
             </div>
+            <div>
+              <Label htmlFor="clientDescription">Descrição da marca</Label>
+              <Textarea id="clientDescription" rows={4} value={contactForm.description} placeholder="O que a marca faz, o que a diferencia e para quem vende…"
+                onChange={(e) => setContactForm({ ...contactForm, description: e.target.value })} />
+            </div>
             <div className="flex items-center gap-2">
               <Button type="submit" size="sm" loading={savingContact}>
                 {!savingContact && <span>Salvar</span>}
               </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingContact(false); setContactForm({ email: client.email || '', phone: client.phone || '', website: client.website || '' }) }}>
+              <Button type="button" variant="ghost" size="sm" onClick={() => { setEditingContact(false); setContactForm({ email: client.email || '', phone: client.phone || '', website: client.website || '', description: client.description || '' }) }}>
                 <X size={13} />
                 <span>Cancelar</span>
               </Button>
             </div>
           </form>
-        ) : (
+        ) : (<>
+          {client.description
+            ? <p className="mb-3 whitespace-pre-line border-b border-border/70 pb-3 text-sm leading-relaxed text-foreground/85">{client.description}</p>
+            : <button type="button" onClick={() => setEditingContact(true)} className="mb-3 w-full border-b border-border/70 pb-3 text-left text-sm italic text-muted-foreground hover:text-foreground">Sem descrição — toque para adicionar</button>}
           <div className="flex flex-col gap-3 text-sm lg:flex-row lg:items-center lg:gap-0 lg:divide-x lg:divide-border/70">
             <div className="flex min-w-0 items-center gap-2 lg:flex-1 lg:pr-5">
               <Mail size={16} className="shrink-0 text-muted-foreground" />
@@ -508,7 +516,7 @@ export function ClientDetailPage() {
               </Button>
             </div>
           </div>
-        )}
+        </>)}
       </Card>
 
       {/* AI Suggestion Banner */}

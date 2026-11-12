@@ -68,9 +68,21 @@ export function ContentPage({ view }: ContentPageProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [contents, setContents] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
-  const [selectedClient, setSelectedClient] = useState(entry?.clientId || '')
-  const [selectedStatus, setSelectedStatus] = useState(entry?.status && FILTER_STATUSES.includes(entry.status) ? entry.status : '')
-  const [selectedPlatform, setSelectedPlatform] = useState('')
+  // Filters are kept in the URL (?cliente=…&status=…&rede=…) so they survive a refresh, pull to
+  // refresh, an app update and coming back from a content — not just the current render.
+  const [filterParams, setFilterParams] = useSearchParams()
+  const [selectedClient, setSelectedClient] = useState(entry?.clientId || filterParams.get('cliente') || '')
+  const [selectedStatus, setSelectedStatus] = useState(
+    entry?.status && FILTER_STATUSES.includes(entry.status) ? entry.status
+      : FILTER_STATUSES.includes(filterParams.get('status') || '') ? filterParams.get('status')! : '')
+  const [selectedPlatform, setSelectedPlatform] = useState(filterParams.get('rede') || '')
+  useEffect(() => {
+    const next = new URLSearchParams(filterParams)
+    const put = (key: string, value: string) => { if (value) next.set(key, value); else next.delete(key) }
+    put('cliente', selectedClient); put('status', selectedStatus); put('rede', selectedPlatform)
+    if (next.toString() !== filterParams.toString()) setFilterParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedClient, selectedStatus, selectedPlatform])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [listDisplay, setListDisplay] = useState<ListDisplay>(
