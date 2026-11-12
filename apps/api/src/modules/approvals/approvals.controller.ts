@@ -23,19 +23,32 @@ export async function requestApproval(req: AuthRequest, res: Response, next: Nex
     });
     if (!content) throw new NotFoundError('Content not found');
 
-    // Expire every still-open old request for this content, not just PENDING ones — a request
-    // the client already opened (VIEWED) but never acted on was being left behind forever,
-    // which is what let the same content pile up multiple "aguardando aprovação" alerts on the
-    // dashboard every time the agency regenerated the link.
-    await prisma.approvalRequest.updateMany({
-      where: { contentId, status: { in: ['PENDING', 'VIEWED'] } },
-      data: { status: 'EXPIRED' },
-    });
-
-    const token = uuidv4() + '-' + uuidv4() + '-' + Date.now().toString(36);
     const expiresAt = expiresInDays
       ? new Date(Date.now() + Number(expiresInDays) * 24 * 60 * 60 * 1000)
       : null;
+
+    // One link per content: while a request is still open (sent / viewed, not past its date) the
+    // same link is returned again instead of creating a second one — the client may already have
+    // it on WhatsApp/e-mail, and a new link would leave the old one showing as "Expirado".
+    const open = await prisma.approvalRequest.findFirst({
+      where: { contentId, agencyId: req.user!.agencyId, status: { in: ['PENDING', 'VIEWED'] } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (open && (!open.expiresAt || open.expiresAt > new Date())) {
+      const [reused] = await prisma.$transaction([
+        prisma.approvalRequest.update({ where: { id: open.id }, data: { sentAt: new Date(), ...(expiresInDays ? { expiresAt } : {}) } }),
+        prisma.content.update({ where: { id: contentId }, data: { status: 'CLIENT_REVIEW' } }),
+      ]);
+      return res.status(200).json({ ...reused, portalUrl: `${process.env.APP_URL || 'http://localhost:5173'}/approval/${reused.token}` });
+    }
+
+    // Any other still-open request for this content (past its date) is replaced by the new link:
+    // remove it so it doesn't linger in the list as a duplicate.
+    await prisma.approvalRequest.deleteMany({
+      where: { contentId, agencyId: req.user!.agencyId, status: { in: ['PENDING', 'VIEWED'] } },
+    });
+
+    const token = uuidv4() + '-' + uuidv4() + '-' + Date.now().toString(36);
 
     const approval = await prisma.$transaction(async (tx) => {
       const req_ = await tx.approvalRequest.create({
@@ -109,7 +122,10 @@ export async function listApprovals(req: AuthRequest, res: Response, next: NextF
       orderBy: { createdAt: 'desc' },
       take: 50,
     });
-    res.json(approvals);
+    // Links replaced by a newer one for the same content (older data) are not shown as duplicates.
+    const newest = new Map<string, string>();
+    for (const a of approvals) if (!newest.has(a.contentId)) newest.set(a.contentId, a.id);
+    res.json(approvals.filter(a => a.status !== 'EXPIRED' || newest.get(a.contentId) === a.id));
   } catch (err) { next(err); }
 }
 
