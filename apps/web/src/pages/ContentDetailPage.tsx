@@ -3,7 +3,8 @@ import { useParams, Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Sparkles, Send, Copy, ImagePlus, Upload,
   Share2, Check, Mail, MessageCircle, XCircle, Trash2, X, Plus,
-  Save, MoreHorizontal, Eye, Maximize2, AlignLeft, CalendarDays
+  Save, MoreHorizontal, Eye, Maximize2, AlignLeft, CalendarDays,
+  Loader2,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { cn, CONTENT_TYPE_LABELS, PLATFORM_LABELS, STATUS_LABELS } from '@/lib/utils'
@@ -146,6 +147,21 @@ export function ContentDetailPage() {
     }
   }
 
+  // WhatsApp Status publishes in the background: while it runs, refresh only the platform states
+  // (never the fields being edited) so the banner disappears and the result shows by itself.
+  const whatsAppInProgress = (content?.platforms || []).some((p: any) => p.platform === 'WHATSAPP' && p.status === 'PUBLISHING')
+  useEffect(() => {
+    if (!whatsAppInProgress) return
+    const timer = window.setInterval(async () => {
+      try {
+        const { data } = await api.get(`/contents/${id}`)
+        if (id !== currentId.current) return
+        setContent((previous: any) => previous?.id === data.id ? { ...previous, platforms: data.platforms, status: data.status, publishedAt: data.publishedAt } : previous)
+      } catch { /* try again on the next tick */ }
+    }, 10_000)
+    return () => window.clearInterval(timer)
+  }, [whatsAppInProgress, id])
+
   useEffect(() => {
     setLoading(true)
     setContent(null)
@@ -179,7 +195,10 @@ export function ContentDetailPage() {
     setPublishing(platform)
     try {
       const { data } = await api.post('/social/publish', { contentId: content.id, platform })
-      if (data.externalPostUrl) {
+      if (data.queued) {
+        // WhatsApp Status runs in the background (it can take a few minutes).
+        toast.info('A publicar no Status do WhatsApp', 'Pode demorar 1 a 3 minutos. Pode continuar a trabalhar — vai receber uma notificação quando terminar.')
+      } else if (data.externalPostUrl) {
         const openPost = await confirmDialog({
           title: 'Publicado com sucesso',
           description: `Quer abrir o post no ${label} para conferir?`,
@@ -625,6 +644,12 @@ export function ContentDetailPage() {
         </div>
         <p role="status" aria-live="polite" className={cn('mt-2 text-xs leading-5 sm:mt-3', !isDirty && !saving && !saveError && 'hidden sm:block', saveError ? 'text-error-dark dark:text-error-light' : isDirty ? 'text-warning-dark dark:text-warning-light' : 'text-muted-foreground')}>{saveMessage}{newComment.trim() && <span className="text-muted-foreground"> · Comentário por enviar</span>}</p>
       </header>
+      {whatsAppInProgress && (
+        <div role="status" className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-muted/60 px-4 py-3 text-sm">
+          <Loader2 size={16} className="shrink-0 animate-spin text-primary" aria-hidden />
+          <span>A publicar no Status do WhatsApp… pode demorar alguns minutos. Vai receber uma notificação quando terminar.</span>
+        </div>
+      )}
       {(content.platforms || []).some((platform: any) => platform.status === 'FAILED') && (
         <div role="status" className="flex items-start gap-3 rounded-xl border border-error/20 bg-error/5 px-4 py-3">
           <XCircle size={18} aria-hidden className="mt-0.5 shrink-0 text-error-dark dark:text-error-light" />

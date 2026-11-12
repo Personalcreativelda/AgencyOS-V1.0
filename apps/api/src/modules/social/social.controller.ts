@@ -5,6 +5,7 @@ import { NotFoundError, ValidationError } from '../../common/middleware/errorHan
 import { encrypt, decrypt, maskSecret } from '../../common/crypto';
 import { GRAPH_URL, GRAPH_VERSION, buildMetaRedirectUri, getAgencyMetaCredentials, exchangeCodeForLongLivedToken } from '../../integrations/meta/metaClient';
 import { handleAdsMetaAuth } from '../ads/ads.controller';
+import { notify } from '../notifications/notifications.controller';
 import { requireEvolutionConfig, type EvolutionConfig } from '../../integrations/agencyIntegrations';
 import {
   LINKEDIN_API_URL, LINKEDIN_AUTH_URL, buildLinkedInRedirectUri, getAgencyLinkedInCredentials, exchangeLinkedInCode, linkedInHeaders, linkedInApiError,
@@ -1677,11 +1678,51 @@ export async function publishToMeta(params: {
   }
 }
 
+// WhatsApp Status sends take 20s to 3min (Evolution posts the status to every contact). Holding
+// the HTTP request open that long hit the proxy timeout (~60s) and the user saw an error even
+// when the status went out. So it runs in the background and the user is notified at the end.
+const whatsAppStatusInFlight = new Set<string>();
+
+function publishWhatsAppInBackground(agencyId: string, userId: string, contentId: string, title: string) {
+  whatsAppStatusInFlight.add(contentId);
+  void (async () => {
+    try {
+      const result = await publishToWhatsAppStatus({ agencyId, contentId });
+      if (result.success) {
+        await prisma.content.update({ where: { id: contentId }, data: { status: 'PUBLISHED', publishedAt: new Date() } }).catch(() => {});
+      }
+      notify({
+        agencyId, userId,
+        type: result.success ? 'CONTENT_PUBLISHED' : 'PUBLISH_FAILED',
+        title: result.success ? 'Publicado no Status do WhatsApp' : 'Falha no Status do WhatsApp',
+        message: result.success ? `"${title}" já está no Status do WhatsApp.` : `"${title}": ${result.error || 'não foi possível publicar no Status.'}`,
+        entityId: contentId,
+      });
+    } finally {
+      whatsAppStatusInFlight.delete(contentId);
+    }
+  })();
+}
+
 export async function publishContent(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const { contentId, platform } = req.body;
     if (!contentId || !platform || !['FACEBOOK', 'INSTAGRAM', 'INSTAGRAM_STORY', 'LINKEDIN', 'TIKTOK', 'YOUTUBE', 'WHATSAPP'].includes(platform)) {
-      return res.status(400).json({ error: 'contentId e platform (FACEBOOK, INSTAGRAM, INSTAGRAM_STORY, LINKEDIN, TIKTOK, YOUTUBE ou WHATSAPP) são obrigatórios.' });
+      return res.status(400).json({ error: 'Escolha o conteúdo e a rede onde quer publicar.' });
+    }
+
+    if (platform === 'WHATSAPP') {
+      if (whatsAppStatusInFlight.has(contentId)) {
+        return res.status(409).json({ error: 'Este conteúdo já está a ser publicado no Status do WhatsApp. Vai receber uma notificação quando terminar.' });
+      }
+      const content = await prisma.content.findFirst({ where: { id: contentId, agencyId: req.user!.agencyId, deletedAt: null }, select: { title: true, clientId: true } });
+      if (!content) return res.status(404).json({ error: 'Conteúdo não encontrado.' });
+      // Fail fast on what we can check instantly (no connection) instead of after minutes.
+      const connection = await prisma.socialConnection.findFirst({ where: { agencyId: req.user!.agencyId, clientId: content.clientId, platform: 'WHATSAPP', status: 'ACTIVE' } });
+      if (!connection?.externalPageId) return res.status(400).json({ error: 'Este cliente não tem nenhum WhatsApp conectado. Ligue-o em Conexões.' });
+      await upsertContentPlatformStatus({ agencyId: req.user!.agencyId, contentId, platform: 'WHATSAPP', status: 'PUBLISHING' });
+      publishWhatsAppInBackground(req.user!.agencyId, req.user!.id, contentId, content.title);
+      return res.status(202).json({ queued: true });
     }
 
     const result = platform === 'LINKEDIN'
