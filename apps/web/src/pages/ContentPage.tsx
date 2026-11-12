@@ -53,8 +53,8 @@ const VIEW_LABELS: Record<ViewMode, string> = {
 
 const VIEW_DESCRIPTIONS: Record<ViewMode, string> = {
   list: 'Organize, encontre e reveja as imagens, os vídeos e os carrosséis da agência.',
-  calendar: 'Visão mensal — arraste um card para reagendar.',
-  board: 'Fluxo de produção em Kanban — arraste entre colunas para mudar o status.',
+  calendar: 'Visão mensal, arraste um card para reagendar.',
+  board: 'Fluxo de produção em Kanban, arraste entre colunas para mudar o status.',
 }
 
 interface ContentPageProps {
@@ -448,7 +448,7 @@ export function ContentPage({ view }: ContentPageProps) {
         <DialogContent>
           <DialogHeader icon={<DialogIcon><FilePlus2 /></DialogIcon>}>
             <DialogTitle>Novo conteúdo</DialogTitle>
-            <DialogDescription>Defina o básico agora — o restante você completa no Workspace.</DialogDescription>
+            <DialogDescription>Defina o básico agora, o restante você completa no Workspace.</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleCreateContent} className="space-y-4">

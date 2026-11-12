@@ -119,7 +119,7 @@ async function main() {
       brandSummary: 'Bella Moda é uma marca de moda feminina premium que combina elegância clássica com tendências contemporâneas.',
       mission: 'Empoderar mulheres através da moda exclusiva e atemporal',
       vision: 'Ser a referência em moda feminina premium no Brasil',
-      positioning: 'Premium acessível — qualidade de alto padrão com preços justos',
+      positioning: 'Premium acessível, qualidade de alto padrão com preços justos',
       targetAudience: 'Mulheres de 28-45 anos, classe A/B, que valorizam qualidade e estilo próprio',
       toneOfVoice: 'Elegante, próximo, inspirador e empoderador',
       brandPersonality: 'Sofisticada, autêntica, confiante',
@@ -210,11 +210,11 @@ async function main() {
   });
 
   const sampleContents = [
-    { title: 'Look do dia — Coleção Verão', contentType: 'IMAGE', status: 'APPROVED', hook: 'O look perfeito para o seu verão', caption: 'Verão chegou e trouxe cores, leveza e muita atitude! ☀️\n\nEssa combinação é pura elegância casual — perfeita para qualquer ocasião.\n\n💛 Qual é o seu look favorito do verão?\n\n#BellaModa #Moda #Verão2026', scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) },
-    { title: 'Post Empoderamento — Segunda-feira', contentType: 'REEL', status: 'CLIENT_REVIEW', hook: 'Você merece se sentir incrível todos os dias', caption: 'Segunda-feira é o melhor dia para começar a semana com estilo! 💪\n\nA roupa certa muda tudo — e a gente sabe que você merece o melhor.\n\n✨ O que te faz sentir confiante?\n\n#BellaModa #Empoderamento #MondayMotivation' },
-    { title: 'Novidade — Nova Coleção', contentType: 'CAROUSEL', status: 'DRAFT', hook: 'Novidades que vão apaixonar você', caption: 'NOVIDADE CHEGANDO! 🎉\n\nNossa nova coleção está prestes a chegar e você vai adorar cada detalhe.\n\nSalva esse post para não perder o lançamento! 💾' },
-    { title: 'Depoimento — Cliente Feliz', contentType: 'IMAGE', status: 'CHANGES_REQUESTED', hook: 'Veja o que nossa cliente disse', caption: '"A qualidade é impressionante e o atendimento é perfeito!" — Ana P., cliente há 2 anos\n\n💬 Nada nos motiva mais do que ver vocês felizes!\n\n#BellaModa #SocialProof #ClienteFeliz' },
-    { title: 'Story — Enquete Look', contentType: 'STORY', status: 'DRAFT' },
+    { title: 'Look do dia, Coleção Verão', contentType: 'IMAGE', status: 'APPROVED', hook: 'O look perfeito para o seu verão', caption: 'Verão chegou e trouxe cores, leveza e muita atitude! ☀️\n\nEssa combinação é pura elegância casual, perfeita para qualquer ocasião.\n\n💛 Qual é o seu look favorito do verão?\n\n#BellaModa #Moda #Verão2026', scheduledAt: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) },
+    { title: 'Post Empoderamento, Segunda-feira', contentType: 'REEL', status: 'CLIENT_REVIEW', hook: 'Você merece se sentir incrível todos os dias', caption: 'Segunda-feira é o melhor dia para começar a semana com estilo! 💪\n\nA roupa certa muda tudo, e a gente sabe que você merece o melhor.\n\n✨ O que te faz sentir confiante?\n\n#BellaModa #Empoderamento #MondayMotivation' },
+    { title: 'Novidade, Nova Coleção', contentType: 'CAROUSEL', status: 'DRAFT', hook: 'Novidades que vão apaixonar você', caption: 'NOVIDADE CHEGANDO! 🎉\n\nNossa nova coleção está prestes a chegar e você vai adorar cada detalhe.\n\nSalva esse post para não perder o lançamento! 💾' },
+    { title: 'Depoimento, Cliente Feliz', contentType: 'IMAGE', status: 'CHANGES_REQUESTED', hook: 'Veja o que nossa cliente disse', caption: '"A qualidade é impressionante e o atendimento é perfeito!", Ana P., cliente há 2 anos\n\n💬 Nada nos motiva mais do que ver vocês felizes!\n\n#BellaModa #SocialProof #ClienteFeliz' },
+    { title: 'Story, Enquete Look', contentType: 'STORY', status: 'DRAFT' },
   ];
 
   const pillarList = await prisma.brandContentPillar.findMany({ where: { clientId: client1.id } });

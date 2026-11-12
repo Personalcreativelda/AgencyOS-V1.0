@@ -35,7 +35,7 @@ function brandFacts(ctx: BrandContext | null) {
   if (!ctx) return 'Marca geral (sem dados no Brand Brain).';
   const c = ctx.client;
   const list = (items: { name: string; description: string | null }[]) =>
-    items.map(i => `${i.name}${i.description ? ` — ${i.description.slice(0, 160)}` : ''}`).join('; ');
+    items.map(i => `${i.name}${i.description ? `, ${i.description.slice(0, 160)}` : ''}`).join('; ');
   const contacts = [c?.address && `Endereço: ${c.address}`, c?.phone && `Telefone/WhatsApp: ${c.phone}`, c?.website && `Site: ${c.website}`].filter(Boolean).join(' | ');
   return [
     `Marca: ${c?.name || ''}${c?.industry ? ` (${c.industry})` : ''}`,
@@ -51,13 +51,14 @@ function brandFacts(ctx: BrandContext | null) {
 
 /** How a caption must be written — shared by single captions and the monthly calendar. */
 const CAPTION_GUIDELINES = `REGRAS DA LEGENDA:
-- A legenda EXPLICA o tema do post: desenvolve concretamente o assunto do título e do gancho (o quê, porquê, como funciona, que benefício real traz ao cliente), com informação útil — não frases genéricas de marketing que serviriam para qualquer empresa.
+- A legenda EXPLICA o tema do post: desenvolve concretamente o assunto do título e do gancho (o quê, porquê, como funciona, que benefício real traz ao cliente), com informação útil, não frases genéricas de marketing que serviriam para qualquer empresa.
 - Gancho, legenda e CTA falam do MESMO assunto do início ao fim. A legenda não pode começar num tema e terminar noutro, nem prometer algo que o post não mostra.
 - Estrutura: 2 a 3 parágrafos curtos (4 a 7 frases no total). Primeira frase continua o gancho sem o repetir; o meio dá os detalhes/exemplos concretos ligados aos produtos ou serviços reais da marca; o fim liga naturalmente ao CTA.
 - Use apenas factos dos dados da marca. Nunca invente preços, prazos, promoções, números ou contactos.
 - Contactos: quando o post é sobre um produto, serviço, promoção, novidade, evento ou "onde encontrar/como contratar", termine com os contactos oficiais disponíveis (ex.: "📍 Endereço… | 📞 …"), exatamente como fornecidos. Em posts apenas informativos/inspiracionais, não os inclua.
 - O CTA é uma ação concreta e coerente com o tema (ex.: "Peça já o seu orçamento pelo WhatsApp"), não uma frase vaga.
-- Português natural, frases completas, sem cortar a meio.`;
+- Português natural, frases completas, sem cortar a meio.
+- Nunca use travessão (—) nem meia-risca (–) para ligar frases: use ponto final, vírgula ou dois pontos.`;
 
 async function logGeneration(data: {
   agencyId: string; clientId?: string; contentId?: string; userId: string;
@@ -173,7 +174,7 @@ export async function generateCalendar(req: AuthRequest, res: Response, next: Ne
     const result = await ai.generateJSON<any>({
       systemPrompt: `Você é um gestor sênior de social media.
 Crie um calendário editorial completo.
-Cada campo de texto (hook, captionDraft, cta) deve ser COMPLETO e natural — nunca corte uma frase pela metade, mesmo que isso signifique escrever menos itens.
+Cada campo de texto (hook, captionDraft, cta) deve ser COMPLETO e natural, nunca corte uma frase pela metade, mesmo que isso signifique escrever menos itens.
 "captionDraft" é a legenda final do post (corpo do texto, sem repetir o hook), escrita segundo estas regras:
 ${CAPTION_GUIDELINES}
 Retorne JSON: {
@@ -240,7 +241,7 @@ export async function generateCaption(req: AuthRequest, res: Response, next: Nex
 
     const systemPrompt = `Você é um copywriter sênior especialista em social media.
 Crie uma legenda otimizada para a plataforma indicada.
-${CAPTION_GUIDELINES}${creativeImage ? ' A imagem do criativo já pronto está anexada a esta mensagem — a legenda TEM que corresponder exatamente ao que está nela (produto, oferta, preço, texto visível na peça). Nunca escreva sobre algo diferente do que a imagem mostra.' : ''}
+${CAPTION_GUIDELINES}${creativeImage ? ' A imagem do criativo já pronto está anexada a esta mensagem, a legenda TEM que corresponder exatamente ao que está nela (produto, oferta, preço, texto visível na peça). Nunca escreva sobre algo diferente do que a imagem mostra.' : ''}
 Retorne SOMENTE JSON, sem markdown, sem texto fora do JSON: { "caption": string, "hook": string, "cta": string, "hashtags": [string] }`;
     const userPrompt = `Plataforma: ${platform || 'Instagram'}
 Tipo: ${contentType || 'IMAGE'}
@@ -397,18 +398,18 @@ async function analyzeReferenceStyle(
 
     const raw = await ai.analyzeImages(
       images,
-      `These images are an agency's established creative template — the same brand posts this exact visual format repeatedly. Reverse-engineer the template as precise, actionable JSON so another designer could reproduce the SAME template with new content. Respond with ONLY JSON, no markdown, no text outside the JSON. Format:
+      `These images are an agency's established creative template, the same brand posts this exact visual format repeatedly. Reverse-engineer the template as precise, actionable JSON so another designer could reproduce the SAME template with new content. Respond with ONLY JSON, no markdown, no text outside the JSON. Format:
 {
   "colorPalette": "exact dominant colors (name + approximate hex if identifiable) and precisely which role each plays (background fill, accent, text)",
   "typography": { "style": "...", "sizeHierarchy": "precise scale relationships, e.g. headline fills ~30% of canvas height, one bold weight only", "weight": "...", "position": "where headline text is anchored, e.g. top-left third" },
-  "composition": "the exact structural split — e.g. left 55% solid color with text block, right 45% subject photo bleeding to the edge; describe alignment/grid precisely, not generically",
-  "logoPlacement": "exactly where brand marks appear and how many times — many templates repeat the logo (small icon in one corner AND a text wordmark elsewhere)",
+  "composition": "the exact structural split, e.g. left 55% solid color with text block, right 45% subject photo bleeding to the edge; describe alignment/grid precisely, not generically",
+  "logoPlacement": "exactly where brand marks appear and how many times, many templates repeat the logo (small icon in one corner AND a text wordmark elsewhere)",
   "iconRow": "if a row of small icons (social platforms, contact icons) appears, note its exact position (e.g. bottom edge, evenly spaced)",
   "accentShapes": "any recurring geometric/decorative shapes (blobs, circles, leaves, lightning bolts) and which corner/zone they occupy",
   "mood": "overall style, texture, lighting, atmosphere",
   "recurringElements": ["every element that repeats across the references, as specific as possible"]
 }
-Be concrete and specific (positions, proportions, counts) rather than vague adjectives — the goal is a reusable template spec, not a mood description. Do not describe the literal one-off photo content (which specific person, which specific object) — only the structural/style pattern around it.`
+Be concrete and specific (positions, proportions, counts) rather than vague adjectives, the goal is a reusable template spec, not a mood description. Do not describe the literal one-off photo content (which specific person, which specific object), only the structural/style pattern around it.`
     );
 
     const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -448,28 +449,28 @@ export async function generateImageProposal(req: AuthRequest, res: Response, nex
       ? `Brand color palette (use each color strictly for its stated purpose): ${ctx.colors.map((c) => `${c.name} ${c.hex}${c.usageNotes ? ` → use as: ${c.usageNotes}` : ''}`).join('; ')}.`
       : '';
     const fontNote = ctx.fonts.length
-      ? `Brand typography reference: ${ctx.fonts.map((f) => `${f.name}${f.usageNotes ? ` — ${f.usageNotes}` : ''}`).join(', ')}.`
+      ? `Brand typography reference: ${ctx.fonts.map((f) => `${f.name}${f.usageNotes ? `, ${f.usageNotes}` : ''}`).join(', ')}.`
       : '';
     // `as any`: visualStyleDescription was added via a hand-applied migration while `prisma
     // generate` couldn't reach binaries.prisma.sh, so the generated client's TS types don't
     // know about it yet — drop the cast once `prisma generate` runs with network access.
     const profileStyle = (ctx.profile as any)?.visualStyleDescription as string | null | undefined;
     const visualStyleNote = profileStyle
-      ? `MANDATORY VISUAL STYLE — this overrides any generic design instinct, follow it precisely: ${profileStyle}`
+      ? `MANDATORY VISUAL STYLE, this overrides any generic design instinct, follow it precisely: ${profileStyle}`
       : '';
     const referenceNoteTexts = ctx.referenceImages.map((r) => r.note).filter((n): n is string => !!n);
     const styleDNA = await analyzeReferenceStyle(ai, ctx.referenceImages);
     const referenceNote = styleDNA
-      ? `BRAND TEMPLATE SPEC — this is the agency's established, repeating creative template, extracted from their own past posts. Follow it CLOSELY and CONSISTENTLY: match the color roles, typography scale/position, structural composition split, logo placement pattern, icon row (if any), and accent shapes described below as precisely as the concept allows — this creative should look unmistakably like the next post in the same series, not a generic departure from it. The only thing to avoid recreating exactly is the specific one-off photo subject, specific wording, or pixel-for-pixel layout of any single reference — the STRUCTURE and STYLE must match closely, only the content differs:\n${styleDNA}${referenceNoteTexts.length ? `\nAgency notes on these references: ${referenceNoteTexts.join(' | ')}` : ''}`
+      ? `BRAND TEMPLATE SPEC, this is the agency's established, repeating creative template, extracted from their own past posts. Follow it CLOSELY and CONSISTENTLY: match the color roles, typography scale/position, structural composition split, logo placement pattern, icon row (if any), and accent shapes described below as precisely as the concept allows, this creative should look unmistakably like the next post in the same series, not a generic departure from it. The only thing to avoid recreating exactly is the specific one-off photo subject, specific wording, or pixel-for-pixel layout of any single reference, the STRUCTURE and STYLE must match closely, only the content differs:\n${styleDNA}${referenceNoteTexts.length ? `\nAgency notes on these references: ${referenceNoteTexts.join(' | ')}` : ''}`
       : referenceNoteTexts.length
         ? `Reference mood board notes from the agency (use as loose stylistic inspiration only): ${referenceNoteTexts.join(' | ')}`
         : '';
     const contactNote = client.address
-      ? `Available contact info (use only if the concept calls for a footer/contact card, e.g. a promotional flyer or store announcement — never force it onto a simple lifestyle post): Address: ${client.address}.${client.website ? ` Website: ${client.website}.` : ''}${client.phone ? ` Phone: ${client.phone}.` : ''}`
+      ? `Available contact info (use only if the concept calls for a footer/contact card, e.g. a promotional flyer or store announcement, never force it onto a simple lifestyle post): Address: ${client.address}.${client.website ? ` Website: ${client.website}.` : ''}${client.phone ? ` Phone: ${client.phone}.` : ''}`
       : '';
     const logoNote = client.logoUrl
-      ? `CRITICAL: The brand's real logo will be composited onto this image programmatically AFTER generation, as a badge in the bottom-left corner. You must leave the entire bottom-left corner region (roughly the bottom-left quarter of the image) completely EMPTY of any graphics, text, brand name, wordmark, or lettering — no exceptions, even a small one. Do not write, draw or letter the brand name, any logo mark, icon badge or wordmark ANYWHERE in the image, in that corner or elsewhere — the logo is handled entirely outside of your generation. Compose the rest of the design so it still looks balanced with that corner left clear.`
-      : `CRITICAL: Do not draw, write or letter any logo, logo mark, icon badge or wordmark of the brand name anywhere in the image — no exceptions, even a small or minimal one. This creative must contain zero brand-mark elements; it is pure photographic/illustrative composition with typography only for the headline.`;
+      ? `CRITICAL: The brand's real logo will be composited onto this image programmatically AFTER generation, as a badge in the bottom-left corner. You must leave the entire bottom-left corner region (roughly the bottom-left quarter of the image) completely EMPTY of any graphics, text, brand name, wordmark, or lettering, no exceptions, even a small one. Do not write, draw or letter the brand name, any logo mark, icon badge or wordmark ANYWHERE in the image, in that corner or elsewhere, the logo is handled entirely outside of your generation. Compose the rest of the design so it still looks balanced with that corner left clear.`
+      : `CRITICAL: Do not draw, write or letter any logo, logo mark, icon badge or wordmark of the brand name anywhere in the image, no exceptions, even a small or minimal one. This creative must contain zero brand-mark elements; it is pure photographic/illustrative composition with typography only for the headline.`;
 
     const isVertical = contentType === 'STORY' || contentType === 'REEL';
     const size: '1024x1024' | '1024x1536' = isVertical ? '1024x1536' : '1024x1024';
@@ -477,17 +478,17 @@ export async function generateImageProposal(req: AuthRequest, res: Response, nex
     const cornerAvoidance = client.logoUrl ? ' Keep well clear of the bottom-left corner, which is reserved for the logo badge and must stay empty.' : '';
 
     const typographyBlock = headline
-      ? `TYPOGRAPHY: Integrate ONLY this headline text directly into the design as a real graphic element — in Portuguese, exactly as written, with clean, highly legible, professionally kerned typography. This must read like an actual branded template (Canva Pro / Freepik Premium quality), not a caption slapped on a photo. Do not add any other text, tag, badge or call-to-action to the image — the CTA lives in the post caption, not in the creative itself.
+      ? `TYPOGRAPHY: Integrate ONLY this headline text directly into the design as a real graphic element, in Portuguese, exactly as written, with clean, highly legible, professionally kerned typography. This must read like an actual branded template (Canva Pro / Freepik Premium quality), not a caption slapped on a photo. Do not add any other text, tag, badge or call-to-action to the image, the CTA lives in the post caption, not in the creative itself.
 Headline: "${headline}"
 Give the text generous margins, place it on a clean area of the composition,${cornerAvoidance} and add a subtle scrim, color block or gradient behind it only if needed for contrast/legibility. Align everything to a crisp grid.`
-      : `No text overlay — deliver a clean, polished photographic or illustrative composition only, with visual space reserved for a caption to be added separately.${cornerAvoidance}`;
+      : `No text overlay, deliver a clean, polished photographic or illustrative composition only, with visual space reserved for a caption to be added separately.${cornerAvoidance}`;
 
     const prompt = `
-You are a senior graphic designer at a premium branding agency, producing finished, publish-ready social media creative at the quality level of Canva Pro templates, Freepik Premium assets, or a top-tier design studio — never a generic AI-generated image.
+You are a senior graphic designer at a premium branding agency, producing finished, publish-ready social media creative at the quality level of Canva Pro templates, Freepik Premium assets, or a top-tier design studio, never a generic AI-generated image.
 
 CONCEPT: ${brief}
 
-BRAND: "${client.name}"${client.industry ? ` — ${client.industry}` : ''}
+BRAND: "${client.name}"${client.industry ? `, ${client.industry}` : ''}
 ${ctx.profile?.positioning ? `Positioning: ${ctx.profile.positioning}` : ''}
 ${ctx.profile?.toneOfVoice ? `Brand voice/mood: ${ctx.profile.toneOfVoice}` : ''}
 ${ctx.profile?.brandPersonality ? `Brand personality: ${ctx.profile.brandPersonality}` : ''}
@@ -503,11 +504,11 @@ LOGO: ${logoNote}
 
 ${typographyBlock}
 
-ART DIRECTION: Intentional, professional composition (rule of thirds, deliberate negative space, balanced framing), the brand's own color palette applied to backgrounds/accents, cohesive lighting and color grading, premium editorial/advertising production value — the kind of visual a creative director would approve without revisions.
+ART DIRECTION: Intentional, professional composition (rule of thirds, deliberate negative space, balanced framing), the brand's own color palette applied to backgrounds/accents, cohesive lighting and color grading, premium editorial/advertising production value, the kind of visual a creative director would approve without revisions.
 
-PHOTOREALISM: Render this like it came from a real camera on a real shoot, not a synthetic render. If people appear: natural skin texture with visible pores, fine hairs and subtle asymmetry (not airbrushed-smooth or waxy), realistic individual hair strands, natural catchlights and slight imperfection in the eyes, true-to-life anatomy and proportions, relaxed/candid poses and expressions rather than stiff, perfectly symmetric ones. Use real photographic physics throughout: a believable lens (natural perspective, shallow depth of field where appropriate), directional lighting with soft realistic falloff and shadow, accurate color response — plus a touch of authentic texture/grain instead of a flawless digital sheen. This applies just as much to products, environments and illustrated elements: favor real-world material texture and lighting imperfection over a too-clean, too-perfect synthetic look.
+PHOTOREALISM: Render this like it came from a real camera on a real shoot, not a synthetic render. If people appear: natural skin texture with visible pores, fine hairs and subtle asymmetry (not airbrushed-smooth or waxy), realistic individual hair strands, natural catchlights and slight imperfection in the eyes, true-to-life anatomy and proportions, relaxed/candid poses and expressions rather than stiff, perfectly symmetric ones. Use real photographic physics throughout: a believable lens (natural perspective, shallow depth of field where appropriate), directional lighting with soft realistic falloff and shadow, accurate color response, plus a touch of authentic texture/grain instead of a flawless digital sheen. This applies just as much to products, environments and illustrated elements: favor real-world material texture and lighting imperfection over a too-clean, too-perfect synthetic look.
 
-STRICTLY AVOID: the telltale "AI-generated" look — waxy/plastic skin, uncanny-valley symmetry, glassy or dead-looking eyes, over-smoothed CGI render sheen, oversaturated HDR glow, generic stock-photo lighting; also avoid warped/illegible/duplicated text, extra or malformed limbs and faces, random watermarks or logos, cluttered composition, tired stock-photo clichés, inconsistent lighting, low production value.
+STRICTLY AVOID: the telltale "AI-generated" look, waxy/plastic skin, uncanny-valley symmetry, glassy or dead-looking eyes, over-smoothed CGI render sheen, oversaturated HDR glow, generic stock-photo lighting; also avoid warped/illegible/duplicated text, extra or malformed limbs and faces, random watermarks or logos, cluttered composition, tired stock-photo clichés, inconsistent lighting, low production value.
 `.trim();
 
     const image = await ai.generateImage(prompt, size);
@@ -549,7 +550,7 @@ STRICTLY AVOID: the telltale "AI-generated" look — waxy/plastic skin, uncanny-
         clientId,
         uploadedBy: req.user!.id,
         type: 'IMAGE',
-        name: `Proposta IA — ${brief.substring(0, 60)}`,
+        name: `Proposta IA, ${brief.substring(0, 60)}`,
         mimeType,
         fileSize: buffer.length,
         storageKey,
@@ -697,7 +698,7 @@ export async function saveAiRouting(req: AuthRequest, res: Response, next: NextF
         throw new ValidationError('O provedor de imagem escolhido não está conectado.');
       }
       if (!IMAGE_CAPABLE_PROVIDERS.includes(imageProvider)) {
-        throw new ValidationError('Esse provedor não gera imagens — escolha OpenAI ou Gemini.');
+        throw new ValidationError('Esse provedor não gera imagens, escolha OpenAI ou Gemini.');
       }
     }
 

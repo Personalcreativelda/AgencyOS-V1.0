@@ -394,7 +394,7 @@ export function AdsPage() {
       // Manager does. Spelled out here since a bare number invites assuming it means whatever the
       // reader expects (confirmed: was read as "people who made contact" for a campaign where the
       // number was actually link clicks before this was fixed).
-      hint: 'A métrica mais relevante de cada campanha (mensagens iniciadas, cliques, leads, etc.), conforme o objetivo configurado na Meta — mesmo critério do "Resultados" no Ads Manager.',
+      hint: 'A métrica mais relevante de cada campanha (mensagens iniciadas, cliques, leads, etc.), conforme o objetivo configurado na Meta, mesmo critério do "Resultados" no Ads Manager.',
     },
     {
       label: 'Custo/Resultado',
@@ -584,7 +584,7 @@ export function AdsPage() {
               })()}
               {loadingInsights ? <Skeleton className="h-28 rounded-xl" /> : !insights?.campaigns?.length ? (
                 <p className="text-xs text-muted-foreground font-medium py-6 text-center">
-                  Nenhum dado sincronizado ainda pra esse período — clique em "Atualizar".
+                  Nenhum dado sincronizado ainda pra esse período, clique em "Atualizar".
                 </p>
               ) : (<>
                 {/* Phones: one card per campaign — the table needed sideways scrolling to see spend/results */}
@@ -694,8 +694,8 @@ export function AdsPage() {
                 <CardTitle className="text-sm sm:text-base">Recomendações do Brand Brain</CardTitle>
                 <CardDescription className="mt-1 max-w-3xl leading-relaxed">
                   {campaignFilter
-                    ? `Analisando só "${insights?.campaigns?.find((c: any) => c.campaignExternalId === campaignFilter)?.campaignName || 'campanha selecionada'}" — nada muda sem você aplicar.`
-                    : 'Sugestões geradas a partir dos dados sincronizados — nada muda sem você aplicar.'}
+                    ? `Analisando só "${insights?.campaigns?.find((c: any) => c.campaignExternalId === campaignFilter)?.campaignName || 'campanha selecionada'}", nada muda sem você aplicar.`
+                    : 'Sugestões geradas a partir dos dados sincronizados, nada muda sem você aplicar.'}
                 </CardDescription>
               </div>
               <Button size="sm" onClick={handleAnalyze} loading={analyzing} className="w-full text-xs sm:w-auto sm:shrink-0">
@@ -710,7 +710,7 @@ export function AdsPage() {
               ) : visiblePendingRecs.length === 0 ? (
                 <p className="text-xs text-muted-foreground font-medium py-6 text-center">
                   {campaignFilter && recommendations.some((r) => r.status === 'PENDING')
-                    ? 'Nenhuma recomendação pendente para esta campanha — outras campanhas têm sugestões, veja em "Todas as campanhas".'
+                    ? 'Nenhuma recomendação pendente para esta campanha. Outras campanhas têm sugestões em "Todas as campanhas".'
                     : 'Nenhuma recomendação pendente. Clique em "Analisar com Brand Brain" pra gerar sugestões com base nos dados sincronizados.'}
                 </p>
               ) : (
@@ -756,7 +756,7 @@ export function AdsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Escolha a conta de anúncios</DialogTitle>
-            <DialogDescription>Encontramos mais de uma conta de anúncios nesse login da Meta — selecione qual pertence a este cliente.</DialogDescription>
+            <DialogDescription>Encontramos mais de uma conta de anúncios nesse login da Meta, selecione qual pertence a este cliente.</DialogDescription>
           </DialogHeader>
 
           {loadingPending ? (

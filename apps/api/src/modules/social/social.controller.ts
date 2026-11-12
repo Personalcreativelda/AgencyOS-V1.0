@@ -702,7 +702,7 @@ export async function publishToLinkedIn(params: {
       if (!media.publicUrl) throw new Error('O criativo não tem uma URL pública disponível ainda. Tente novamente em instantes.');
       mediaId = await uploadLinkedInImage(media.publicUrl);
     } else if (media && !isImage) {
-      throw new Error('O LinkedIn ainda só suporta publicação de imagem por aqui — vídeos não são suportados no momento.');
+      throw new Error('O LinkedIn ainda só suporta publicação de imagem por aqui, vídeos não são suportados no momento.');
     }
 
     const postRes = await fetch(`${LINKEDIN_API_URL}/rest/posts`, {
@@ -827,7 +827,7 @@ async function getValidTikTokAccessToken(connection: { id: string; accessTokenEn
   if (connection.accessTokenEncrypted && connection.tokenExpiresAt && connection.tokenExpiresAt.getTime() > oneHourFromNow) {
     return decrypt(connection.accessTokenEncrypted);
   }
-  if (!connection.refreshTokenEncrypted) throw new Error('Conexão do TikTok expirada — reconecte a conta.');
+  if (!connection.refreshTokenEncrypted) throw new Error('Conexão do TikTok expirada, reconecte a conta.');
 
   const refreshed = await refreshTikTokToken(credentials, decrypt(connection.refreshTokenEncrypted));
   await prisma.socialConnection.update({
@@ -885,7 +885,7 @@ export async function publishToTikTok(params: {
     const media = content.assets[0]?.asset;
     const isVideo = !!media?.mimeType?.startsWith('video/');
     if (!media || !isVideo) {
-      throw new Error('O TikTok neste app só publica vídeo por enquanto — gere ou envie um vídeo primeiro.');
+      throw new Error('O TikTok neste app só publica vídeo por enquanto, gere ou envie um vídeo primeiro.');
     }
     if (!media.publicUrl) throw new Error('O criativo não tem uma URL pública disponível ainda. Tente novamente em instantes.');
 
@@ -906,7 +906,7 @@ export async function publishToTikTok(params: {
     const videoBytes = Buffer.from(await (await fetch(media.publicUrl)).arrayBuffer());
     const MAX_SINGLE_CHUNK_BYTES = 64 * 1024 * 1024;
     if (videoBytes.byteLength > MAX_SINGLE_CHUNK_BYTES) {
-      throw new Error('Vídeo maior que 64MB — reduza o tamanho do arquivo. Uploads em múltiplas partes ainda não são suportados para o TikTok.');
+      throw new Error('Vídeo maior que 64MB, reduza o tamanho do arquivo. Uploads em múltiplas partes ainda não são suportados para o TikTok.');
     }
 
     const initRes = await fetch(`${TIKTOK_API_URL}/v2/post/publish/video/init/`, {
@@ -1043,7 +1043,7 @@ async function getValidYouTubeAccessToken(connection: { id: string; accessTokenE
   if (connection.accessTokenEncrypted && connection.tokenExpiresAt && connection.tokenExpiresAt.getTime() > tenMinFromNow) {
     return decrypt(connection.accessTokenEncrypted);
   }
-  if (!connection.refreshTokenEncrypted) throw new Error('Conexão do YouTube expirada — reconecte a conta.');
+  if (!connection.refreshTokenEncrypted) throw new Error('Conexão do YouTube expirada, reconecte a conta.');
 
   const refreshed = await refreshYouTubeToken(credentials, decrypt(connection.refreshTokenEncrypted));
   await prisma.socialConnection.update({
@@ -1080,7 +1080,7 @@ export async function publishToYouTube(params: {
     const media = content.assets[0]?.asset;
     const isVideo = !!media?.mimeType?.startsWith('video/');
     if (!media || !isVideo) {
-      throw new Error('O YouTube só publica vídeo — gere ou envie um vídeo primeiro.');
+      throw new Error('O YouTube só publica vídeo, gere ou envie um vídeo primeiro.');
     }
     if (!media.publicUrl) throw new Error('O criativo não tem uma URL pública disponível ainda. Tente novamente em instantes.');
 
@@ -1090,7 +1090,7 @@ export async function publishToYouTube(params: {
     const videoBytes = Buffer.from(await (await fetch(media.publicUrl)).arrayBuffer());
     const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
     if (videoBytes.byteLength > MAX_UPLOAD_BYTES) {
-      throw new Error('Vídeo maior que 500MB — reduza o tamanho do arquivo.');
+      throw new Error('Vídeo maior que 500MB, reduza o tamanho do arquivo.');
     }
 
     const initRes = await fetch(`${YOUTUBE_UPLOAD_URL}?uploadType=resumable&part=snippet,status`, {
@@ -1409,7 +1409,7 @@ async function sendOneWhatsAppStatus(evo: EvolutionConfig, instanceName: string,
       if (status === 401 || status === 403) throw new Error('A Evolution API recusou a chave de acesso. Confirme a URL e a API key em Configurações → Integrações.');
       if (status === 404) throw new Error(`A instância "${instanceName}" não foi encontrada na Evolution API. Volte a ligar o WhatsApp deste cliente em Conexões.`);
       if (status === 502 || status === 503 || status === 504 || (!data && status >= 500)) {
-        throw new Error('O servidor do WhatsApp (Evolution API) demorou demasiado a responder. O Status pode ter sido publicado mesmo assim — confirme no telemóvel antes de tentar de novo.');
+        throw new Error('O servidor do WhatsApp (Evolution API) demorou demasiado a responder. O Status pode ter sido publicado mesmo assim, confirme no telemóvel antes de tentar de novo.');
       }
       if (/not.?connected|connection closed|closed|logged ?out|close/i.test(detailText)) {
         throw new Error('O WhatsApp deste cliente está desligado na Evolution API. Volte a ler o QR code em Conexões.');
@@ -1418,7 +1418,7 @@ async function sendOneWhatsAppStatus(evo: EvolutionConfig, instanceName: string,
     }
   } catch (err: any) {
     if (err.name === 'AbortError') {
-      throw new Error('O envio para o Status do WhatsApp não respondeu a tempo — confirme se a instância do cliente está conectada.');
+      throw new Error('O envio para o Status do WhatsApp não respondeu a tempo, confirme se a instância do cliente está conectada.');
     }
     throw err;
   } finally {
@@ -1481,7 +1481,7 @@ export async function publishToWhatsAppStatus(params: {
   } catch (err: any) {
     const baseMessage = err.message || 'Erro ao publicar no Status do WhatsApp.';
     const message = sentCount > 0 && sentCount < totalCount
-      ? `${sentCount} de ${totalCount} imagens foram publicadas antes de falhar — ${baseMessage}`
+      ? `${sentCount} de ${totalCount} imagens foram publicadas antes de falhar, ${baseMessage}`
       : baseMessage;
     await upsertContentPlatformStatus({ agencyId, contentId, platform: 'WHATSAPP', status: 'FAILED', publishError: message }).catch(() => {});
     return { success: false, error: message };
@@ -1595,7 +1595,7 @@ export async function publishToMeta(params: {
       }
       externalPostUrl = `https://www.facebook.com/${externalPostId}`;
     } else if (platform === 'INSTAGRAM_STORY') {
-      if (!media) throw new Error('Stories exigem uma imagem ou vídeo — gere ou envie um criativo primeiro.');
+      if (!media) throw new Error('Stories exigem uma imagem ou vídeo, gere ou envie um criativo primeiro.');
 
       // Stories don't support a caption/text overlay via the Graph API — any text needs to
       // already be baked into the media itself (unlike feed posts, which take `caption`).
@@ -1624,7 +1624,7 @@ export async function publishToMeta(params: {
       if (!publishRes.ok) throw new Error(publishData.error?.message || 'Falha ao publicar o Story');
       externalPostId = publishData.id;
     } else {
-      if (!media) throw new Error('Instagram exige uma imagem ou vídeo — gere ou envie um criativo primeiro.');
+      if (!media) throw new Error('Instagram exige uma imagem ou vídeo, gere ou envie um criativo primeiro.');
 
       if (isImageCarousel) {
         const childIds: string[] = [];

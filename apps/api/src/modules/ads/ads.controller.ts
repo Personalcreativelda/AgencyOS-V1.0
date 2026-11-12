@@ -792,7 +792,7 @@ export async function analyzeAdAccount(req: AuthRequest, res: Response, next: Ne
     since.setDate(since.getDate() - 7);
     const allRows = await db.adInsightDaily.findMany({ where: { connectionId: connection.id, date: { gte: since } } });
     const rows = campaignFilter ? allRows.filter((r: any) => r.campaignExternalId === campaignFilter) : allRows;
-    if (!rows.length) throw new ValidationError('Nenhum dado sincronizado ainda — clique em "Atualizar agora" primeiro.');
+    if (!rows.length) throw new ValidationError('Nenhum dado sincronizado ainda, clique em "Atualizar agora" primeiro.');
 
     const byCampaign = new Map<string, { name: string; status: string; spend: number; clicks: number; impressions: number; results: number }>();
     for (const r of rows) {
@@ -824,13 +824,13 @@ export async function analyzeAdAccount(req: AuthRequest, res: Response, next: Ne
     }
     const fmtMoney = (n: number) => `${currency} ${n.toFixed(2)}`;
     const contextBlock = context
-      ? `\n\nPúblico que mais converteu (idade · gênero — gasto, resultados):\n${
-          context.demographics.map((d) => `- ${d.label} — ${fmtMoney(d.spend)}, ${d.results} resultado(s)`).join('\n') || '(sem dados suficientes)'
-        }\n\nPosicionamentos (onde os anúncios apareceram — gasto, resultados):\n${
-          context.placements.map((p) => `- ${p.label} — ${fmtMoney(p.spend)}, ${p.results} resultado(s)`).join('\n') || '(sem dados suficientes)'
+      ? `\n\nPúblico que mais converteu (idade · gênero, gasto, resultados):\n${
+          context.demographics.map((d) => `- ${d.label}, ${fmtMoney(d.spend)}, ${d.results} resultado(s)`).join('\n') || '(sem dados suficientes)'
+        }\n\nPosicionamentos (onde os anúncios apareceram, gasto, resultados):\n${
+          context.placements.map((p) => `- ${p.label}, ${fmtMoney(p.spend)}, ${p.results} resultado(s)`).join('\n') || '(sem dados suficientes)'
         }\n\nRegiões (gasto, cliques, contactos iniciados, resultados):\n${
-          context.regions.map((r) => `- ${r.label} — ${fmtMoney(r.spend)}, ${r.clicks} cliques, ${r.contacts} contactos, ${r.results} resultado(s)`).join('\n') || '(sem dados suficientes)'
-        }${context.frequency != null ? `\n\nFrequência média: ${context.frequency.toFixed(2)} (impressões por pessoa alcançada — acima de ~3-4 costuma indicar fadiga de anúncio no público atual)` : ''}${
+          context.regions.map((r) => `- ${r.label}, ${fmtMoney(r.spend)}, ${r.clicks} cliques, ${r.contacts} contactos, ${r.results} resultado(s)`).join('\n') || '(sem dados suficientes)'
+        }${context.frequency != null ? `\n\nFrequência média: ${context.frequency.toFixed(2)} (impressões por pessoa alcançada, acima de ~3-4 costuma indicar fadiga de anúncio no público atual)` : ''}${
           context.reach != null ? `\nAlcance total: ${context.reach.toLocaleString('pt-BR')} pessoas únicas` : ''
         }\nCliques no link: ${context.linkClicks}; contactos iniciados: ${context.contacts}; taxa de contactos por clique: ${context.contactRate != null ? context.contactRate.toFixed(1) + '%' : 'indisponível'}. Contactos são eventos agregados da Meta, não pessoas identificadas.`
       : '';
@@ -840,13 +840,13 @@ export async function analyzeAdAccount(req: AuthRequest, res: Response, next: Ne
     }>({
       temperature: 0.2,
       maxTokens: 8192,
-      systemPrompt: `Você é o melhor gestor de tráfego pago (Meta Ads) da agência — um estrategista sênior, não uma calculadora de orçamento. Você recebe a performance das campanhas dos últimos 7 dias, incluindo QUEM está convertendo (idade/gênero), ONDE os anúncios aparecem (posicionamento) e de QUE REGIÃO — use tudo isso, não só gasto e resultado agregado, para dar um plano de ação que realmente funciona, do jeito que um especialista de verdade analisaria a conta.
-Para cada campanha que precisa de atenção, sugira UMA ação clara e específica, com raciocínio tático real — cite o segmento, posicionamento ou região que embasa a decisão sempre que os dados de público estiverem disponíveis, não apenas o número de gasto/resultado da campanha como um todo.
+      systemPrompt: `Você é o melhor gestor de tráfego pago (Meta Ads) da agência, um estrategista sênior, não uma calculadora de orçamento. Você recebe a performance das campanhas dos últimos 7 dias, incluindo QUEM está convertendo (idade/gênero), ONDE os anúncios aparecem (posicionamento) e de QUE REGIÃO, use tudo isso, não só gasto e resultado agregado, para dar um plano de ação que realmente funciona, do jeito que um especialista de verdade analisaria a conta.
+Para cada campanha que precisa de atenção, sugira UMA ação clara e específica, com raciocínio tático real, cite o segmento, posicionamento ou região que embasa a decisão sempre que os dados de público estiverem disponíveis, não apenas o número de gasto/resultado da campanha como um todo.
 Retorne SOMENTE JSON, sem markdown: { "recommendations": [{ "campaignExternalId": string, "campaignName": string, "actionType": "PAUSE" | "INCREASE_BUDGET" | "DECREASE_BUDGET" | "ADVISORY", "actionParams": {"newDailyBudgetCents": number} (obrigatório só para INCREASE_BUDGET/DECREASE_BUDGET, valor em centavos), "reasoning": string (3-5 frases em português, citando números concretos E, quando disponível, o público/posicionamento/região que sustenta a recomendação) }] }
-Use "PAUSE" para campanhas com gasto alto e poucos ou nenhum resultado, sem sinal de que ajustar segmentação resolveria. Use "INCREASE_BUDGET" para campanhas com custo por resultado bom E sinal claro de que ainda há público/posicionamento saudável pra escalar (frequência baixa, sem esgotamento aparente) — no reasoning, aponte especificamente qual segmento/posicionamento justifica escalar. Use "DECREASE_BUDGET" para campanhas gastando acima do razoável pro resultado que entregam, sem justificar pausa total. Use "ADVISORY" sempre que a melhor ação NÃO for orçamento — por exemplo: concentrar o público num segmento de idade/gênero que converte muito mais que a média, restringir ou priorizar um posicionamento específico (ex: parar de gastar em Audience Network se ele não gera resultado, focar em Reels se é onde as conversas realmente acontecem), revisar criativo, ou ajustar segmentação geográfica — seja tático e específico, citando os dados de público que embasam a sugestão, não um conselho genérico de "revisar a campanha". Frequência acima de ~3-4 é sinal de fadiga — considere isso ao decidir entre escalar orçamento vs. trocar criativo/público primeiro. Só recomende campanhas com algo genuinamente acionável — não force uma recomendação por campanha se ela está saudável.
-IMPORTANTE: a conta de anúncios usa a moeda ${currency}. Sempre que citar valores monetários no "reasoning", use o código ${currency} (ex: "${currency} 15,00") — NUNCA use "R$" ou qualquer outro símbolo/código de moeda, mesmo que o texto esteja em português.`,
+Use "PAUSE" para campanhas com gasto alto e poucos ou nenhum resultado, sem sinal de que ajustar segmentação resolveria. Use "INCREASE_BUDGET" para campanhas com custo por resultado bom E sinal claro de que ainda há público/posicionamento saudável pra escalar (frequência baixa, sem esgotamento aparente), no reasoning, aponte especificamente qual segmento/posicionamento justifica escalar. Use "DECREASE_BUDGET" para campanhas gastando acima do razoável pro resultado que entregam, sem justificar pausa total. Use "ADVISORY" sempre que a melhor ação NÃO for orçamento, por exemplo: concentrar o público num segmento de idade/gênero que converte muito mais que a média, restringir ou priorizar um posicionamento específico (ex: parar de gastar em Audience Network se ele não gera resultado, focar em Reels se é onde as conversas realmente acontecem), revisar criativo, ou ajustar segmentação geográfica, seja tático e específico, citando os dados de público que embasam a sugestão, não um conselho genérico de "revisar a campanha". Frequência acima de ~3-4 é sinal de fadiga, considere isso ao decidir entre escalar orçamento vs. trocar criativo/público primeiro. Só recomende campanhas com algo genuinamente acionável, não force uma recomendação por campanha se ela está saudável.
+IMPORTANTE: a conta de anúncios usa a moeda ${currency}. Sempre que citar valores monetários no "reasoning", use o código ${currency} (ex: "${currency} 15,00"), NUNCA use "R$" ou qualquer outro símbolo/código de moeda, mesmo que o texto esteja em português.`,
       userPrompt: `Cliente: ${client?.name || 'Cliente'}\nMoeda da conta: ${currency}\nCampanhas (últimos 7 dias):\n${Array.from(byCampaign.entries())
-        .map(([id, c]) => `- [${id}] "${c.name}" (status: ${c.status}) — gasto: ${currency} ${c.spend.toFixed(2)}, cliques: ${c.clicks}, impressões: ${c.impressions}, resultados: ${c.results}, custo/resultado: ${c.results ? (c.spend / c.results).toFixed(2) : 'N/A'}`)
+        .map(([id, c]) => `- [${id}] "${c.name}" (status: ${c.status}), gasto: ${currency} ${c.spend.toFixed(2)}, cliques: ${c.clicks}, impressões: ${c.impressions}, resultados: ${c.results}, custo/resultado: ${c.results ? (c.spend / c.results).toFixed(2) : 'N/A'}`)
         .join('\n')}${contextBlock}`,
     });
 
@@ -907,7 +907,7 @@ export async function applyRecommendation(req: AuthRequest, res: Response, next:
     const rec = await db.adRecommendation.findFirst({ where: { id: req.params.id, agencyId: req.user!.agencyId } });
     if (!rec) throw new NotFoundError('Recommendation not found');
     if (rec.status !== 'PENDING') throw new ValidationError('Esta recomendação já foi aplicada ou dispensada.');
-    if (rec.actionType === 'ADVISORY') throw new ValidationError('Esta recomendação é apenas informativa — não há ação automática pra aplicar.');
+    if (rec.actionType === 'ADVISORY') throw new ValidationError('Esta recomendação é apenas informativa, não há ação automática pra aplicar.');
 
     const connection = await prisma.socialConnection.findFirst({ where: { id: rec.connectionId, agencyId: req.user!.agencyId } });
     if (!connection?.accessTokenEncrypted) throw new NotFoundError('Conta de anúncios não encontrada ou desconectada.');

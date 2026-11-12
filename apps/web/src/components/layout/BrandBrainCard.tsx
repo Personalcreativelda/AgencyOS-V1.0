@@ -40,7 +40,7 @@ export function BrandBrainCard({ rail, onNavigate }: { rail: boolean; onNavigate
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Link to="/app/settings" onClick={onNavigate} aria-label={`Brand Brain — ${connected ? 'ativo' : 'IA padrão'}`}
+          <Link to="/app/settings" onClick={onNavigate} aria-label={`Brand Brain: ${connected ? 'ativo' : 'IA padrão'}`}
             className="relative mx-auto flex size-12 items-center justify-center rounded-xl text-[#fff] shadow-[0_6px_14px_-6px_rgba(0,75,80,0.7)]"
             style={{ background: 'linear-gradient(140deg, #004B50, #00A76F)' }}>
             <Brain size={22} />
@@ -60,7 +60,7 @@ export function BrandBrainCard({ rail, onNavigate }: { rail: boolean; onNavigate
     <Link
       to="/app/settings"
       onClick={onNavigate}
-      aria-label={`Brand Brain — ${status}${engine ? `, ${engine}` : ''}`}
+      aria-label={`Brand Brain: ${status}${engine ? `, ${engine}` : ''}`}
       className="group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-3 text-[#fff] shadow-[0_8px_18px_-12px_rgba(0,75,80,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
       style={{ background: 'linear-gradient(140deg, #004B50 0%, #007867 60%, #00A76F 100%)' }}
     >

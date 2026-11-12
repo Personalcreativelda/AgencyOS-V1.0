@@ -120,7 +120,7 @@ export function BoardColumnsModal({ open, onOpenChange, initialColumns, onSave }
           <DialogDescription>Escolha quais etapas aparecem no quadro e em que ordem.</DialogDescription>
         </DialogHeader>
         <DialogDescription>
-          Renomeie, reordene ou oculte colunas. Ocultar não apaga conteúdos — eles continuam
+          Renomeie, reordene ou oculte colunas. Ocultar não apaga conteúdos, eles continuam
           disponíveis em Lista e Calendário, e a coluna pode ser restaurada a qualquer momento.
         </DialogDescription>
 

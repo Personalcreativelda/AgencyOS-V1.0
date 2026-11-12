@@ -36,7 +36,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
           </span>
           <h1 className="mt-6 max-w-md text-[44px] font-bold leading-[1.08] tracking-[-0.03em]">O sistema operacional da sua agência</h1>
           <p className="mt-5 max-w-md text-[17px] leading-relaxed text-[#fff]/80">
-            Planeje, aprove e publique conteúdo para todos os clientes — com o Brand Brain aprendendo cada marca.
+            Planeje, aprove e publique conteúdo para todos os clientes, com o Brand Brain aprendendo cada marca.
           </p>
         </div>
 

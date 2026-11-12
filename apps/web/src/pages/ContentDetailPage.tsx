@@ -197,7 +197,7 @@ export function ContentDetailPage() {
       const { data } = await api.post('/social/publish', { contentId: content.id, platform })
       if (data.queued) {
         // WhatsApp Status runs in the background (it can take a few minutes).
-        toast.info('A publicar no Status do WhatsApp', 'Pode demorar 1 a 3 minutos. Pode continuar a trabalhar — vai receber uma notificação quando terminar.')
+        toast.info('A publicar no Status do WhatsApp', 'Pode demorar 1 a 3 minutos. Pode continuar a trabalhar, vai receber uma notificação quando terminar.')
       } else if (data.externalPostUrl) {
         const openPost = await confirmDialog({
           title: 'Publicado com sucesso',
@@ -661,7 +661,7 @@ export function ContentDetailPage() {
         <div className="min-w-0 space-y-3 xl:order-2">
           <div className="flex items-center justify-between gap-3 px-1">
             <h2 className="text-sm font-semibold">Editor</h2>
-            <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="sm" disabled={aiBusy} aria-label="Ferramentas de IA — Brand Brain"><Sparkles size={14} className="text-primary" />{aiBusy ? 'A gerar…' : 'Brand Brain'}</Button></DropdownMenuTrigger>
+            <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="sm" disabled={aiBusy} aria-label="Ferramentas de IA: Brand Brain"><Sparkles size={14} className="text-primary" />{aiBusy ? 'A gerar…' : 'Brand Brain'}</Button></DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64">
                 <DropdownMenuLabel>Assistente de conteúdo</DropdownMenuLabel>
                 <DropdownMenuItem onSelect={() => void handleGenerateCaption()}><AlignLeft size={15} />Gerar legenda</DropdownMenuItem>
@@ -925,7 +925,7 @@ export function ContentDetailPage() {
 
           <div className="space-y-3 pt-1 border-t border-border">
             <p className="text-[11px] text-muted-foreground font-medium pt-2">
-              O link não é enviado automaticamente — escolha o canal e clique em Enviar.
+              O link não é enviado automaticamente, escolha o canal e clique em Enviar.
             </p>
 
             <div className="space-y-2">

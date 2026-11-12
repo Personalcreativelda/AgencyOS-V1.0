@@ -49,7 +49,7 @@ export function ReportsPage() {
           setNewReport((prev) => ({
             ...prev,
             clientId: cliRes.data.data[0].id,
-            title: `Relatório Mensal — ${cliRes.data.data[0].name}`,
+            title: `Relatório Mensal · ${cliRes.data.data[0].name}`,
           }))
         }
       } catch (err) {
@@ -107,7 +107,7 @@ export function ReportsPage() {
     setNewReport({
       ...newReport,
       clientId,
-      title: `Relatório Mensal — ${c?.name || ''}`,
+      title: `Relatório Mensal · ${c?.name || ''}`,
     })
   }
 

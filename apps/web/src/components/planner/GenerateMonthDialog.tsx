@@ -55,7 +55,7 @@ export function GenerateMonthDialog({ open, onOpenChange, clients, defaultClient
       const { data } = await api.post('/ai/generate-calendar', form)
       const calendar = await api.post('/calendars', {
         clientId: form.clientId,
-        name: `Calendário Brand Brain — ${form.month}/${form.year}`,
+        name: `Calendário Brand Brain · ${form.month}/${form.year}`,
         month: form.month,
         year: form.year,
       })

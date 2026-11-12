@@ -152,7 +152,7 @@ function PreviewMedia({
   const uploading = uploadProgress != null
   const overlay = uploading
     ? { title: `Enviando arquivo... ${uploadProgress}%`, subtitle: 'Não feche esta página até o envio terminar.' }
-    : { title: 'Gerando criativo com Brand Brain…', subtitle: 'Isso pode levar até 1 minuto — não feche esta página.' }
+    : { title: 'Gerando criativo com Brand Brain…', subtitle: 'Isso pode levar até 1 minuto. Não feche esta página.' }
 
   if (image) {
     const isVideo = image.mimeType?.startsWith('video/')
@@ -372,8 +372,8 @@ export function SocialPreview({
       {/* WhatsApp Status — a real publishable network (per-client Evolution API connection),
          posted as a Status on the client's own WhatsApp. Modeled directly on how WhatsApp
          itself shows a posted Status (viewing "My status"): a solid dark header bar (back /
-         avatar with a "+" badge / "O meu estado" / timestamp / menu) — NOT text overlaid on the
-         image like Instagram/TikTok Stories — the media letterboxed on black below it (WhatsApp
+         avatar with a "+" badge / "O meu estado" / timestamp / menu), NOT text overlaid on the
+         image like Instagram/TikTok Stories, the media letterboxed on black below it (WhatsApp
          doesn't crop to fill), then caption + view count + "Promover" in a solid footer, also
          not overlaid. */}
       {platform === 'WHATSAPP' && (

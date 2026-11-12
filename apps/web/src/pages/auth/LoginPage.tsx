@@ -99,15 +99,6 @@ export function LoginPage() {
           </div>
         )}
 
-        <Button type="button" variant="outline" size="lg" loading={googleLoading} onClick={signInWithGoogle}
-          className="w-full gap-3 border-border bg-card text-[15px] font-semibold text-foreground hover:bg-muted">
-          {!googleLoading && <><GoogleLogo className="size-5" /><span>Continuar com Google</span></>}
-        </Button>
-
-        <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground" aria-hidden>
-          <span className="h-px flex-1 bg-border" />ou com e-mail<span className="h-px flex-1 bg-border" />
-        </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
@@ -156,6 +147,14 @@ export function LoginPage() {
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
+          </Button>
+          <div className="flex items-center gap-3 pt-1 text-xs font-medium text-muted-foreground" aria-hidden>
+            <span className="h-px flex-1 bg-border" />ou<span className="h-px flex-1 bg-border" />
+          </div>
+
+          <Button type="button" variant="outline" size="lg" loading={googleLoading} onClick={signInWithGoogle}
+            className="w-full gap-3 border-border bg-card text-[15px] font-semibold text-foreground hover:bg-muted">
+            {!googleLoading && <><GoogleLogo className="size-5" /><span>Continuar com Google</span></>}
           </Button>
         </form>
       </div>

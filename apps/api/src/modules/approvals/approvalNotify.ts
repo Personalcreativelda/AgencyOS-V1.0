@@ -30,7 +30,7 @@ export async function sendApprovalEmail(params: {
   try {
     await sendMail(smtp, {
       to: params.email,
-      subject: `Novo conteúdo para aprovação — ${data.content.title}`,
+      subject: `Novo conteúdo para aprovação, ${data.content.title}`,
       html: buildApprovalEmailHtml({
         clientName: params.clientName, title: data.content.title, caption: data.caption,
         // Email clients don't reliably play inline video, so only embed actual images —

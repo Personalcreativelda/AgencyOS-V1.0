@@ -98,14 +98,14 @@ const COUNTRY_OPTIONS = [
 ]
 
 const TIMEZONE_OPTIONS = [
-  { value: 'America/Sao_Paulo', label: 'América/São Paulo — Brasil (UTC-3)' },
-  { value: 'Africa/Maputo', label: 'África/Maputo — Moçambique (UTC+2)' },
-  { value: 'Europe/Lisbon', label: 'Europa/Lisboa — Portugal (UTC+0/+1)' },
-  { value: 'Africa/Luanda', label: 'África/Luanda — Angola (UTC+1)' },
+  { value: 'America/Sao_Paulo', label: 'América/São Paulo · Brasil (UTC-3)' },
+  { value: 'Africa/Maputo', label: 'África/Maputo · Moçambique (UTC+2)' },
+  { value: 'Europe/Lisbon', label: 'Europa/Lisboa · Portugal (UTC+0/+1)' },
+  { value: 'Africa/Luanda', label: 'África/Luanda · Angola (UTC+1)' },
   { value: 'Atlantic/Cape_Verde', label: 'Atlântico/Cabo Verde (UTC-1)' },
-  { value: 'Africa/Bissau', label: 'África/Bissau — Guiné-Bissau (UTC+0)' },
+  { value: 'Africa/Bissau', label: 'África/Bissau · Guiné-Bissau (UTC+0)' },
   { value: 'Africa/Sao_Tome', label: 'África/São Tomé (UTC+0)' },
-  { value: 'Asia/Dili', label: 'Ásia/Dili — Timor-Leste (UTC+9)' },
+  { value: 'Asia/Dili', label: 'Ásia/Dili · Timor-Leste (UTC+9)' },
 ]
 
 const LOCALE_OPTIONS = [
@@ -419,7 +419,7 @@ export function SettingsPage() {
           <DialogHeader>
             <DialogTitle>Editar região da agência</DialogTitle>
             <DialogDescription>
-              O fuso horário é usado para exibir e agendar publicações — configure certo para evitar posts saindo na hora errada.
+              O fuso horário é usado para exibir e agendar publicações, configure certo para evitar posts saindo na hora errada.
             </DialogDescription>
           </DialogHeader>
 
@@ -651,7 +651,7 @@ export function SettingsPage() {
             </div>
 
             <div>
-              <Label htmlFor="apiKey">{editingProvider ? 'Substituir chave de API' : `Chave de API — ${AI_PROVIDERS.find((p) => p.value === aiProvider)?.label}`}</Label>
+              <Label htmlFor="apiKey">{editingProvider ? 'Substituir chave de API' : `Chave de API: ${AI_PROVIDERS.find((p) => p.value === aiProvider)?.label}`}</Label>
               <Input
                 id="apiKey"
                 type={showApiKey ? 'text' : 'password'}
@@ -665,7 +665,7 @@ export function SettingsPage() {
                 }
               />
               <p className="text-[11px] text-muted-foreground font-medium mt-1.5">
-                Sua chave fica criptografada no banco e é usada só para gerar conteúdo desta agência — o custo de uso vai direto para sua conta no provedor escolhido.
+                Sua chave fica criptografada no banco e é usada só para gerar conteúdo desta agência, o custo de uso vai direto para sua conta no provedor escolhido.
               </p>
             </div>
 
@@ -691,7 +691,7 @@ export function SettingsPage() {
                 </div>
               ) : (
                 <p className="text-[11px] text-muted-foreground font-medium self-end pb-2.5">
-                  {AI_PROVIDERS.find((p) => p.value === aiProvider)?.label} não gera imagens — configure OpenAI ou Gemini pra isso.
+                  {AI_PROVIDERS.find((p) => p.value === aiProvider)?.label} não gera imagens, configure OpenAI ou Gemini pra isso.
                 </p>
               )}
             </div>

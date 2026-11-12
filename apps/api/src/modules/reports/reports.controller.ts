@@ -240,7 +240,7 @@ export async function create(req: AuthRequest, res: Response, next: NextFunction
     } : null;
 
     const adsBlock = ads
-      ? `=== ANÚNCIOS PAGOS (Meta Ads) — período atual ===
+      ? `=== ANÚNCIOS PAGOS (Meta Ads), período atual ===
 Moeda da conta de anúncios: ${ads.currency} (use SEMPRE este código, nunca "R$" se a moeda não for BRL)
 Investimento: ${ads.currency} ${ads.spend.toFixed(2)} | Impressões: ${ads.impressions} | Cliques: ${ads.clicks} | Resultados: ${ads.results} | CTR: ${ads.ctr.toFixed(2)}% | Custo/Resultado: ${ads.costPerResult != null ? `${ads.currency} ${ads.costPerResult.toFixed(2)}` : 'N/A'}
 Campanhas: ${ads.campaigns.map((c) => `"${c.campaignName}" (gasto ${ads.currency} ${c.spend.toFixed(2)}, ${c.results} resultados, CTR ${c.ctr.toFixed(2)}%, custo/resultado ${c.costPerResult != null ? `${ads.currency} ${c.costPerResult.toFixed(2)}` : 'N/A'})`).join('; ') || 'nenhuma'}
@@ -249,13 +249,14 @@ Público (idade · género): ${ads.audience.demographics.map((r) => `${r.label} 
 Posicionamentos: ${ads.audience.placements.map((r) => `${r.label} ${r.results}`).join('; ') || 'sem dados'}
 Alcance: ${ads.audience.reach ?? 'N/A'} | Frequência: ${ads.audience.frequency != null ? ads.audience.frequency.toFixed(2) : 'N/A'} | Contatos iniciados: ${ads.audience.contacts}` : ''}
 ${prevAds ? `Comparado ao período anterior (${prevStart.toLocaleDateString('pt-BR')} a ${prevEnd.toLocaleDateString('pt-BR')}): investimento ${prevAds.spend.toFixed(2)}→${ads.spend.toFixed(2)} (${adsGrowth?.spendPct != null ? `${adsGrowth.spendPct >= 0 ? '+' : ''}${adsGrowth.spendPct.toFixed(1)}%` : 'sem base de comparação'}), resultados ${prevAds.results}→${ads.results} (${adsGrowth?.resultsPct != null ? `${adsGrowth.resultsPct >= 0 ? '+' : ''}${adsGrowth.resultsPct.toFixed(1)}%` : 'sem base de comparação'})` : 'Sem dados do período anterior para comparar.'}`
-      : '=== ANÚNCIOS PAGOS (Meta Ads) ===\nNenhuma conta de anúncios conectada para este cliente — sem dados de tráfego pago neste relatório.';
+      : '=== ANÚNCIOS PAGOS (Meta Ads) ===\nNenhuma conta de anúncios conectada para este cliente, sem dados de tráfego pago neste relatório.';
 
     const ai = await resolveAgencyAIProvider(agencyId, 'text');
     const analysis = await ai.generateJSON<{ summary: string; aiAnalysis: string; recommendations: { title: string; description: string; priority: number }[] }>({
-      systemPrompt: `Você é um estrategista sênior de marketing digital (conteúdo orgânico + tráfego pago) escrevendo um relatório mensal de performance para o CLIENTE de uma agência — quem vai ler isso é quem contrata o serviço, não a agência, e precisa sair da leitura entendendo claramente como o trabalho está indo, se está crescendo, e o que esperar a seguir.
-Retorne SOMENTE JSON, sem markdown: { "summary": string (2-3 frases, tom executivo, direto sobre a situação real do período), "aiAnalysis": string (2-3 parágrafos cobrindo: situação atual dos números, crescimento/tendência comparado ao período anterior — cite os percentuais quando houver, e progresso em relação à meta definida quando houver uma), "recommendations": [{title, description, priority}] (3-5 recomendações futuras acionáveis para o próximo período, cobrindo conteúdo orgânico e, quando houver dados de ads, também tráfego pago) }
-Seja específico e honesto com números — se algo caiu, diga que caiu e uma hipótese plausível do porquê; se cresceu, credite o trabalho realizado. Nunca invente números que não foram fornecidos.`,
+      systemPrompt: `Você é um estrategista sênior de marketing digital (conteúdo orgânico + tráfego pago) escrevendo um relatório mensal de performance para o CLIENTE de uma agência, quem vai ler isso é quem contrata o serviço, não a agência, e precisa sair da leitura entendendo claramente como o trabalho está indo, se está crescendo, e o que esperar a seguir.
+Retorne SOMENTE JSON, sem markdown: { "summary": string (2-3 frases, tom executivo, direto sobre a situação real do período), "aiAnalysis": string (2-3 parágrafos cobrindo: situação atual dos números, crescimento/tendência comparado ao período anterior, cite os percentuais quando houver, e progresso em relação à meta definida quando houver uma), "recommendations": [{title, description, priority}] (3-5 recomendações futuras acionáveis para o próximo período, cobrindo conteúdo orgânico e, quando houver dados de ads, também tráfego pago) }
+Seja específico e honesto com números, se algo caiu, diga que caiu e uma hipótese plausível do porquê; se cresceu, credite o trabalho realizado. Nunca invente números que não foram fornecidos.
+Escreva em português natural. Nunca use travessão (—) nem meia-risca (–) para ligar frases: use ponto final, vírgula ou dois pontos.`,
       userPrompt: `Cliente: ${client.name} (${client.industry || 'sem segmento definido'})
 Período: ${start.toLocaleDateString('pt-BR')} a ${end.toLocaleDateString('pt-BR')}
 Meta/objetivo definido para este cliente: ${strategy?.objective || 'Nenhuma meta formal registrada.'}

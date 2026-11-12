@@ -398,7 +398,7 @@ export function ClientDetailPage() {
       await loadData()
       toast.success(
         'Análise de marca aplicada!',
-        `${data.personas?.length || 0} personas, ${pillarCount} pilares e ${data.brandRules?.length || 0} regras adicionadas — confira nas outras abas.`
+        `${data.personas?.length || 0} personas, ${pillarCount} pilares e ${data.brandRules?.length || 0} regras adicionadas, confira nas outras abas.`
       )
     } catch (err) {
       toast.error('Erro ao rodar análise do Brand Brain', getErrorMessage(err))
@@ -492,7 +492,7 @@ export function ClientDetailPage() {
         ) : (<>
           {client.description
             ? <p className="mb-3 whitespace-pre-line border-b border-border/70 pb-3 text-sm leading-relaxed text-foreground/85">{client.description}</p>
-            : <button type="button" onClick={() => setEditingContact(true)} className="mb-3 w-full border-b border-border/70 pb-3 text-left text-sm italic text-muted-foreground hover:text-foreground">Sem descrição — toque para adicionar</button>}
+            : <button type="button" onClick={() => setEditingContact(true)} className="mb-3 w-full border-b border-border/70 pb-3 text-left text-sm italic text-muted-foreground hover:text-foreground">Sem descrição, toque para adicionar</button>}
           <div className="flex flex-col gap-3 text-sm lg:flex-row lg:items-center lg:gap-0 lg:divide-x lg:divide-border/70">
             <div className="flex min-w-0 items-center gap-2 lg:flex-1 lg:pr-5">
               <Mail size={16} className="shrink-0 text-muted-foreground" />
@@ -682,7 +682,7 @@ export function ClientDetailPage() {
               <Input
                 type="text"
                 required
-                placeholder="Nome (Ex: Ana — A Profissional)"
+                placeholder="Nome (Ex: Ana, A Profissional)"
                 value={newPersona.name}
                 onChange={(e) => setNewPersona({ ...newPersona, name: e.target.value })}
               />
@@ -861,7 +861,7 @@ export function ClientDetailPage() {
             <div>
               <h2 className="mb-1 text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">Estilo visual</h2>
               <p className="text-xs text-muted-foreground font-medium">
-                Descreva em texto livre o estilo que o Brand Brain deve seguir ao gerar imagens — mood, composição, iconografia, fundo, etc. Isso é usado diretamente no prompt de geração.
+                Descreva em texto livre o estilo que o Brand Brain deve seguir ao gerar imagens: mood, composição, iconografia, fundo, etc. Isso é usado diretamente no prompt de geração.
               </p>
             </div>
             <Textarea
@@ -878,7 +878,7 @@ export function ClientDetailPage() {
               <div>
                 <h2 className="mb-1 text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">Referências visuais</h2>
                 <p className="text-xs text-muted-foreground font-medium">
-                  Exemplos de posts/criativos que representam o estilo desejado — use como mood board.
+                  Exemplos de posts/criativos que representam o estilo desejado, use como mood board.
                 </p>
               </div>
               <input

@@ -62,7 +62,7 @@ export async function exchangeYouTubeCode(
 ): Promise<GoogleTokenResponse & { refreshToken: string }> {
   const result = await requestGoogleToken(credentials, { code, grant_type: 'authorization_code', redirect_uri: redirectUri });
   if (!result.refreshToken) {
-    throw new Error('O Google não retornou um refresh token — reconecte garantindo que a tela de consentimento está pedindo acesso offline.');
+    throw new Error('O Google não retornou um refresh token, reconecte garantindo que a tela de consentimento está pedindo acesso offline.');
   }
   return result as GoogleTokenResponse & { refreshToken: string };
 }

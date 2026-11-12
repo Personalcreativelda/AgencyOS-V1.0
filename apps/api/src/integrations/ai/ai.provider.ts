@@ -93,7 +93,7 @@ class MockAIProvider implements AIProvider {
         toneOfVoice: 'Profissional, próximo e inspirador',
         personas: [
           {
-            name: 'Ana — A Profissional',
+            name: 'Ana, A Profissional',
             ageRange: '28-38',
             description: 'Executiva que valoriza praticidade e qualidade',
             painPoints: ['Falta de tempo', 'Excesso de informação'],
@@ -110,7 +110,7 @@ class MockAIProvider implements AIProvider {
 
     if (systemLower.includes('caption') || systemLower.includes('legenda')) {
       return {
-        caption: '✨ Transforme o seu dia com quem entende o que você precisa.\n\nQualidade que faz diferença — porque você merece o melhor.\n\n💬 Deixa nos comentários: o que te faz escolher uma marca?',
+        caption: '✨ Transforme o seu dia com quem entende o que você precisa.\n\nQualidade que faz diferença, porque você merece o melhor.\n\n💬 Deixa nos comentários: o que te faz escolher uma marca?',
         hook: 'E se você pudesse ter mais com menos esforço?',
         cta: 'Clique no link da bio e descubra!',
         hashtags: ['#qualidade', '#inovação', '#lifestyle', '#premium'],
@@ -143,7 +143,7 @@ class MockAIProvider implements AIProvider {
           type: types[i % types.length],
           pillar: pillars[i % pillars.length],
           objective: 'ENGAGEMENT',
-          title: `Post ${i + 1} — ${pillars[i % pillars.length]}`,
+          title: `Post ${i + 1}, ${pillars[i % pillars.length]}`,
           brief: 'Conteúdo gerado pela IA com base no perfil da marca.',
           hook: 'Você sabia que...',
           captionDraft: 'Draft de legenda gerado pela IA. Personalize antes de publicar.',
@@ -384,7 +384,7 @@ class GeminiProvider implements AIProvider {
       generationConfig: { responseModalities: ['IMAGE'] },
     });
     const imagePart = data.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData?.data);
-    if (!imagePart) throw new AIProviderError('Gemini não retornou uma imagem — verifique se o modelo configurado suporta geração de imagem.');
+    if (!imagePart) throw new AIProviderError('Gemini não retornou uma imagem, verifique se o modelo configurado suporta geração de imagem.');
     return {
       b64: imagePart.inlineData.data,
       mimeType: imagePart.inlineData.mimeType || 'image/png',

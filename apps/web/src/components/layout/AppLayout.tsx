@@ -190,7 +190,7 @@ export function AppLayout() {
             the menu lives in the bottom tab bar's "Mais". Desktop keeps the card header. */}
         <header className="flex flex-col isolate shrink-0 z-20 bg-background pt-[var(--sat)] lg:border-b lg:border-border lg:bg-card lg:pt-0">
           <div className="flex items-center justify-between h-14 px-4 sm:px-6 lg:px-8">
-            <Link to="/app/dashboard" aria-label="AgencyOS — início" className="flex min-w-0 items-center gap-2.5 lg:hidden">
+            <Link to="/app/dashboard" aria-label="AgencyOS: início" className="flex min-w-0 items-center gap-2.5 lg:hidden">
               <LogoMark size={36} />
               <span className="text-[19px] font-semibold tracking-tight text-foreground">Agency<span className="text-primary">OS</span></span>
             </Link>

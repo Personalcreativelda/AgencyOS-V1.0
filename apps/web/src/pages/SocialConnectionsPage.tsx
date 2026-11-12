@@ -48,8 +48,8 @@ const META_WIZARD_STEPS: { title: string; items: string[] }[] = [
     items: [
       'Acesse developers.facebook.com/apps e clique em "Criar App".',
       'Escolha o tipo "Empresa" (ou o mais próximo disso).',
-      'Dê um nome que NÃO contenha a palavra "teste" — a Meta costuma bloquear nomes assim como spam.',
-      'Se aparecer o erro "Essa ação não é permitida", espere alguns minutos e tente de novo — é limite temporário da Meta, não é nada errado que você fez.',
+      'Dê um nome que NÃO contenha a palavra "teste", a Meta costuma bloquear nomes assim como spam.',
+      'Se aparecer o erro "Essa ação não é permitida", espere alguns minutos e tente de novo. É um limite temporário da Meta, não é nada que você fez de errado.',
     ],
   },
   {
@@ -57,14 +57,14 @@ const META_WIZARD_STEPS: { title: string; items: string[] }[] = [
     items: [
       'No painel do app, clique em "Adicionar Produto".',
       'Adicione "Login do Facebook" e configure como "Empresa" (não "Consumidor").',
-      'Adicione também o produto "Instagram" — sem ele, a conexão falha com o erro "Invalid Scopes", mesmo com o Login do Facebook certo.',
+      'Adicione também o produto "Instagram". Sem ele, a conexão falha com o erro "Invalid Scopes", mesmo com o Login do Facebook certo.',
     ],
   },
   {
     title: 'Registrar a URL de redirecionamento',
     items: [
       'Vá em Login do Facebook → Configurações.',
-      'Cole a URL abaixo no campo "URIs de redirecionamento do OAuth válidos" — não no campo de verificação lá em cima, que é só um teste e não salva nada.',
+      'Cole a URL abaixo no campo "URIs de redirecionamento do OAuth válidos", não no campo de verificação lá em cima, que é só um teste e não salva nada.',
       'Role até o final da página e clique em "Salvar Alterações". Esse passo é fácil de esquecer.',
     ],
   },
@@ -102,7 +102,7 @@ const LINKEDIN_WIZARD_STEPS: { title: string; items: string[] }[] = [
     title: 'Solicitar acesso à Community Management API',
     items: [
       'Na aba "Products" do app, adicione o produto "Community Management API".',
-      'O LinkedIn precisa aprovar esse acesso antes de liberar a permissão de postar em Páginas de Empresa — isso pode levar alguns dias. Enquanto não for aprovado, a conexão vai falhar com erro de permissão, o que é esperado.',
+      'O LinkedIn precisa aprovar esse acesso antes de liberar a permissão de postar em Páginas de Empresa, isso pode levar alguns dias. Enquanto não for aprovado, a conexão vai falhar com erro de permissão, o que é esperado.',
     ],
   },
   {
@@ -136,7 +136,7 @@ const TIKTOK_WIZARD_STEPS: { title: string; items: string[] }[] = [
     title: 'Adicionar o produto Content Posting API',
     items: [
       'Na aba de produtos do app, adicione "Content Posting API" e solicite a permissão video.publish.',
-      'Até o TikTok aprovar a auditoria (pode levar alguns dias), os posts feitos por aqui ficam visíveis só para a própria conta — isso é uma restrição do TikTok, não um erro do sistema.',
+      'Até o TikTok aprovar a auditoria (pode levar alguns dias), os posts feitos por aqui ficam visíveis só para a própria conta, isso é uma restrição do TikTok, não um erro do sistema.',
     ],
   },
   {
@@ -170,7 +170,7 @@ const YOUTUBE_WIZARD_STEPS: { title: string; items: string[] }[] = [
     title: 'Configurar a tela de consentimento OAuth',
     items: [
       'Em APIs e Serviços → Tela de consentimento OAuth, adicione uma política de privacidade (pode ser uma página simples no seu domínio).',
-      'Enquanto o projeto não passar pela verificação do Google (necessária pro escopo de upload do YouTube), só até 100 contas Google cadastradas manualmente como "testadoras" conseguem conectar, e a conexão expira a cada 7 dias — normal para testes, mas exige reconectar toda semana até a verificação ser aprovada.',
+      'Enquanto o projeto não passar pela verificação do Google (necessária pro escopo de upload do YouTube), só até 100 contas Google cadastradas manualmente como "testadoras" conseguem conectar, e a conexão expira a cada 7 dias, normal para testes, mas exige reconectar toda semana até a verificação ser aprovada.',
     ],
   },
   {
@@ -866,7 +866,7 @@ export function SocialConnectionsPage() {
             <CardHeader className="mb-0">
               <div>
                 <CardTitle>Contas da agência</CardTitle>
-                <CardDescription>Credenciais únicas, compartilhadas por toda a agência — configure cada uma uma vez.</CardDescription>
+                <CardDescription>Credenciais únicas, compartilhadas por toda a agência, configure cada uma uma vez.</CardDescription>
               </div>
             </CardHeader>
 
@@ -1178,7 +1178,7 @@ export function SocialConnectionsPage() {
                   )}
                   <details className="group rounded-xl border border-border bg-muted/30 px-3.5 py-2.5 text-xs text-muted-foreground">
                     <summary className="cursor-pointer select-none font-medium text-foreground/80 marker:text-muted-foreground">Requisitos de cada rede</summary>
-                    <p className="mt-2 leading-relaxed">Facebook e Instagram usam o mesmo login da Meta (a página precisa ter uma conta do Instagram profissional vinculada). LinkedIn conecta a uma Página de Empresa. TikTok e YouTube publicam apenas vídeo — TikTok fica em modo privado até o app passar pela auditoria do TikTok, e o YouTube exige reconectar a cada 7 dias até o app passar pela verificação do Google. WhatsApp publica como Status, usando uma instância do Evolution API já pareada ao número do cliente.</p>
+                    <p className="mt-2 leading-relaxed">Facebook e Instagram usam o mesmo login da Meta (a página precisa ter uma conta do Instagram profissional vinculada). LinkedIn conecta a uma Página de Empresa. TikTok e YouTube publicam apenas vídeo, TikTok fica em modo privado até o app passar pela auditoria do TikTok, e o YouTube exige reconectar a cada 7 dias até o app passar pela verificação do Google. WhatsApp publica como Status, usando uma instância do Evolution API já pareada ao número do cliente.</p>
                   </details>
 
                   <div className="border-t border-border/70 pt-5">
@@ -1232,10 +1232,10 @@ export function SocialConnectionsPage() {
           <DialogHeader icon={<DialogIcon className="border-transparent bg-[#0467DF]/10 text-[#0467DF]"><SiMeta size={20} /></DialogIcon>}>
                 <DialogTitle>
                   {metaWizardStep <= META_WIZARD_STEPS.length
-                    ? `Passo ${metaWizardStep} de ${META_WIZARD_STEPS.length + 1} — ${META_WIZARD_STEPS[metaWizardStep - 1].title}`
-                    : metaSettings?.configured ? 'Editar Meta App' : `Passo ${META_WIZARD_STEPS.length + 1} de ${META_WIZARD_STEPS.length + 1} — Salvar credenciais`}
+                    ? `Passo ${metaWizardStep} de ${META_WIZARD_STEPS.length + 1}: ${META_WIZARD_STEPS[metaWizardStep - 1].title}`
+                    : metaSettings?.configured ? 'Editar Meta App' : `Passo ${META_WIZARD_STEPS.length + 1} de ${META_WIZARD_STEPS.length + 1}: Salvar credenciais`}
                 </DialogTitle>
-                <DialogDescription>Facebook + Instagram — registrado uma vez, usado para conectar a conta de qualquer cliente</DialogDescription>
+                <DialogDescription>Facebook + Instagram · registrado uma vez, usado para conectar a conta de qualquer cliente</DialogDescription>
           </DialogHeader>
 
           {metaWizardStep <= META_WIZARD_STEPS.length ? (
@@ -1325,7 +1325,7 @@ export function SocialConnectionsPage() {
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground font-medium italic">
-                  Não é o token de publicação — é só a credencial do seu app na Meta, usada pelo servidor para autenticar o login. O token que de fato autoriza postar em cada página é gerado automaticamente, por cliente, quando você clica em "Conectar Facebook" na aba Cliente.
+                  Não é o token de publicação, é só a credencial do seu app na Meta, usada pelo servidor para autenticar o login. O token que de fato autoriza postar em cada página é gerado automaticamente, por cliente, quando você clica em "Conectar Facebook" na aba Cliente.
                 </p>
                 <div className="flex items-center justify-between gap-3 pt-2">
                   {!metaSettings?.configured && (
@@ -1352,10 +1352,10 @@ export function SocialConnectionsPage() {
           <DialogHeader icon={<DialogIcon className="border-transparent bg-[#0A66C2]/10 text-[#0A66C2]"><FaLinkedin size={20} /></DialogIcon>}>
                 <DialogTitle>
                   {linkedinWizardStep <= LINKEDIN_WIZARD_STEPS.length
-                    ? `Passo ${linkedinWizardStep} de ${LINKEDIN_WIZARD_STEPS.length + 1} — ${LINKEDIN_WIZARD_STEPS[linkedinWizardStep - 1].title}`
-                    : linkedinSettings?.configured ? 'Editar LinkedIn App' : `Passo ${LINKEDIN_WIZARD_STEPS.length + 1} de ${LINKEDIN_WIZARD_STEPS.length + 1} — Salvar credenciais`}
+                    ? `Passo ${linkedinWizardStep} de ${LINKEDIN_WIZARD_STEPS.length + 1}: ${LINKEDIN_WIZARD_STEPS[linkedinWizardStep - 1].title}`
+                    : linkedinSettings?.configured ? 'Editar LinkedIn App' : `Passo ${LINKEDIN_WIZARD_STEPS.length + 1} de ${LINKEDIN_WIZARD_STEPS.length + 1}: Salvar credenciais`}
                 </DialogTitle>
-                <DialogDescription>LinkedIn — registrado uma vez, usado para conectar a Página de Empresa de qualquer cliente</DialogDescription>
+                <DialogDescription>LinkedIn · registrado uma vez, usado para conectar a Página de Empresa de qualquer cliente</DialogDescription>
           </DialogHeader>
 
           {linkedinWizardStep <= LINKEDIN_WIZARD_STEPS.length ? (
@@ -1443,7 +1443,7 @@ export function SocialConnectionsPage() {
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground font-medium italic">
-                  Não é o token de publicação — é só a credencial do seu app no LinkedIn, usada pelo servidor para autenticar o login. O token que de fato autoriza postar na Página é gerado automaticamente, por cliente, quando você clica em "Conectar LinkedIn" na aba Cliente.
+                  Não é o token de publicação, é só a credencial do seu app no LinkedIn, usada pelo servidor para autenticar o login. O token que de fato autoriza postar na Página é gerado automaticamente, por cliente, quando você clica em "Conectar LinkedIn" na aba Cliente.
                 </p>
                 <div className="flex items-center justify-between gap-3 pt-2">
                   {!linkedinSettings?.configured && (
@@ -1470,10 +1470,10 @@ export function SocialConnectionsPage() {
           <DialogHeader icon={<DialogIcon className="border-transparent text-[#fff]" style={{ backgroundColor: PLATFORM_COLORS.TIKTOK }}><SiTiktok size={20} /></DialogIcon>}>
                 <DialogTitle>
                   {tiktokWizardStep <= TIKTOK_WIZARD_STEPS.length
-                    ? `Passo ${tiktokWizardStep} de ${TIKTOK_WIZARD_STEPS.length + 1} — ${TIKTOK_WIZARD_STEPS[tiktokWizardStep - 1].title}`
-                    : tiktokSettings?.configured ? 'Editar TikTok App' : `Passo ${TIKTOK_WIZARD_STEPS.length + 1} de ${TIKTOK_WIZARD_STEPS.length + 1} — Salvar credenciais`}
+                    ? `Passo ${tiktokWizardStep} de ${TIKTOK_WIZARD_STEPS.length + 1}: ${TIKTOK_WIZARD_STEPS[tiktokWizardStep - 1].title}`
+                    : tiktokSettings?.configured ? 'Editar TikTok App' : `Passo ${TIKTOK_WIZARD_STEPS.length + 1} de ${TIKTOK_WIZARD_STEPS.length + 1}: Salvar credenciais`}
                 </DialogTitle>
-                <DialogDescription>TikTok — registrado uma vez, usado para conectar a conta de qualquer cliente</DialogDescription>
+                <DialogDescription>TikTok · registrado uma vez, usado para conectar a conta de qualquer cliente</DialogDescription>
           </DialogHeader>
 
           {tiktokWizardStep <= TIKTOK_WIZARD_STEPS.length ? (
@@ -1563,7 +1563,7 @@ export function SocialConnectionsPage() {
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground font-medium italic">
-                  Não é o token de publicação — é só a credencial do seu app no TikTok, usada pelo servidor para autenticar o login. O token que de fato autoriza postar é gerado automaticamente, por cliente, quando você clica em "Conectar TikTok" na aba Cliente. Lembre-se: até o app passar pela auditoria do TikTok, os posts ficam visíveis só para a própria conta.
+                  Não é o token de publicação, é só a credencial do seu app no TikTok, usada pelo servidor para autenticar o login. O token que de fato autoriza postar é gerado automaticamente, por cliente, quando você clica em "Conectar TikTok" na aba Cliente. Lembre-se: até o app passar pela auditoria do TikTok, os posts ficam visíveis só para a própria conta.
                 </p>
                 <div className="flex items-center justify-between gap-3 pt-2">
                   {!tiktokSettings?.configured && (
@@ -1590,10 +1590,10 @@ export function SocialConnectionsPage() {
           <DialogHeader icon={<DialogIcon className="border-transparent bg-[#FF0000]/10 text-[#FF0000]"><SiYoutube size={20} /></DialogIcon>}>
                 <DialogTitle>
                   {youtubeWizardStep <= YOUTUBE_WIZARD_STEPS.length
-                    ? `Passo ${youtubeWizardStep} de ${YOUTUBE_WIZARD_STEPS.length + 1} — ${YOUTUBE_WIZARD_STEPS[youtubeWizardStep - 1].title}`
-                    : youtubeSettings?.configured ? 'Editar YouTube App' : `Passo ${YOUTUBE_WIZARD_STEPS.length + 1} de ${YOUTUBE_WIZARD_STEPS.length + 1} — Salvar credenciais`}
+                    ? `Passo ${youtubeWizardStep} de ${YOUTUBE_WIZARD_STEPS.length + 1}: ${YOUTUBE_WIZARD_STEPS[youtubeWizardStep - 1].title}`
+                    : youtubeSettings?.configured ? 'Editar YouTube App' : `Passo ${YOUTUBE_WIZARD_STEPS.length + 1} de ${YOUTUBE_WIZARD_STEPS.length + 1}: Salvar credenciais`}
                 </DialogTitle>
-                <DialogDescription>YouTube (Google) — registrado uma vez, usado para conectar o canal de qualquer cliente</DialogDescription>
+                <DialogDescription>YouTube (Google) · registrado uma vez, usado para conectar o canal de qualquer cliente</DialogDescription>
           </DialogHeader>
 
           {youtubeWizardStep <= YOUTUBE_WIZARD_STEPS.length ? (
@@ -1681,7 +1681,7 @@ export function SocialConnectionsPage() {
                   </div>
                 </div>
                 <p className="text-[11px] text-muted-foreground font-medium italic">
-                  Não é o token de publicação — é só a credencial do seu projeto do Google Cloud, usada pelo servidor para autenticar o login. O token que de fato autoriza postar no canal é gerado automaticamente, por cliente, quando você clica em "Conectar YouTube" na aba Cliente. Lembre-se: até o projeto passar pela verificação do Google, a conexão expira a cada 7 dias.
+                  Não é o token de publicação, é só a credencial do seu projeto do Google Cloud, usada pelo servidor para autenticar o login. O token que de fato autoriza postar no canal é gerado automaticamente, por cliente, quando você clica em "Conectar YouTube" na aba Cliente. Lembre-se: até o projeto passar pela verificação do Google, a conexão expira a cada 7 dias.
                 </p>
                 <div className="flex items-center justify-between gap-3 pt-2">
                   {!youtubeSettings?.configured && (
@@ -1724,7 +1724,7 @@ export function SocialConnectionsPage() {
               />
             </div>
             <p className="text-[11px] text-muted-foreground font-medium italic">
-              A instância já precisa existir e estar conectada (WhatsApp do cliente pareado) no seu servidor Evolution API — este passo só registra o nome dela aqui.
+              A instância já precisa existir e estar conectada (WhatsApp do cliente pareado) no seu servidor Evolution API, este passo só registra o nome dela aqui.
             </p>
             <div className="flex items-center justify-end gap-2 pt-2">
               <Button type="button" variant="ghost" onClick={() => setShowWhatsappConnectModal(false)}>Cancelar</Button>
@@ -1741,7 +1741,7 @@ export function SocialConnectionsPage() {
         <DialogContent size="lg">
           <DialogHeader icon={<DialogIcon className="border-transparent bg-info/10 text-info-dark"><Mail size={20} /></DialogIcon>}>
                 <DialogTitle>{smtpSettings?.configured ? 'Editar Email (SMTP)' : 'Configurar Email (SMTP)'}</DialogTitle>
-                <DialogDescription>Servidor único da agência — envia os links de aprovação por email a qualquer cliente</DialogDescription>
+                <DialogDescription>Servidor único da agência, envia os links de aprovação por email a qualquer cliente</DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSaveSmtp} className="space-y-4" autoComplete="off">
