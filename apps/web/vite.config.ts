@@ -20,7 +20,7 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: '/index.html',
         // Public token pages and API calls are never answered with the app shell.
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/\.well-known\//],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         runtimeCaching: [

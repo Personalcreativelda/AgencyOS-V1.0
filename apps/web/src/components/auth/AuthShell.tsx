@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { BarChart3, CheckCircle2, Share2 } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
+import { MadeBy } from '@/components/brand/MadeBy'
 import { ThemeMenu } from '@/components/ui/ThemeMenu'
 
 const POINTS = [
@@ -58,7 +59,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
           </ul>
         </div>
 
-        <p className="relative text-[13px] text-[#fff]/60">© {new Date().getFullYear()} AgencyOS</p>
+        <MadeBy tone="onBrand" className="relative justify-start" />
       </aside>
 
       {/* Phones/tablets: compact brand header (same identity as the desktop panel), drawn under
@@ -94,6 +95,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
         <div className="absolute right-4 top-4 hidden lg:block"><ThemeMenu /></div>
         <div className="w-full max-w-[420px]">
           {children}
+          <MadeBy className="mt-10 lg:hidden" />
         </div>
       </main>
     </div>

@@ -7,6 +7,7 @@ import { CONTENT_TYPE_LABELS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { ReportAdsSection } from '@/components/reports/ReportAdsSection'
+import { MadeBy } from '@/components/brand/MadeBy'
 
 function GrowthBadge({ pct }: { pct: number | null | undefined }) {
   if (pct == null) return null
@@ -63,7 +64,7 @@ export function ReportPublicPage() {
   const snapshot = report.snapshot ? JSON.parse(report.snapshot) : {}
 
   return (
-    <div className="min-h-screen bg-background font-sans">
+    <div className="min-h-screen overflow-x-hidden bg-background font-sans">
       <style>{`
         @media print {
           .no-print { display: none !important; }
@@ -186,8 +187,8 @@ export function ReportPublicPage() {
           )}
         </div>
 
-        <footer className="text-center text-xs text-muted-foreground py-4 no-print">
-          Gerado com AgencyOS — Sistema Operacional de Agências
+        <footer className="py-4 no-print">
+          <MadeBy />
         </footer>
       </div>
 

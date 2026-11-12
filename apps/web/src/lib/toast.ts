@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { haptics } from '@/lib/haptics'
 
 export type ToastVariant = 'success' | 'error' | 'info'
 
@@ -7,6 +8,8 @@ export interface ToastItem {
   variant: ToastVariant
   title: string
   description?: string
+  /** e.g. "Desfazer" — runs the callback and dismisses the toast. */
+  action?: { label: string; onClick: () => void }
 }
 
 interface ToastState {
@@ -21,14 +24,18 @@ export const useToastStore = create<ToastState>((set) => ({
   dismiss: (id) => set((s) => ({ toasts: s.toasts.filter((x) => x.id !== id) })),
 }))
 
-function push(variant: ToastVariant, title: string, description?: string) {
-  useToastStore.getState().push({ variant, title, description })
+type ToastOptions = { action?: ToastItem['action'] }
+
+function push(variant: ToastVariant, title: string, description?: string, options?: ToastOptions) {
+  if (variant === 'success') haptics.success()
+  if (variant === 'error') haptics.error()
+  useToastStore.getState().push({ variant, title, description, action: options?.action })
 }
 
 /** Global toast API — usable from anywhere (components, async handlers, the axios
  *  interceptor), not just inside React render. Replaces `alert()` across the app. */
 export const toast = {
-  success: (title: string, description?: string) => push('success', title, description),
-  error: (title: string, description?: string) => push('error', title, description),
-  info: (title: string, description?: string) => push('info', title, description),
+  success: (title: string, description?: string, options?: ToastOptions) => push('success', title, description, options),
+  error: (title: string, description?: string, options?: ToastOptions) => push('error', title, description, options),
+  info: (title: string, description?: string, options?: ToastOptions) => push('info', title, description, options),
 }

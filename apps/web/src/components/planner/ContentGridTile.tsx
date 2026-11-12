@@ -64,7 +64,7 @@ export function ContentGridTile(props: CreativeItemProps) {
   // Stories/Reels get a play badge — the full vertical piece opens in the preview.
   const vertical = ['STORY', 'REEL'].includes(content.contentType)
   return (
-    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-card transition-[border-color,box-shadow] duration-150 hover:border-grey-400 hover:shadow-card-hover focus-within:border-primary/60 motion-reduce:transition-none">
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl [contain-intrinsic-size:auto_420px] [content-visibility:auto] border border-border/70 bg-card shadow-card transition-[border-color,box-shadow] duration-150 hover:border-grey-400 hover:shadow-card-hover focus-within:border-primary/60 motion-reduce:transition-none">
       <button type="button" onClick={onPreview} aria-label={`Pré-visualizar ${content.title}`} className={cn('group/media relative block aspect-square w-full overflow-hidden border-b border-border bg-muted/50 focus-visible:ring-inset', focus)}>
         <CreativeThumbnail content={content} showLabel cover={vertical} />
         {vertical && media.length > 0 && (
@@ -98,7 +98,7 @@ export function ContentListRow(props: CreativeItemProps) {
   const video = media[0]?.mimeType.startsWith('video/')
   const format = `${CONTENT_TYPE_LABELS[content.contentType] || content.contentType}${content.contentType === 'CAROUSEL' && media.length > 0 ? ` · ${media.length}` : ''}`
   return (
-    <article className="group relative flex min-w-0 items-center gap-3 px-3 py-4 transition-colors hover:bg-muted/40 focus-within:bg-muted/40 sm:gap-4 sm:px-5 md:grid md:grid-cols-[minmax(0,1fr)_12rem_9rem_9.5rem_5.5rem] md:gap-5 md:items-center md:px-6 motion-reduce:transition-none">
+    <article className="group relative flex min-w-0 items-center gap-3 px-3 py-4 [contain-intrinsic-size:auto_88px] [content-visibility:auto] transition-colors hover:bg-muted/40 focus-within:bg-muted/40 sm:gap-4 sm:px-5 md:grid md:grid-cols-[minmax(0,1fr)_12rem_9rem_9.5rem_5.5rem] md:gap-5 md:items-center md:px-6 motion-reduce:transition-none">
       <div className="flex min-w-0 flex-1 items-center gap-3.5 sm:gap-4">
         <button type="button" onClick={onPreview} aria-label={`Pré-visualizar ${content.title}`} className={cn('relative z-10 size-14 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted', focus)}>
           <CreativeThumbnail content={content} />

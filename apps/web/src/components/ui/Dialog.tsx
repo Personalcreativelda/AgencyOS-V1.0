@@ -21,17 +21,71 @@ const SIZES = {
 
 export type DialogSize = keyof typeof SIZES
 
+/**
+ * Swipe down to dismiss the bottom sheet (phones only). Starts on the grab handle / top strip
+ * (or anywhere while the sheet content is scrolled to the top), follows the finger without
+ * re-rendering, and closes past ~110px — same as Android/iOS sheets.
+ */
+function useSheetDrag() {
+  const ref = React.useRef<HTMLDivElement | null>(null)
+  const start = React.useRef<number | null>(null)
+  const dy = React.useRef(0)
+  const onTouchStart = (e: React.TouchEvent) => {
+    const el = ref.current
+    if (!el || window.innerWidth >= 640) return
+    const fromTop = e.touches[0].clientY - el.getBoundingClientRect().top
+    const target = e.target as HTMLElement
+    if (target.closest('input, textarea, select, [contenteditable="true"]')) return
+    if (fromTop > 56 && el.scrollTop > 0) return
+    start.current = e.touches[0].clientY
+    dy.current = 0
+  }
+  const onTouchMove = (e: React.TouchEvent) => {
+    const el = ref.current
+    if (start.current === null || !el) return
+    const d = e.touches[0].clientY - start.current
+    if (d <= 0 || (el.scrollTop > 0 && d < 8)) { dy.current = 0; el.style.transform = ''; return }
+    dy.current = d
+    el.style.transition = 'none'
+    el.style.transform = `translateY(${d}px)`
+  }
+  const onTouchEnd = () => {
+    const el = ref.current
+    if (start.current === null || !el) return
+    start.current = null
+    el.style.transition = 'transform 200ms cubic-bezier(0.2, 0, 0, 1)'
+    if (dy.current > 110) {
+      el.style.transform = 'translateY(100%)'
+      // Radix closes on Escape — same path as the close button, so onOpenChange runs normally.
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    } else {
+      el.style.transform = ''
+    }
+    dy.current = 0
+  }
+  return { ref, onTouchStart, onTouchMove, onTouchEnd }
+}
+
 export const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { hideClose?: boolean; size?: DialogSize }
->(({ className, children, hideClose, size = 'md', ...props }, ref) => (
+>(({ className, children, hideClose, size = 'md', ...props }, ref) => {
+  const sheet = useSheetDrag()
+  return (
   <DialogPrimitive.Portal>
     <DialogPrimitive.Overlay
       data-motion="dialog"
       className="fixed inset-0 z-50 bg-[#000]/45 backdrop-blur-[2px] data-[state=open]:animate-overlay-in data-[state=closed]:animate-overlay-out"
     />
     <DialogPrimitive.Content
-      ref={ref}
+      ref={(node) => {
+        sheet.ref.current = node
+        if (typeof ref === 'function') ref(node)
+        else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node
+      }}
+      onTouchStart={sheet.onTouchStart}
+      onTouchMove={sheet.onTouchMove}
+      onTouchEnd={sheet.onTouchEnd}
       data-motion="dialog"
       className={cn(
         // Phones: bottom sheet that slides up from the edge.
@@ -57,7 +111,8 @@ export const DialogContent = React.forwardRef<
       )}
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal>
-))
+  )
+})
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
 /** Title block. Pass `icon` (usually a <DialogIcon>) to get the standard icon + text layout. */

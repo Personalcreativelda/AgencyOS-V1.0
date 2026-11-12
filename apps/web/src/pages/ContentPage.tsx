@@ -251,12 +251,19 @@ export function ContentPage({ view }: ContentPageProps) {
   }
 
   // Shared by drag & drop and the card's "Mover para…" menu.
-  const moveToStatus = async (content: any, newStatus: string) => {
+  const moveToStatus = async (content: any, newStatus: string, undoable = true) => {
     if (content.status === newStatus) return
     const prevContents = contents
+    const previousStatus = content.status
     setContents((cs) => cs.map((c) => (c.id === content.id ? { ...c, status: newStatus } : c)))
     try {
       await api.post(`/contents/${content.id}/change-status`, { status: newStatus })
+      if (undoable) {
+        const label = boardColumns.find((col) => col.statuses.includes(newStatus))?.label || STATUS_LABELS[newStatus] || newStatus
+        toast.success(`Movido para ${label}`, content.title, {
+          action: { label: 'Desfazer', onClick: () => void moveToStatus({ ...content, status: newStatus }, previousStatus, false) },
+        })
+      }
     } catch (err) {
       setContents(prevContents)
       toast.error('Erro ao alterar status', getErrorMessage(err))

@@ -2,6 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { BadgeCheck, Home, Menu, PanelsTopLeft, UsersRound } from 'lucide-react'
 import { useNavCounts } from '@/hooks/useNavCounts'
 import { cn } from '@/lib/utils'
+import { haptics } from '@/lib/haptics'
 
 type Tab = {
   label: string
@@ -44,6 +45,7 @@ export function MobileTabBar({ onOpenMenu, menuOpen, unread = 0 }: { onOpenMenu:
               key={tab.to}
               to={tab.to}
               aria-current={active ? 'page' : undefined}
+              onClick={() => { if (!active) haptics.selection() }}
               className={cn(slot, active ? 'text-primary-dark dark:text-primary-light' : 'text-muted-foreground')}
             >
               <span className={pill(active)}>

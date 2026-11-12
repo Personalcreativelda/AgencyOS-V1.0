@@ -1,5 +1,9 @@
-import React, { Suspense, useEffect, useRef, useState } from 'react'
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Link, Outlet, useLocation, useNavigate, useNavigationType } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { RefreshCw } from 'lucide-react'
+import { usePullToRefresh } from '@/hooks/usePullToRefresh'
+import api, { clearReadCache } from '@/lib/api'
 import {
   LogOut, Bell, CheckCheck, Inbox, Camera, ChevronDown,
 } from 'lucide-react'
@@ -12,7 +16,6 @@ import { LogoMark } from '@/components/brand/Logo'
 import { ThemeMenu } from '@/components/ui/ThemeMenu'
 import { useAuthStore } from '@/stores/authStore'
 import { cn, getInitials, ROLE_LABELS, timeAgo } from '@/lib/utils'
-import api from '@/lib/api'
 import { uploadFile } from '@/lib/upload'
 import { toast } from '@/lib/toast'
 import { getErrorMessage } from '@/lib/errors'
@@ -64,6 +67,34 @@ export function AppLayout() {
   // The page scrolls inside this container (not the window), so the router's default
   // behaviour never resets it — every new page would open at the previous page's position.
   useEffect(() => { scrollRef.current?.scrollTo({ top: 0 }) }, [pathname])
+
+  // Native stack feel: a deeper screen slides in from the right, "back" from the left, switching
+  // between top-level sections cross-fades.
+  const navType = useNavigationType()
+  const prevDepth = useRef(pathname.split('/').filter(Boolean).length)
+  const screenKey = pathname.split('/').slice(0, 4).join('/')
+  // Decided during render (not in an effect) so the new screen mounts with the right animation.
+  const transition = useRef<{ key: string; cls: string }>({ key: screenKey, cls: 'app-enter-fade' })
+  if (transition.current.key !== screenKey) {
+    const depth = pathname.split('/').filter(Boolean).length
+    transition.current = {
+      key: screenKey,
+      cls: navType === 'POP' ? 'app-enter-pop' : depth > prevDepth.current ? 'app-enter-push' : 'app-enter-fade',
+    }
+    prevDepth.current = depth
+  }
+  const enterClass = transition.current.cls
+
+  // Pull to refresh: refetch cached queries, drop the short read cache and re-mount the screen
+  // so pages that load in effects fetch again.
+  const queryClient = useQueryClient()
+  const [refreshKey, setRefreshKey] = useState(0)
+  const handleRefresh = useCallback(async () => {
+    clearReadCache()
+    await Promise.all([queryClient.invalidateQueries(), new Promise((r) => setTimeout(r, 450))])
+    setRefreshKey((k) => k + 1)
+  }, [queryClient])
+  const ptr = usePullToRefresh(scrollRef, handleRefresh)
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
 
@@ -77,8 +108,11 @@ export function AppLayout() {
 
   useEffect(() => {
     loadNotifications()
-    const interval = setInterval(loadNotifications, 30000)
-    return () => clearInterval(interval)
+    // Poll only while the app is on screen (battery/data), refresh as soon as it comes back.
+    const interval = setInterval(() => { if (document.visibilityState === 'visible') loadNotifications() }, 30000)
+    const onVisible = () => { if (document.visibilityState === 'visible') loadNotifications() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible) }
   }, [])
 
   const handleNotificationClick = async (n: any) => {
@@ -252,9 +286,19 @@ export function AppLayout() {
         <OfflineBanner />
 
         {/* Page View */}
-        <div ref={scrollRef} className="flex-1 overflow-auto bg-background">
+        <div ref={scrollRef} className="relative flex-1 overflow-auto bg-background">
+          {(ptr.pull > 0 || ptr.refreshing) && (
+            <div aria-hidden className="pointer-events-none sticky top-0 z-30 flex h-0 justify-center lg:hidden">
+              <span
+                className="mt-2 flex size-10 items-center justify-center rounded-full border border-border bg-card text-primary-dark shadow-dropdown dark:text-primary-light"
+                style={{ transform: `translateY(${ptr.pull - 8}px) rotate(${ptr.progress * 270}deg)`, opacity: Math.min(1, ptr.progress + 0.2) }}
+              >
+                <RefreshCw size={18} className={ptr.refreshing ? 'animate-spin' : undefined} />
+              </span>
+            </div>
+          )}
           {/* Bottom padding keeps the last item clear of the floating tab bar on phones. */}
-          <div id="page-content" key={pathname.split('/').slice(0, 4).join('/')} tabIndex={-1} className="animate-page-in motion-reduce:animate-none min-w-0 pb-[calc(9rem+var(--sab))] outline-none lg:pb-0"><Suspense fallback={<PageFallback />}><Outlet /></Suspense></div>
+          <div id="page-content" key={`${screenKey}#${refreshKey}`} tabIndex={-1} className={cn(enterClass, 'min-w-0 pb-[calc(9rem+var(--sab))] outline-none lg:pb-0')} style={{ transform: ptr.pull ? `translateY(${ptr.pull * 0.35}px)` : undefined }}><Suspense fallback={<PageFallback />}><Outlet /></Suspense></div>
         </div>
       </main>
 

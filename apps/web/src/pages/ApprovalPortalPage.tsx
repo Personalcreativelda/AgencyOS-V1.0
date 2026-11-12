@@ -5,6 +5,7 @@ import {
   Calendar, Check, Sun, Moon
 } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
+import { MadeBy } from '@/components/brand/MadeBy'
 import api from '@/lib/api'
 import { CONTENT_TYPE_LABELS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
@@ -39,7 +40,8 @@ export function ApprovalPortalPage() {
       try {
         const res = await api.get(`/approvals/portal/${token}`)
         setData(res.data)
-        api.post(`/approvals/portal/${token}/view`).catch(() => {})
+        if (res.data?.closed) setActionDone(res.data.status === 'APPROVED' ? 'APPROVED' : 'CHANGES_REQUESTED')
+        else api.post(`/approvals/portal/${token}/view`).catch(() => {})
       } catch (err: any) {
         setError(err.response?.data?.error || 'Link de aprovação inválido ou expirado.')
       } finally {
@@ -58,6 +60,8 @@ export function ApprovalPortalPage() {
       })
       setActionDone('APPROVED')
     } catch (err: any) {
+      // Link answered meanwhile (another tap/device): show the outcome instead of an error.
+      if (err?.response?.status === 409) { setData((d: any) => ({ ...d, closed: true })); setActionDone('APPROVED'); return }
       toast.error('Erro ao aprovar', getErrorMessage(err))
     } finally {
       setSubmitting(false)
@@ -164,17 +168,21 @@ export function ApprovalPortalPage() {
             {actionDone === 'APPROVED' ? (
               <>
                 <CheckCircle2 className="w-12 h-12 mx-auto text-success mb-2" />
-                <h3 className="text-lg font-bold text-foreground">Conteúdo aprovado com sucesso!</h3>
+                <h3 className="text-lg font-bold text-foreground">{data.closed ? 'Este conteúdo já foi aprovado' : 'Conteúdo aprovado com sucesso!'}</h3>
                 <p className="text-sm text-muted-foreground font-medium">
-                  A equipe da agência já foi notificada e dará andamento à publicação.
+                  {data.closed
+                    ? <>Aprovado{data.completedAt ? ` em ${new Date(data.completedAt).toLocaleDateString('pt-BR')}` : ''}{data.actions?.[0]?.actorName ? ` por ${data.actions[0].actorName}` : ''}. Este link já não aceita novas respostas.</>
+                    : 'A equipe da agência já foi notificada e dará andamento à publicação.'}
                 </p>
               </>
             ) : (
               <>
                 <AlertTriangle className="w-12 h-12 mx-auto text-warning mb-2" />
-                <h3 className="text-lg font-bold text-foreground">Alterações solicitadas!</h3>
+                <h3 className="text-lg font-bold text-foreground">{data.closed ? 'Ajustes já pedidos para este conteúdo' : 'Alterações solicitadas!'}</h3>
                 <p className="text-sm text-muted-foreground font-medium">
-                  Suas observações foram salvas na memória da marca para orientar a equipe.
+                  {data.closed
+                    ? 'A agência está a trabalhar nos ajustes e enviará um novo link com a versão atualizada.'
+                    : 'Suas observações foram salvas na memória da marca para orientar a equipe.'}
                 </p>
               </>
             )}
@@ -282,16 +290,9 @@ export function ApprovalPortalPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Footer */}
-      <footer className="text-center text-xs text-muted-foreground mt-12 py-4">
-        <span className="flex items-center justify-center gap-2">
-          Powered by
-          <span className="flex items-center gap-1 font-bold text-foreground/80">
-            <LogoMark size={16} />
-            AgencyOS
-          </span>
-          — Sistema Operacional de Agências
-        </span>
+      {/* Footer: who makes AgencyOS */}
+      <footer className="mt-12 py-4" style={{ paddingBottom: 'max(1rem, var(--sab))' }}>
+        <MadeBy />
       </footer>
     </div>
   )

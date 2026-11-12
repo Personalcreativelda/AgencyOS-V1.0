@@ -53,6 +53,17 @@ export function Toaster() {
                 </ToastPrimitive.Description>
               )}
             </div>
+            {t.action && (
+              <ToastPrimitive.Action altText={t.action.label} asChild>
+                <button
+                  type="button"
+                  onClick={() => { t.action!.onClick(); dismiss(t.id) }}
+                  className="shrink-0 self-center rounded-lg px-3 py-2 text-[13px] font-semibold text-primary-dark transition-colors hover:bg-primary/10 dark:text-primary-light"
+                >
+                  {t.action.label}
+                </button>
+              </ToastPrimitive.Action>
+            )}
             <ToastPrimitive.Close aria-label="Fechar notificação" className="shrink-0 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
               <X size={14} />
             </ToastPrimitive.Close>

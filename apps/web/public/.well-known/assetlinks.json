@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.agencyos.app",
+      "sha256_cert_fingerprints": [
+        "80:6B:03:77:0E:5D:94:EF:3B:E6:60:32:04:73:DF:ED:A8:CA:94:7D:1C:69:0A:63:1E:8E:4F:F8:03:03:BD:6C"
+      ]
+    }
+  }
+]

@@ -125,8 +125,24 @@ function BreakdownTable({ title, icon: Icon, rows, money, num, showCost }: {
   return (
     <div className="print-avoid-break rounded-xl border border-border p-4">
       <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground"><Icon size={15} className="text-muted-foreground" aria-hidden />{title}</h3>
-      <div className="-mx-4 overflow-x-auto px-4">
-        <table className="w-full min-w-[420px] text-[13px]">
+      {/* Phones: stacked rows (a table would push the page sideways) */}
+      <ul className="divide-y divide-border/70 sm:hidden">
+        {rows.map((r) => (
+          <li key={r.label} className="py-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="min-w-0 truncate text-[13px] font-medium text-foreground">{r.label}</span>
+              <span className="shrink-0 text-[13px] font-semibold tabular-nums text-foreground">{num(r.results)} res.</span>
+            </div>
+            <span aria-hidden className="mt-1.5 block h-1 rounded-full bg-muted"><span className="block h-1 rounded-full bg-primary" style={{ width: `${(r.results / max) * 100}%` }} /></span>
+            <div className="mt-1.5 flex justify-between gap-3 text-xs text-muted-foreground">
+              <span className="tabular-nums">Investimento {money(r.spend)}</span>
+              {showCost && <span className="tabular-nums">Custo/res. <strong className="font-semibold text-foreground">{r.results ? money(r.spend / r.results) : '—'}</strong></span>}
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="hidden sm:block">
+        <table className="w-full text-[13px]">
           <thead>
             <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
               <th className="pb-2 font-semibold">{title === 'Regiões' ? 'Região' : title === 'Posicionamentos' ? 'Posicionamento' : 'Público'}</th>

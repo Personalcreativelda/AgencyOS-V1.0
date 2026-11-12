@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { Toaster } from '@/components/ui/Toaster'
+import { useDeepLinks } from '@/hooks/useDeepLinks'
 import { lazyPage } from '@/lib/lazyPage'
 import { Suspense } from 'react'
 import { ConfirmDialogHost } from '@/components/ui/ConfirmDialogHost'
@@ -39,9 +40,15 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
+function DeepLinks() {
+  useDeepLinks()
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <DeepLinks />
       <Suspense fallback={null}>
       <Routes>
         {/* Public routes */}

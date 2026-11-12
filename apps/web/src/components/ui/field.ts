@@ -4,7 +4,7 @@
  * line up perfectly when mixed in a row or a modal.
  */
 export const fieldBase =
-  'w-full rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground ' +
+  'w-full rounded-md border border-border bg-card text-base text-foreground sm:text-sm placeholder:text-muted-foreground ' +
   'transition-[border-color,box-shadow] duration-150 hover:border-grey-400 ' +
   'focus:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15 ' +
   'disabled:cursor-not-allowed disabled:bg-muted disabled:opacity-60 disabled:hover:border-border ' +

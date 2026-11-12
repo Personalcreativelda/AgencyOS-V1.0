@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthRequest } from '../../common/middleware/auth';
 import { prisma } from '../../database/prisma';
-import { NotFoundError } from '../../common/middleware/errorHandler';
+import { NotFoundError, ConflictError } from '../../common/middleware/errorHandler';
 import { notify } from '../notifications/notifications.controller';
 import { sendApprovalEmail, sendApprovalWhatsApp } from './approvalNotify';
 
@@ -127,6 +127,19 @@ export async function deleteApproval(req: AuthRequest, res: Response, next: Next
 }
 
 // PUBLIC PORTAL ROUTES
+// After a decision the link is closed: the client sees the outcome, never the buttons again, so
+// one link can't approve twice (or approve after asking for changes). A new version needs a new link.
+const FINAL_STATUSES = ['APPROVED', 'CHANGES_REQUESTED', 'REJECTED'];
+
+/** Atomically claims the link for a decision — two taps / two devices can't both succeed. */
+async function claimDecision(tx: any, token: string, status: string) {
+  const { count } = await tx.approvalRequest.updateMany({
+    where: { token, status: { notIn: FINAL_STATUSES } },
+    data: { status, completedAt: new Date() },
+  });
+  if (!count) throw new ConflictError('Este link de aprovação já foi respondido. Peça à agência um novo link se precisar de alterar a decisão.');
+}
+
 async function getValidApproval(token: string) {
   const approval = await prisma.approvalRequest.findUnique({
     where: { token },
@@ -158,14 +171,14 @@ async function getValidApproval(token: string) {
 export async function getPortal(req: Request, res: Response, next: NextFunction) {
   try {
     const approval = await getValidApproval(req.params.token);
-    res.json(approval);
+    res.json({ ...approval, closed: FINAL_STATUSES.includes(approval.status) });
   } catch (err) { next(err); }
 }
 
 export async function markViewed(req: Request, res: Response, next: NextFunction) {
   try {
     const approval = await getValidApproval(req.params.token);
-    if (!approval.viewedAt) {
+    if (!approval.viewedAt && !FINAL_STATUSES.includes(approval.status)) {
       await prisma.approvalRequest.update({
         where: { token: req.params.token },
         data: { status: 'VIEWED', viewedAt: new Date() },
@@ -181,10 +194,7 @@ export async function approve(req: Request, res: Response, next: NextFunction) {
     const approval = await getValidApproval(req.params.token);
 
     await prisma.$transaction(async (tx) => {
-      await tx.approvalRequest.update({
-        where: { token: req.params.token },
-        data: { status: 'APPROVED', completedAt: new Date() },
-      });
+      await claimDecision(tx, req.params.token, 'APPROVED');
 
       await tx.approvalAction.create({
         data: {
@@ -222,10 +232,7 @@ export async function requestChanges(req: Request, res: Response, next: NextFunc
     const approval = await getValidApproval(req.params.token);
 
     await prisma.$transaction(async (tx) => {
-      await tx.approvalRequest.update({
-        where: { token: req.params.token },
-        data: { status: 'CHANGES_REQUESTED', completedAt: new Date() },
-      });
+      await claimDecision(tx, req.params.token, 'CHANGES_REQUESTED');
 
       await tx.approvalAction.create({
         data: {
@@ -275,10 +282,7 @@ export async function reject(req: Request, res: Response, next: NextFunction) {
     const approval = await getValidApproval(req.params.token);
 
     await prisma.$transaction(async (tx) => {
-      await tx.approvalRequest.update({
-        where: { token: req.params.token },
-        data: { status: 'REJECTED', completedAt: new Date() },
-      });
+      await claimDecision(tx, req.params.token, 'REJECTED');
 
       await tx.approvalAction.create({
         data: {

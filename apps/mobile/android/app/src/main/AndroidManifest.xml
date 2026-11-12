@@ -18,6 +18,23 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
+            <!-- App Links: AgencyOS links (approvals, reports, any app screen) open in the app.
+                 Verified through https://agencyos.personalcreativemz.com/.well-known/assetlinks.json -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="agencyos.personalcreativemz.com" />
+            </intent-filter>
+
+            <!-- Custom scheme (agencyos://...) for returning from OAuth / external flows -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="agencyos" />
+            </intent-filter>
         </activity>
 
         <provider
@@ -30,6 +47,9 @@
     </application>
 
     <!-- Permissions -->
+
+    <!-- Haptic feedback (also declared by @capacitor/haptics) -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <!-- Load the AgencyOS web app and detect offline state -->
     <uses-permission android:name="android.permission.INTERNET" />

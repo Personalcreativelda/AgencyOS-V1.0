@@ -34,6 +34,7 @@ export function FilterMenu({ active, onClear, children, className }: FilterMenuP
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
+          data-sheet
           align="end"
           sideOffset={8}
           collisionPadding={12}
