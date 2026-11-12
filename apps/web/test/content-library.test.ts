@@ -24,7 +24,7 @@ test('search finds titles, clients and captions without requiring accents or exa
 
 test('schedule sorting retains undated contents at the end and never mutates the source collection', () => {
   const contents = [content('undated'), content('later', { scheduledAt: '2026-11-07T12:00:00Z' }), content('invalid', { scheduledAt: 'invalid' }), content('first', { scheduledAt: '2026-11-06T12:00:00Z' })]
-  assert.deepEqual(selectLibraryContents(contents, '', 'scheduled').map(item => item.id), ['first', 'later', 'invalid', 'undated'])
+  assert.deepEqual(selectLibraryContents(contents, '', 'scheduled').map(item => item.id), ['later', 'first', 'invalid', 'undated'])
   assert.equal(contents[0].id, 'undated')
 })
 

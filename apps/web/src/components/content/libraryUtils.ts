@@ -26,8 +26,8 @@ export function selectLibraryContents(contents: LibraryContent[], search: string
     if (sort === 'title') return byName
     if (sort === 'scheduled') {
       const left = timestamp(a.scheduledAt), right = timestamp(b.scheduledAt)
-      // Missing/invalid dates stay at the end without changing their business status.
-      return (Number.isFinite(left) ? left : Infinity) - (Number.isFinite(right) ? right : Infinity) || byName
+      // Latest date first; missing/invalid dates stay at the end without changing their business status.
+      return (Number.isFinite(right) ? right : -Infinity) - (Number.isFinite(left) ? left : -Infinity) || byName
     }
     const key = sort === 'updated' ? 'updatedAt' : 'createdAt'
     return (timestamp(b[key]) || 0) - (timestamp(a[key]) || 0) || byName

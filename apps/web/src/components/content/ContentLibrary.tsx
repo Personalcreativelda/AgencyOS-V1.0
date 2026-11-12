@@ -26,7 +26,12 @@ const gridClass = 'grid grid-cols-2 items-start gap-3 sm:grid-cols-3 sm:gap-4 lg
 export function ContentLibrary(props: Props) {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [sort, setSort] = useState<LibrarySort>('scheduled')
+  // Newest first by default; the viewer's own choice is remembered on this device.
+  const [sort, setSortState] = useState<LibrarySort>(() => {
+    try { const saved = localStorage.getItem('agencyos.library.sort'); if (saved === 'recent' || saved === 'updated' || saved === 'title' || saved === 'scheduled') return saved } catch { /* no storage */ }
+    return 'recent'
+  })
+  const setSort = (value: LibrarySort) => { setSortState(value); try { localStorage.setItem('agencyos.library.sort', value) } catch { /* no storage */ } }
   const [visible, setVisible] = useState(24)
   const [preview, setPreview] = useState<LibraryContent | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
