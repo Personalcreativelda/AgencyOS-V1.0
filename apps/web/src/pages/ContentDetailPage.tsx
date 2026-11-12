@@ -653,7 +653,7 @@ export function ContentDetailPage() {
       {(content.platforms || []).some((platform: any) => platform.status === 'FAILED') && (
         <div role="status" className="flex items-start gap-3 rounded-xl border border-error/20 bg-error/5 px-4 py-3">
           <XCircle size={18} aria-hidden className="mt-0.5 shrink-0 text-error-dark dark:text-error-light" />
-          <div><p className="text-sm font-medium">Falha de publicação em {(content.platforms || []).filter((platform: any) => platform.status === 'FAILED').map((platform: any) => PLATFORM_LABELS[platform.platform] || platform.platform).join(', ')}.</p><p className="mt-1 text-xs leading-5 text-muted-foreground">Reveja o conteúdo e a conexão da plataforma antes de voltar a publicar.</p></div>
+          <div><p className="text-sm font-medium">Falha de publicação em {(content.platforms || []).filter((platform: any) => platform.status === 'FAILED').map((platform: any) => PLATFORM_LABELS[platform.platform] || platform.platform).join(', ')}.</p>{(content.platforms || []).filter((platform: any) => platform.status === 'FAILED' && platform.publishError).map((platform: any) => <p key={platform.id || platform.platform} className="mt-1 text-xs leading-5 text-foreground/80"><span className="font-semibold">{PLATFORM_LABELS[platform.platform] || platform.platform}:</span> {platform.publishError}</p>)}<p className="mt-1 text-xs leading-5 text-muted-foreground">Reveja o conteúdo e a conexão da plataforma antes de voltar a publicar.</p></div>
         </div>
       )}
 

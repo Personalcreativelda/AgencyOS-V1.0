@@ -1398,8 +1398,23 @@ async function sendOneWhatsAppStatus(evo: EvolutionConfig, instanceName: string,
       body: JSON.stringify({ ...params, backgroundColor: '#075E54', font: 1, allContacts: true }),
     });
     if (!statusRes.ok) {
-      const errData = await statusRes.json().catch(() => ({})) as any;
-      throw new Error(errData.message || errData.error || 'Falha ao publicar no Status do WhatsApp.');
+      const body = await statusRes.text().catch(() => '');
+      // Kept for the development team; the user gets the readable sentence below.
+      console.error('[whatsapp-status]', instanceName, statusRes.status, body.slice(0, 800));
+      let data: any = null;
+      try { data = JSON.parse(body); } catch { /* HTML error page from a proxy */ }
+      const detail = data?.response?.message ?? data?.message ?? data?.error;
+      const detailText = (Array.isArray(detail) ? detail.flat().map((d: any) => typeof d === 'string' ? d : JSON.stringify(d)).join('; ') : typeof detail === 'string' ? detail : '').slice(0, 300);
+      const status = statusRes.status;
+      if (status === 401 || status === 403) throw new Error('A Evolution API recusou a chave de acesso. Confirme a URL e a API key em Configurações → Integrações.');
+      if (status === 404) throw new Error(`A instância "${instanceName}" não foi encontrada na Evolution API. Volte a ligar o WhatsApp deste cliente em Conexões.`);
+      if (status === 502 || status === 503 || status === 504 || (!data && status >= 500)) {
+        throw new Error('O servidor do WhatsApp (Evolution API) demorou demasiado a responder. O Status pode ter sido publicado mesmo assim — confirme no telemóvel antes de tentar de novo.');
+      }
+      if (/not.?connected|connection closed|closed|logged ?out|close/i.test(detailText)) {
+        throw new Error('O WhatsApp deste cliente está desligado na Evolution API. Volte a ler o QR code em Conexões.');
+      }
+      throw new Error(detailText ? `O WhatsApp recusou o Status: ${detailText}` : `O WhatsApp recusou o Status (código ${status}).`);
     }
   } catch (err: any) {
     if (err.name === 'AbortError') {
