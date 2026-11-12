@@ -21,8 +21,9 @@ test('groups platform failures by content without counting them as individual co
 test('preserves authoritative failures when the associated content is no longer accessible', () => {
   const result = buildDashboardAttention({ ...overview, pendingApprovals: 0 }, [], [])
   assert.equal(result.alerts.length, 1)
-  assert.equal(result.alerts[0].badge, '3 plataformas')
   assert.equal(result.alerts[0].id, 'failure-unavailable')
+  assert.equal(result.alerts[0].title, '3 publicações falharam')
+  assert.equal(result.alerts[0].badge, 'Histórico')
   assert.equal(result.alerts[0].clientName, undefined)
 })
 
@@ -42,7 +43,7 @@ test('groups repeated planning reminders by client and deduplicates repeated ale
   assert.equal(result.alerts[0].kind, 'overdue')
 })
 
-test('upcoming list includes only real future scheduled content in chronological order', () => {
+test('upcoming list includes every future content still to go out, in chronological order', () => {
   const now = Date.parse('2026-11-05T12:00:00Z')
   const contents = [
     content('later', { status: 'SCHEDULED', scheduledAt: '2026-11-07T10:00:00Z' }),
@@ -51,7 +52,9 @@ test('upcoming list includes only real future scheduled content in chronological
     content('old', { status: 'SCHEDULED', scheduledAt: '2026-11-04T10:00:00Z' }),
     content('missing', { status: 'SCHEDULED' }),
     content('invalid', { status: 'SCHEDULED', scheduledAt: 'not-a-date' }),
+    content('approved', { status: 'APPROVED', scheduledAt: '2026-11-06T15:00:00Z' }),
+    content('failed', { status: 'FAILED', scheduledAt: '2026-11-06T16:00:00Z' }),
   ]
-  assert.deepEqual(getUpcomingPublications(contents, now).map(item => item.id), ['earlier', 'later'])
+  assert.deepEqual(getUpcomingPublications(contents, now).map(item => item.id), ['earlier', 'approved', 'later'])
   assert.deepEqual(getUpcomingPublications([], now), [])
 })
