@@ -38,6 +38,22 @@ export async function markAllRead(req: AuthRequest, res: Response, next: NextFun
   } catch (err) { next(err); }
 }
 
+/** Clears the user's notifications (the bell's "Limpar tudo"). */
+export async function clearAll(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    await prisma.notification.deleteMany({ where: { userId: req.user!.id, agencyId: req.user!.agencyId } });
+    res.status(204).send();
+  } catch (err) { next(err); }
+}
+
+/** Removes one notification. */
+export async function remove(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    await prisma.notification.deleteMany({ where: { id: req.params.id, userId: req.user!.id, agencyId: req.user!.agencyId } });
+    res.status(204).send();
+  } catch (err) { next(err); }
+}
+
 // Internal helper — used by other modules to create a notification (e.g. approval events).
 export async function notify(data: {
   agencyId: string; userId: string; type: string; title: string; message: string; entityId?: string;

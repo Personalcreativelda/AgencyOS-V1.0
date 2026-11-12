@@ -5,7 +5,7 @@ import { RefreshCw } from 'lucide-react'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import api, { clearReadCache } from '@/lib/api'
 import {
-  LogOut, Bell, CheckCheck, Inbox, Camera, ChevronDown,
+  LogOut, Bell, CheckCheck, Inbox, Camera, ChevronDown, Trash2, X,
 } from 'lucide-react'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { useAndroidBack } from '@/hooks/useAndroidBack'
@@ -133,6 +133,18 @@ export function AppLayout() {
     api.post('/notifications/read-all').catch(() => {})
   }
 
+  const handleClearNotifications = () => {
+    setNotifications([])
+    setUnreadCount(0)
+    api.delete('/notifications').catch(() => loadNotifications())
+  }
+
+  const handleRemoveNotification = (n: any) => {
+    setNotifications((prev) => prev.filter((x) => x.id !== n.id))
+    if (!n.readAt) setUnreadCount((c) => Math.max(0, c - 1))
+    api.delete(`/notifications/${n.id}`).catch(() => loadNotifications())
+  }
+
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -200,16 +212,21 @@ export function AppLayout() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-[min(20rem,calc(100vw-2rem))] p-0">
                 <div className="flex items-center justify-between px-3.5 py-3 border-b border-border">
-                  <span className="text-xs font-bold text-foreground">Notificações</span>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={handleMarkAllRead}
-                      className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
-                    >
-                      <CheckCheck size={12} />
-                      <span>Marcar todas como lidas</span>
-                    </button>
-                  )}
+                  <span className="text-sm font-semibold text-foreground">Notificações</span>
+                  <div className="flex items-center gap-1">
+                    {unreadCount > 0 && (
+                      <button type="button" onClick={handleMarkAllRead} title="Marcar todas como lidas"
+                        className="flex h-8 items-center gap-1 rounded-md px-2 text-xs font-semibold text-primary-dark hover:bg-muted dark:text-primary-light">
+                        <CheckCheck size={14} aria-hidden /><span>Lidas</span>
+                      </button>
+                    )}
+                    {notifications.length > 0 && (
+                      <button type="button" onClick={handleClearNotifications} title="Apagar todas as notificações"
+                        className="flex h-8 items-center gap-1 rounded-md px-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground">
+                        <Trash2 size={14} aria-hidden /><span>Limpar tudo</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="max-h-80 overflow-y-auto">
@@ -220,21 +237,28 @@ export function AppLayout() {
                     </div>
                   ) : (
                     notifications.map((n) => (
-                      <button
-                        key={n.id}
-                        onClick={() => handleNotificationClick(n)}
-                        className={cn(
-                          'w-full text-left px-3.5 py-3 border-b border-border last:border-0 hover:bg-muted/70 transition-colors flex gap-2.5',
-                          !n.readAt && 'bg-primary/5'
-                        )}
-                      >
-                        <span className={cn('w-1.5 h-1.5 rounded-full mt-1.5 shrink-0', n.readAt ? 'bg-transparent' : 'bg-primary')} />
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-foreground truncate">{n.title}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
-                          <p className="text-[11px] text-muted-foreground mt-1 font-medium">{timeAgo(n.createdAt)}</p>
-                        </div>
-                      </button>
+                      <div key={n.id} className={cn('group relative border-b border-border last:border-0', !n.readAt && 'bg-primary/5')}>
+                        <button
+                          type="button"
+                          onClick={() => handleNotificationClick(n)}
+                          className="flex w-full gap-2.5 py-3 pl-3.5 pr-11 text-left transition-colors hover:bg-muted/70"
+                        >
+                          <span className={cn('w-1.5 h-1.5 rounded-full mt-1.5 shrink-0', n.readAt ? 'bg-transparent' : 'bg-primary')} />
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-foreground truncate">{n.title}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+                            <p className="text-[11px] text-muted-foreground mt-1 font-medium">{timeAgo(n.createdAt)}</p>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveNotification(n)}
+                          aria-label={`Apagar notificação: ${n.title}`}
+                          className="absolute right-1.5 top-2 flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 focus-visible:opacity-100"
+                        >
+                          <X size={14} aria-hidden />
+                        </button>
+                      </div>
                     ))
                   )}
                 </div>

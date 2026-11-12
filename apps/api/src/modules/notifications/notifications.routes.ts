@@ -8,5 +8,7 @@ router.use(authenticate);
 router.get('/', ctrl.list);
 router.post('/:id/read', ctrl.markRead);
 router.post('/read-all', ctrl.markAllRead);
+router.delete('/', ctrl.clearAll);
+router.delete('/:id', ctrl.remove);
 
 export default router;
