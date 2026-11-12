@@ -9,7 +9,8 @@ import { compositeLogoOntoImage } from '../../integrations/ai/imageCompose';
 import { setContentPrimaryAssets } from '../assets/contentAssets';
 
 async function getBrandContext(clientId: string, agencyId: string) {
-  const [profile, rules, products, services, personas, pillars, colors, fonts, referenceImages] = await Promise.all([
+  const [client, profile, rules, products, services, personas, pillars, colors, fonts, referenceImages] = await Promise.all([
+    prisma.client.findFirst({ where: { id: clientId, agencyId }, select: { name: true, industry: true, description: true, address: true, phone: true, website: true } }),
     prisma.brandProfile.findUnique({ where: { clientId } }),
     prisma.brandRule.findMany({ where: { clientId, agencyId, active: true }, take: 20 }),
     prisma.brandProduct.findMany({ where: { clientId, agencyId, status: 'ACTIVE' }, take: 10 }),
@@ -24,8 +25,39 @@ async function getBrandContext(clientId: string, agencyId: string) {
     prisma.$queryRaw<Array<{ note: string | null; publicUrl: string }>>`SELECT note, public_url as "publicUrl" FROM brand_reference_images WHERE client_id = ${clientId} ORDER BY created_at DESC LIMIT 4`,
   ]);
 
-  return { profile, rules, products, services, personas, pillars, colors, fonts, referenceImages };
+  return { client, profile, rules, products, services, personas, pillars, colors, fonts, referenceImages };
 }
+
+type BrandContext = Awaited<ReturnType<typeof getBrandContext>>;
+
+/** Real facts about the brand the copy may use (never invent beyond these). */
+function brandFacts(ctx: BrandContext | null) {
+  if (!ctx) return 'Marca geral (sem dados no Brand Brain).';
+  const c = ctx.client;
+  const list = (items: { name: string; description: string | null }[]) =>
+    items.map(i => `${i.name}${i.description ? ` — ${i.description.slice(0, 160)}` : ''}`).join('; ');
+  const contacts = [c?.address && `Endereço: ${c.address}`, c?.phone && `Telefone/WhatsApp: ${c.phone}`, c?.website && `Site: ${c.website}`].filter(Boolean).join(' | ');
+  return [
+    `Marca: ${c?.name || ''}${c?.industry ? ` (${c.industry})` : ''}`,
+    `Sobre a marca: ${ctx.profile?.brandSummary || c?.description || 'Não configurado'}`,
+    `Tom de voz: ${ctx.profile?.toneOfVoice || 'Profissional e próximo'}`,
+    ctx.products.length ? `Produtos: ${list(ctx.products)}` : '',
+    ctx.services.length ? `Serviços: ${list(ctx.services)}` : '',
+    ctx.pillars.length ? `Pilares: ${ctx.pillars.map(p => p.name).join(', ')}` : '',
+    `Regras: ${ctx.rules.slice(0, 8).map(r => r.ruleText).join('; ') || 'Nenhuma'}`,
+    `Contactos oficiais: ${contacts || 'Não informados'}`,
+  ].filter(Boolean).join(String.fromCharCode(10));
+}
+
+/** How a caption must be written — shared by single captions and the monthly calendar. */
+const CAPTION_GUIDELINES = `REGRAS DA LEGENDA:
+- A legenda EXPLICA o tema do post: desenvolve concretamente o assunto do título e do gancho (o quê, porquê, como funciona, que benefício real traz ao cliente), com informação útil — não frases genéricas de marketing que serviriam para qualquer empresa.
+- Gancho, legenda e CTA falam do MESMO assunto do início ao fim. A legenda não pode começar num tema e terminar noutro, nem prometer algo que o post não mostra.
+- Estrutura: 2 a 3 parágrafos curtos (4 a 7 frases no total). Primeira frase continua o gancho sem o repetir; o meio dá os detalhes/exemplos concretos ligados aos produtos ou serviços reais da marca; o fim liga naturalmente ao CTA.
+- Use apenas factos dos dados da marca. Nunca invente preços, prazos, promoções, números ou contactos.
+- Contactos: quando o post é sobre um produto, serviço, promoção, novidade, evento ou "onde encontrar/como contratar", termine com os contactos oficiais disponíveis (ex.: "📍 Endereço… | 📞 …"), exatamente como fornecidos. Em posts apenas informativos/inspiracionais, não os inclua.
+- O CTA é uma ação concreta e coerente com o tema (ex.: "Peça já o seu orçamento pelo WhatsApp"), não uma frase vaga.
+- Português natural, frases completas, sem cortar a meio.`;
 
 async function logGeneration(data: {
   agencyId: string; clientId?: string; contentId?: string; userId: string;
@@ -136,12 +168,14 @@ export async function generateCalendar(req: AuthRequest, res: Response, next: Ne
     // it was running out of budget and truncating individual fields mid-sentence (e.g. a CTA
     // cut off with no ending). Scale the budget with how many items were actually requested.
     const totalItems = Number(postsCount) + Number(reelsCount) + Number(storiesCount);
-    const maxTokens = Math.min(16000, Math.max(4000, totalItems * 350));
+    const maxTokens = Math.min(16000, Math.max(6000, totalItems * 550));
 
     const result = await ai.generateJSON<any>({
       systemPrompt: `Você é um gestor sênior de social media.
 Crie um calendário editorial completo.
-Cada campo de texto (hook, captionDraft, cta) deve ser uma frase COMPLETA e natural — nunca corte uma frase pela metade, mesmo que isso signifique escrever menos itens.
+Cada campo de texto (hook, captionDraft, cta) deve ser COMPLETO e natural — nunca corte uma frase pela metade, mesmo que isso signifique escrever menos itens.
+"captionDraft" é a legenda final do post (corpo do texto, sem repetir o hook), escrita segundo estas regras:
+${CAPTION_GUIDELINES}
 Retorne JSON: {
   "strategy": { "objective": string, "strategySummary": string },
   "contents": [{
@@ -156,10 +190,7 @@ Retorne JSON: {
     "cta": string
   }]
 }`,
-      userPrompt: `Marca: ${ctx.profile?.brandSummary || 'Marca não configurada'}
-Tom de voz: ${ctx.profile?.toneOfVoice || 'Profissional e próximo'}
-Pilares: ${ctx.pillars.map(p => p.name).join(', ')}
-Regras: ${ctx.rules.slice(0, 5).map(r => r.ruleText).join('; ')}
+      userPrompt: `${brandFacts(ctx)}
 
 Mês: ${month || new Date().getMonth() + 1}, Ano: ${year || new Date().getFullYear()}
 Posts: ${postsCount}, Reels: ${reelsCount}, Stories: ${storiesCount}
@@ -208,16 +239,15 @@ export async function generateCaption(req: AuthRequest, res: Response, next: Nex
     }
 
     const systemPrompt = `Você é um copywriter sênior especialista em social media.
-Crie uma legenda otimizada para a plataforma indicada.${creativeImage ? ' A imagem do criativo já pronto está anexada a esta mensagem — a legenda TEM que corresponder exatamente ao que está nela (produto, oferta, preço, texto visível na peça). Nunca escreva sobre algo diferente do que a imagem mostra.' : ''}
+Crie uma legenda otimizada para a plataforma indicada.
+${CAPTION_GUIDELINES}${creativeImage ? ' A imagem do criativo já pronto está anexada a esta mensagem — a legenda TEM que corresponder exatamente ao que está nela (produto, oferta, preço, texto visível na peça). Nunca escreva sobre algo diferente do que a imagem mostra.' : ''}
 Retorne SOMENTE JSON, sem markdown, sem texto fora do JSON: { "caption": string, "hook": string, "cta": string, "hashtags": [string] }`;
     const userPrompt = `Plataforma: ${platform || 'Instagram'}
 Tipo: ${contentType || 'IMAGE'}
 Pilar: ${pillar || 'ENGAGEMENT'}
 Tom desejado: ${tone || 'Profissional e próximo'}
-Brief: ${brief || 'Post de engajamento'}
-Marca: ${ctx?.profile?.brandSummary || 'Marca geral'}
-Tom de voz da marca: ${ctx?.profile?.toneOfVoice || 'Profissional'}
-Regras: ${ctx?.rules.slice(0, 5).map(r => r.ruleText).join('; ') || 'Nenhuma'}`;
+Brief / tema do post: ${brief || 'Post de engajamento'}
+${brandFacts(ctx)}`;
 
     let result: any;
     if (creativeImage) {

@@ -308,8 +308,10 @@ export function ContentDetailPage() {
       const { data } = await api.post('/ai/generate-caption', {
         clientId: content.clientId,
         contentId: content.id,
-        brief: content.brief || content.title,
+        // Title + brief together: the caption must develop exactly this post's theme.
+        brief: [`Título do post: ${content.title}`, content.brief && `Briefing: ${content.brief}`].filter(Boolean).join('. '),
         contentType: content.contentType,
+        platform: (content.platforms || []).filter((p: any) => p.enabled !== false).map((p: any) => p.platform).join(', ') || undefined,
       })
       setContent((previous: any) => previous?.id === content.id ? ({ ...previous,
         caption: data.caption || previous.caption, hook: data.hook || previous.hook, cta: data.cta || previous.cta,
