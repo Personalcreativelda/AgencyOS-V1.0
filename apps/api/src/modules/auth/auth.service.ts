@@ -125,6 +125,11 @@ export async function login(data: { email: string; password: string }) {
   const valid = await bcrypt.compare(data.password, user.passwordHash);
   if (!valid) throw new UnauthorizedError('Invalid email or password');
 
+  return issueSession(user);
+}
+
+/** Opens a session for an already-authenticated user (password or Google). */
+export async function issueSession(user: { id: string; email: string; name: string; avatarUrl: string | null; status: string }) {
   if (user.status !== 'ACTIVE') throw new UnauthorizedError('Account is inactive');
 
   // Get agency membership

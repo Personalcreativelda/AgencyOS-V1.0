@@ -5,7 +5,7 @@ import { format, formatDistanceToNowStrict } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import {
   AlertCircle, AlertTriangle, ArrowRight, BadgeCheck, CalendarDays, CalendarRange,
-  CheckCircle2, ChevronDown, ChevronRight, FilePlus2, FileText, Plus, RefreshCw, Send, Share2, Sparkles, Users,
+  CheckCircle2, ChevronDown, ChevronRight, FilePlus2, Play, Plus, RefreshCw, Send, Share2, Sparkles, Users,
 } from 'lucide-react'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/authStore'
@@ -20,7 +20,7 @@ import { DonutChart, DonutLegend, type DonutSlice } from '@/components/charts/Do
 import { KpiBadge, KpiCard, Panel, PanelEmpty, PanelHeader, Segmented, ShareBar, TrendBadge } from '@/components/dashboard/DashboardWidgets'
 import { BRAND_COLORS, BrandIcon } from '@/components/brand/BrandIcon'
 import { PlatformIcon } from '@/components/planner/PlatformIcon'
-import { getPrimaryImage } from '@/components/planner/plannerUtils'
+import { CreativeThumbnail } from '@/components/content/CreativeMedia'
 import { buildDashboardAttention, getUpcomingPublications, type AttentionAlert, type AttentionItem, type DashboardContent, type DashboardOverview } from '@/components/dashboard/dashboardModel'
 
 type AgencyNotification = { id: string; title: string; message: string; createdAt: string; data: string | null }
@@ -49,21 +49,15 @@ function AttentionRow({ alert }: { alert: AttentionAlert }) {
   )
 }
 
-// Content-type tag on the thumbnail (Stitch "Próximas publicações").
-const TYPE_TAG: Record<string, string> = { CAROUSEL: 'CAR', REEL: 'REEL', VIDEO: 'VÍD', STORY: 'STORY', IMAGE: 'IMG' }
-
 function UpcomingPublication({ content }: { content: DashboardContent }) {
-  const [imageFailed, setImageFailed] = useState(false)
-  const image = getPrimaryImage(content)
+  const video = ['REEL', 'VIDEO', 'STORY'].includes(content.contentType || '')
   const date = new Date(content.scheduledAt!)
   return (
     <li>
       <Link to={`/app/content/${content.id}`} className={cn('group flex min-w-0 items-center gap-3.5 rounded-xl px-3 py-3 hover:bg-muted/60', interaction)}>
-        <div className="relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-muted">
-          {image && !imageFailed ? <img src={image.publicUrl} alt="" loading="lazy" className="size-full object-cover transition-transform duration-300 group-hover:scale-105" onError={() => setImageFailed(true)} /> : <FileText size={22} aria-hidden className="text-muted-foreground" />}
-          {content.contentType && TYPE_TAG[content.contentType] && (
-            <span className="absolute bottom-1 right-1 rounded bg-[#000]/70 px-1 text-[11px] font-semibold uppercase leading-[14px] text-[#fff]">{TYPE_TAG[content.contentType]}</span>
-          )}
+        <div className="relative size-16 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted">
+          <CreativeThumbnail content={content as any} cover />
+          {video && <span aria-hidden className="absolute bottom-1 right-1 flex size-5 items-center justify-center rounded-full bg-[#000]/60 text-[#fff]"><Play size={10} className="ml-px" fill="currentColor" /></span>}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">

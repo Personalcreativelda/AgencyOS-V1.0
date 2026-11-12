@@ -1,13 +1,14 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useEffect, useState } from 'react'
-import { ArrowRightLeft, Check, FileText, Plus } from 'lucide-react'
+import { ArrowRightLeft, Check, Plus } from 'lucide-react'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/DropdownMenu'
 import { cn, CONTENT_TYPE_LABELS } from '@/lib/utils'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { PlatformIcon } from './PlatformIcon'
-import { EffectiveBoardColumn, getPrimaryImage } from './plannerUtils'
+import { CreativeThumbnail } from '@/components/content/CreativeMedia'
+import { EffectiveBoardColumn } from './plannerUtils'
 
 interface BoardViewProps {
   contents: any[]
@@ -32,7 +33,6 @@ function KanbanCard({ content, onClick, showStatus, columns, currentKey, onMove 
   columns: EffectiveBoardColumn[]; currentKey: string; onMove?: (content: any, targetStatus: string) => void
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: content.id, data: { content } })
-  const image = getPrimaryImage(content)
   const when = content.scheduledAt
     ? new Date(content.scheduledAt).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
     : null
@@ -96,8 +96,8 @@ function KanbanCard({ content, onClick, showStatus, columns, currentKey, onMove 
             <span className="rounded bg-muted px-1.5 py-px text-[11px]">{CONTENT_TYPE_LABELS[content.contentType] || content.contentType}</span>
           </p>
         </div>
-        <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border/70 bg-muted">
-          {image ? <img src={image.publicUrl} alt="" loading="lazy" className="size-full object-cover" /> : <FileText size={18} className="text-muted-foreground" />}
+        <div className="size-16 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted">
+          <CreativeThumbnail content={content as any} cover />
         </div>
       </div>
 

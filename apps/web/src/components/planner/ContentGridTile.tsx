@@ -76,7 +76,7 @@ export function ContentGridTile(props: CreativeItemProps) {
           {carousel ? <Layers size={13} aria-hidden /> : video ? <Play size={12} aria-hidden /> : <FileText size={13} aria-hidden />}
           {CONTENT_TYPE_LABELS[content.contentType] || content.contentType}{carousel && media.length > 0 && <span className="tabular-nums">· {media.length}</span>}
         </span>
-        {video && media.length > 0 && <span className="absolute inset-0 flex items-center justify-center"><span className="flex size-11 items-center justify-center rounded-full bg-[#000]/60 text-[#fff] transition-colors group-hover/media:bg-[#000]/75 motion-reduce:transition-none"><Play size={20} aria-hidden className="ml-0.5" /></span></span>}
+        {video && !vertical && media.length > 0 && <span className="absolute inset-0 flex items-center justify-center"><span className="flex size-11 items-center justify-center rounded-full bg-[#000]/60 text-[#fff] transition-colors group-hover/media:bg-[#000]/75 motion-reduce:transition-none"><Play size={20} aria-hidden className="ml-0.5" /></span></span>}
         <span className="absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-[#000]/35 to-transparent px-3 pb-3 pt-6 opacity-0 transition-opacity group-hover/media:opacity-100 group-focus-visible/media:opacity-100 motion-reduce:transition-none"><span className="inline-flex items-center gap-1.5 rounded-md bg-card px-2 py-1 text-xs font-medium text-foreground"><Eye size={13} aria-hidden />Pré-visualizar</span></span>
       </button>
       <div className="flex flex-1 flex-col gap-2.5 p-3 sm:gap-3 sm:p-4">
@@ -100,7 +100,7 @@ export function ContentListRow(props: CreativeItemProps) {
   return (
     <article className="group relative flex min-w-0 items-center gap-3 px-3 py-4 [contain-intrinsic-size:auto_88px] [content-visibility:auto] transition-colors hover:bg-muted/40 focus-within:bg-muted/40 sm:gap-4 sm:px-5 md:grid md:grid-cols-[minmax(0,1fr)_12rem_9rem_9.5rem_5.5rem] md:gap-5 md:items-center md:px-6 motion-reduce:transition-none">
       <div className="flex min-w-0 flex-1 items-center gap-3.5 sm:gap-4">
-        <button type="button" onClick={onPreview} aria-label={`Pré-visualizar ${content.title}`} className={cn('relative z-10 size-14 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted', focus)}>
+        <button type="button" onClick={onPreview} aria-label={`Pré-visualizar ${content.title}`} className={cn('relative z-10 size-16 shrink-0 overflow-hidden rounded-xl border border-border/70 bg-muted', focus)}>
           <CreativeThumbnail content={content} />
           {(video || (content.contentType === 'CAROUSEL' && media.length > 0)) && <span className="absolute bottom-0 right-0 inline-flex items-center gap-0.5 rounded-tl-md bg-[#000]/70 px-1 py-0.5 text-[11px] text-[#fff]">{video ? <Play size={10} aria-hidden /> : <><Layers size={10} aria-hidden />{media.length}</>}</span>}
         </button>

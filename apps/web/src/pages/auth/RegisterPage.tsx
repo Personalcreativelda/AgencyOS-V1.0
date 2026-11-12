@@ -67,6 +67,7 @@ export function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, agencyName: e.target.value })}
               placeholder="Ex: Agência Criativa 360"
               icon={<Building />}
+              className="h-12 rounded-lg"
             />
           </div>
 
@@ -80,6 +81,7 @@ export function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Ex: Carlos Mendes"
               icon={<User />}
+              className="h-12 rounded-lg"
             />
           </div>
 
@@ -93,6 +95,7 @@ export function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder="seu@agencia.com"
               icon={<Mail />}
+              className="h-12 rounded-lg"
             />
           </div>
 
@@ -107,6 +110,7 @@ export function RegisterPage() {
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               placeholder="Mínimo 6 caracteres"
               icon={<Lock />}
+              className="h-12 rounded-lg"
             />
           </div>
 

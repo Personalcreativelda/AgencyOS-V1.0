@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { XCircle, Download, TrendingUp, TrendingDown, Image as ImageIcon, CheckCircle2, Target, Megaphone } from 'lucide-react'
 import { LogoMark } from '@/components/brand/Logo'
@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { ReportAdsSection } from '@/components/reports/ReportAdsSection'
 import { MadeBy } from '@/components/brand/MadeBy'
+import { isNativeApp, saveElementAsPdf } from '@/lib/savePdf'
+import { toast } from '@/lib/toast'
 
 function GrowthBadge({ pct }: { pct: number | null | undefined }) {
   if (pct == null) return null
@@ -25,6 +27,24 @@ export function ReportPublicPage() {
   const [report, setReport] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const reportRef = useRef<HTMLDivElement>(null)
+
+  // Browser: print dialog ("Guardar como PDF", selectable text). Android app: the WebView has no
+  // print dialog, so the PDF is generated here and saved to the phone.
+  const download = async () => {
+    if (!isNativeApp()) { window.print(); return }
+    if (!reportRef.current || saving) return
+    setSaving(true)
+    try {
+      const { savedTo } = await saveElementAsPdf(reportRef.current, report?.title || 'Relatório')
+      toast.success(savedTo ? `Relatório guardado em ${savedTo}` : 'Relatório pronto para partilhar')
+    } catch {
+      toast.error('Não foi possível gerar o PDF. Tente novamente.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   useEffect(() => {
     async function load() {
@@ -73,6 +93,8 @@ export function ReportPublicPage() {
           .print-card { box-shadow: none !important; border: 1px solid #DFE3E8 !important; }
           .print-avoid-break { break-inside: avoid; }
         }
+        .pdf-export .print-card { --card: 0 0% 100%; --foreground: 210 24% 16%; --muted: 210 20% 96%; --muted-foreground: 210 10% 42%; --border: 214 15% 87%; color-scheme: light; color: hsl(var(--foreground)); background: white !important; box-shadow: none !important; }
+        .pdf-export .print-card .no-print { display: none !important; }
       `}</style>
 
       <div className="mx-auto max-w-3xl space-y-6 p-4 pb-28 pt-[calc(var(--sat)+1rem)] sm:p-8 sm:pb-28 sm:pt-[calc(var(--sat)+2rem)]">
@@ -83,7 +105,7 @@ export function ReportPublicPage() {
         </div>
 
         {/* Report follows the site palette on screen; print uses an explicit light palette */}
-        <div className="bg-card border border-border rounded-2xl p-5 sm:p-8 space-y-8 shadow-card print-card">
+        <div ref={reportRef} className="bg-card border border-border rounded-2xl p-5 sm:p-8 space-y-8 shadow-card print-card">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-6 border-b border-border">
             <div>
               <p className="text-xs font-bold text-primary uppercase tracking-wider">Relatório Mensal de Performance</p>
@@ -196,9 +218,9 @@ export function ReportPublicPage() {
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 backdrop-blur-md no-print" style={{ paddingBottom: 'var(--sab)' }}>
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-8">
           <p className="hidden min-w-0 truncate text-[13px] text-muted-foreground sm:block">{report.title}</p>
-          <Button onClick={() => window.print()} className="w-full gap-2 sm:w-auto">
-            <Download size={16} aria-hidden />
-            Baixar relatório em PDF
+          <Button onClick={download} loading={saving} className="w-full gap-2 sm:w-auto">
+            {!saving && <Download size={16} aria-hidden />}
+            {saving ? 'A gerar PDF…' : 'Baixar relatório em PDF'}
           </Button>
         </div>
       </div>
