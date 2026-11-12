@@ -209,8 +209,19 @@ export async function approve(req: Request, res: Response, next: NextFunction) {
     const { actorName, actorEmail, comment } = req.body;
     const approval = await getValidApproval(req.params.token);
 
+    // Approved by the client = ready to go out. When the post already has a future date and at
+    // least one network to publish to, it goes straight to SCHEDULED (the scheduled publisher
+    // posts it on time). Without a date — or with a date already past, which would publish it
+    // immediately — it stays APPROVED for the agency to pick a date.
+    let nextStatus = 'APPROVED' as 'APPROVED' | 'SCHEDULED';
     await prisma.$transaction(async (tx) => {
       await claimDecision(tx, req.params.token, 'APPROVED');
+
+      const current = await tx.content.findUnique({ where: { id: approval.contentId }, select: { scheduledAt: true } });
+      const networks = await tx.contentPlatform.count({
+        where: { contentId: approval.contentId, enabled: true, status: 'PENDING', platform: { in: ['FACEBOOK', 'INSTAGRAM', 'LINKEDIN', 'TIKTOK', 'YOUTUBE', 'WHATSAPP'] } },
+      });
+      if (current?.scheduledAt && current.scheduledAt.getTime() > Date.now() + 60_000 && networks > 0) nextStatus = 'SCHEDULED';
 
       await tx.approvalAction.create({
         data: {
@@ -225,14 +236,16 @@ export async function approve(req: Request, res: Response, next: NextFunction) {
 
       await tx.content.update({
         where: { id: approval.contentId },
-        data: { status: 'APPROVED' },
+        data: { status: nextStatus },
       });
     });
 
     notifyContentOwners(approval.content, approval.agencyId, {
       type: 'CONTENT_APPROVED',
-      title: 'Conteúdo aprovado pelo cliente',
-      message: `"${approval.content.title}" foi aprovado${actorName ? ` por ${actorName}` : ''}.`,
+      title: nextStatus === 'SCHEDULED' ? 'Aprovado e agendado' : 'Conteúdo aprovado pelo cliente',
+      message: nextStatus === 'SCHEDULED'
+        ? `"${approval.content.title}" foi aprovado${actorName ? ` por ${actorName}` : ''} e já está agendado para publicação automática.`
+        : `"${approval.content.title}" foi aprovado${actorName ? ` por ${actorName}` : ''}. Defina uma data para o agendar.`,
       entityId: approval.contentId,
     });
 
