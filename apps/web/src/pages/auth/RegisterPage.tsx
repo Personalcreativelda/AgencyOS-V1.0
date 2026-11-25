@@ -40,18 +40,18 @@ export function RegisterPage() {
     <AuthShell>
       <div className="space-y-7">
         <div>
-          <h2 className="text-[28px] font-bold tracking-[-0.02em] text-foreground">Criar sua agência</h2>
+          <h2 className="text-[28px] font-semibold leading-tight tracking-[-0.02em] text-foreground">Criar sua agência</h2>
           <p className="mt-2 text-[15px] text-muted-foreground">
             Já tem uma conta?{' '}
-            <Link to="/login" className="text-primary hover:underline font-bold">
+            <Link to="/login" className="font-medium text-primary-dark underline-offset-4 hover:underline dark:text-primary-light">
               Entrar
             </Link>
           </p>
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-2xl bg-error/10 border border-error/20 text-error-dark text-xs flex items-center gap-2.5 font-semibold">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="flex items-start gap-2 rounded-lg border border-error/20 bg-error/10 p-3 text-sm leading-5 text-error-dark">
+            <AlertCircle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0" aria-hidden />
             <span>{error}</span>
           </div>
         )}

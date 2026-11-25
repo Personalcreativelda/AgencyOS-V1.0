@@ -83,18 +83,18 @@ export function LoginPage() {
     <AuthShell>
       <div className="space-y-7">
         <div>
-          <h2 className="text-[28px] font-bold tracking-[-0.02em] text-foreground">Entrar na sua agência</h2>
+          <h2 className="text-[28px] font-semibold leading-tight tracking-[-0.02em] text-foreground">Entrar na sua agência</h2>
           <p className="mt-2 text-[15px] text-muted-foreground">
             Novo usuário?{' '}
-            <Link to="/register" className="text-primary hover:underline font-bold">
+            <Link to="/register" className="font-medium text-primary-dark underline-offset-4 hover:underline dark:text-primary-light">
               Criar uma agência
             </Link>
           </p>
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-2xl bg-error/10 border border-error/20 text-error-dark text-xs flex items-center gap-2.5 font-semibold">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="flex items-start gap-2 rounded-lg border border-error/20 bg-error/10 p-3 text-sm leading-5 text-error-dark">
+            <AlertCircle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0" aria-hidden />
             <span>{error}</span>
           </div>
         )}
@@ -153,7 +153,7 @@ export function LoginPage() {
           </div>
 
           <Button type="button" variant="outline" size="lg" loading={googleLoading} onClick={signInWithGoogle}
-            className="w-full gap-3 border-border bg-card text-[15px] font-semibold text-foreground hover:bg-muted">
+            className="w-full gap-3 border-border bg-card font-medium text-foreground hover:bg-muted">
             {!googleLoading && <><GoogleLogo className="size-5" /><span>Continuar com Google</span></>}
           </Button>
         </form>
