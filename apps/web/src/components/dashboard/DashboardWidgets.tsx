@@ -19,7 +19,7 @@ export function PanelHeader({ title, description, action, divider = true }: {
   return (
     <div className={cn('flex flex-wrap items-start justify-between gap-3', divider && 'mb-5 border-b border-border/70 pb-4')}>
       <div className="min-w-0">
-        <h2 className="text-base font-semibold tracking-[-0.01em] text-foreground sm:text-[17px]">{title}</h2>
+        <h2 className="text-base font-semibold tracking-[-0.01em] text-foreground sm:text-lg">{title}</h2>
         {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
@@ -36,7 +36,7 @@ export function Trend({ value, suffix = 'vs período anterior' }: { value: numbe
   const flat = value === 0
   const Icon = flat ? Minus : up ? ArrowUpRight : ArrowDownRight
   return (
-    <span className="inline-flex items-center gap-1.5 text-[13px]">
+    <span className="inline-flex items-center gap-1.5 text-sm">
       <span className={cn('inline-flex items-center gap-0.5 font-semibold tabular-nums',
         flat ? 'text-muted-foreground' : up ? 'text-success-dark dark:text-success' : 'text-error-dark dark:text-error')}>
         {Math.abs(value).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%<Icon size={13} strokeWidth={2.5} aria-hidden />
@@ -112,8 +112,8 @@ export function PanelEmpty({ icon: Icon, title, text, action }: {
 }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center py-6 text-center">
-      <span className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary-dark dark:text-primary-light"><Icon size={21} aria-hidden /></span>
-      <h3 className="text-[15px] font-semibold">{title}</h3>
+      <span className="mb-4 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary-dark dark:text-primary-light"><Icon size={21} aria-hidden /></span>
+      <h3 className="text-base font-semibold">{title}</h3>
       {text && <p className="mt-1 max-w-xs text-sm leading-6 text-muted-foreground">{text}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>
@@ -148,8 +148,8 @@ export function KpiCard({ label, value, icon: Icon, tone = 'brand', footer, to, 
         </span>
         {badge}
       </div>
-      <p className="mt-4 line-clamp-2 text-[13px] font-medium leading-snug text-muted-foreground sm:text-sm">{label}</p>
-      <p className={cn('mt-1 text-[28px] font-bold leading-9 tracking-[-0.03em] tabular-nums sm:text-[32px]',
+      <p className="mt-4 line-clamp-2 text-sm font-medium leading-snug text-muted-foreground sm:text-sm">{label}</p>
+      <p className={cn('mt-1 text-[28px] font-semibold leading-9 tracking-[-0.02em] tabular-nums sm:text-[32px]',
         alert ? TONE_TEXT[tone] : 'text-foreground')}>
         {value}
       </p>
@@ -160,7 +160,7 @@ export function KpiCard({ label, value, icon: Icon, tone = 'brand', footer, to, 
         </div>
       ) : cta ? (
         <div className="mt-auto flex min-h-6 items-end justify-end pt-2">
-          <span className={cn('inline-flex items-center gap-1 text-[13px] font-semibold', TONE_TEXT[tone])}>{cta}<span aria-hidden>→</span></span>
+          <span className={cn('inline-flex items-center gap-1 text-sm font-semibold', TONE_TEXT[tone])}>{cta}<span aria-hidden>→</span></span>
         </div>
       ) : null}
     </div>
@@ -195,7 +195,7 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
   value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="flex w-full max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-card p-1 shadow-card [scrollbar-width:none] sm:inline-flex sm:w-auto [&::-webkit-scrollbar]:hidden">
+    <div role="radiogroup" aria-label={label} className="flex w-full max-w-full items-center gap-0.5 overflow-x-auto rounded-xl border border-border bg-card p-1 shadow-card [scrollbar-width:none] sm:inline-flex sm:w-auto [&::-webkit-scrollbar]:hidden">
       {options.map((o) => (
         <button
           key={o.value}
@@ -203,7 +203,7 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
           role="radio"
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
-          className={cn('h-8 flex-1 shrink-0 whitespace-nowrap rounded-full px-3 text-[13px] sm:px-3.5 font-semibold transition-colors sm:flex-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+          className={cn('h-8 flex-1 shrink-0 whitespace-nowrap rounded-lg px-3 text-sm sm:px-3.5 font-medium transition-colors sm:flex-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
             value === o.value ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground')}
         >
           {o.label}
@@ -217,7 +217,7 @@ export function Segmented<T extends string>({ value, options, onChange, label }:
 export function ShareBar({ value, max, color }: { value: number; max: number; color: string }) {
   return (
     <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-      <div className="h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none" style={{ width: `${max ? Math.max(4, (value / max) * 100) : 0}%`, background: color }} />
+      <div className="h-full w-full origin-left rounded-full transition-transform duration-300 ease-out motion-reduce:transition-none" style={{ transform: `scaleX(${max ? Math.max(0.04, value / max) : 0})`, background: color }} />
     </div>
   )
 }

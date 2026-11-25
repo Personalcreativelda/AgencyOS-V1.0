@@ -36,10 +36,10 @@ function AttentionRow({ alert }: { alert: AttentionAlert }) {
         <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-lg', alert.tone === 'error' ? 'bg-error/10 text-error-dark dark:text-error-light' : 'bg-warning/10 text-warning-dark dark:text-warning-light')}><Icon size={17} aria-hidden /></span>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h3 className="text-[13px] font-semibold leading-5">{alert.title}</h3>
+            <h3 className="text-sm font-semibold leading-5">{alert.title}</h3>
             <Badge variant={alert.tone} className="font-medium" title={platforms ? `${alert.badge}: ${platforms}` : undefined}>{alert.platforms?.length === 1 ? platforms : alert.badge}</Badge>
           </div>
-          <p className="mt-1 line-clamp-2 break-words text-[13px] leading-5 text-muted-foreground">
+          <p className="mt-1 line-clamp-2 break-words text-sm leading-5 text-muted-foreground">
             {alert.clientName && <span className="font-medium text-foreground/80">{alert.clientName}<span aria-hidden className="px-1.5 text-muted-foreground">·</span></span>}{alert.description}
           </p>
         </div>
@@ -61,7 +61,7 @@ function UpcomingPublication({ content }: { content: DashboardContent }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <time dateTime={content.scheduledAt!} className="text-[13px] font-semibold text-primary-dark dark:text-primary-light">{format(date, "d MMM · HH:mm", { locale: ptBR })}</time>
+            <time dateTime={content.scheduledAt!} className="text-sm font-semibold text-primary-dark dark:text-primary-light">{format(date, "d MMM · HH:mm", { locale: ptBR })}</time>
             {content.status === 'SCHEDULED' && <span className="shrink-0 text-xs font-medium text-primary-dark dark:text-primary-light">Agendado</span>}
           </div>
           <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-5">{content.title}</h3>
@@ -122,7 +122,7 @@ const platformColor = (platform: string) => {
   return !c || c === 'currentColor' ? 'hsl(var(--foreground))' : c
 }
 
-const linkAction = cn('rounded text-[13px] font-medium text-primary-dark hover:underline dark:text-primary-light', interaction)
+const linkAction = cn('rounded text-sm font-medium text-primary-dark hover:underline dark:text-primary-light', interaction)
 
 /** Shorter chart on phones so the card doesn't dominate the screen. */
 function useChartHeight() {
@@ -215,14 +215,14 @@ export function DashboardPage() {
               action={attention.alerts.length > 0 ? <Badge variant="warning" dot>{attention.alerts.length} {attention.alerts.length > 1 ? 'pendentes' : 'pendente'}</Badge> : undefined} />
           </div>
           {core.isLoading || contents.isLoading ? <div aria-busy="true" aria-label="Carregando prioridades" className="space-y-3 p-2">{[0, 1, 2].map(item => <Skeleton key={item} className="h-20" />)}</div>
-            : core.isError ? <p role="status" className="px-2 py-5 text-[13px] text-muted-foreground">As prioridades aparecerão quando o resumo estiver disponível.</p>
+            : core.isError ? <p role="status" className="px-2 py-5 text-sm text-muted-foreground">As prioridades aparecerão quando o resumo estiver disponível.</p>
             : <>
               {contents.isError && <div role="status" className="mb-3 rounded-lg bg-warning/10 p-3 text-xs leading-5 text-foreground">Os totais estão disponíveis, mas não foi possível consultar os detalhes dos conteúdos. <button type="button" onClick={() => void contents.refetch()} className="font-medium underline underline-offset-4">Tentar novamente</button></div>}
-              {attention.alerts.length ? <ul className="space-y-1">{attention.alerts.map(alert => <AttentionRow key={alert.id} alert={alert} />)}</ul> : <div className="flex items-start gap-3 px-2 py-6"><CheckCircle2 size={20} aria-hidden className="mt-0.5 shrink-0 text-primary-dark dark:text-primary-light" /><div><h3 className="text-sm font-medium">Sem bloqueios nesta lista</h3><p className="mt-1 text-[13px] leading-5 text-muted-foreground">Acompanhe o calendário para manter as próximas entregas em dia.</p></div></div>}
+              {attention.alerts.length ? <ul className="space-y-1">{attention.alerts.map(alert => <AttentionRow key={alert.id} alert={alert} />)}</ul> : <div className="flex items-start gap-3 px-2 py-6"><CheckCircle2 size={20} aria-hidden className="mt-0.5 shrink-0 text-primary-dark dark:text-primary-light" /><div><h3 className="text-sm font-medium">Sem bloqueios nesta lista</h3><p className="mt-1 text-sm leading-5 text-muted-foreground">Acompanhe o calendário para manter as próximas entregas em dia.</p></div></div>}
               {attention.planning.length > 0 && <details className="group/planning mx-1 mt-4 rounded-xl bg-muted/40">
                 <summary className={cn('flex cursor-pointer list-none items-center gap-3 rounded-xl p-3 [&::-webkit-details-marker]:hidden', interaction)}>
                   <CalendarRange size={17} aria-hidden className="shrink-0 text-muted-foreground" />
-                  <div className="min-w-0 flex-1"><h3 className="text-[13px] font-medium">Planejamento de {attention.planning.length} {attention.planning.length === 1 ? 'cliente' : 'clientes'}</h3><p className="mt-0.5 text-xs leading-5 text-muted-foreground">Sem publicações nos próximos 7 dias</p></div>
+                  <div className="min-w-0 flex-1"><h3 className="text-sm font-medium">Planejamento de {attention.planning.length} {attention.planning.length === 1 ? 'cliente' : 'clientes'}</h3><p className="mt-0.5 text-xs leading-5 text-muted-foreground">Sem publicações nos próximos 7 dias</p></div>
                   <ChevronDown size={15} aria-hidden className="shrink-0 text-muted-foreground transition-transform group-open/planning:rotate-180 motion-reduce:transition-none" />
                 </summary>
                 <ul className="space-y-1 px-3 pb-3">{attention.planning.map(item => <li key={item.clientId}><Link to="/app/content/calendar" state={{ clientId: item.clientId }} className={cn('flex min-h-10 items-center justify-between gap-3 rounded-md px-2 py-2 text-xs hover:bg-card', interaction)}><span className="min-w-0 truncate">{item.clientName}</span><span className="inline-flex shrink-0 items-center gap-1 font-medium text-primary-dark dark:text-primary-light">Planejar<ArrowRight size={13} aria-hidden /></span></Link></li>)}</ul>
@@ -237,10 +237,10 @@ export function DashboardPage() {
               const candidate = notificationTarget(item)
               const to = candidate && contents.data?.some(content => candidate === `/app/content/${content.id}`) ? candidate : null
               const date = new Date(item.createdAt)
-              const body = <><span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary/70" aria-hidden /><div className="min-w-0 flex-1"><h3 className="line-clamp-2 text-[13px] font-medium leading-5">{item.title}</h3><p className="mt-0.5 line-clamp-2 text-xs leading-5 text-muted-foreground">{item.message}</p><time dateTime={item.createdAt} title={format(date, 'd MMM yyyy · HH:mm', { locale: ptBR })} className="mt-1 block text-xs leading-5 text-muted-foreground">{formatDistanceToNowStrict(date, { addSuffix: true, locale: ptBR })}</time></div>{to && <ChevronRight size={14} aria-hidden className="mt-1 shrink-0 text-muted-foreground" />}</>
+              const body = <><span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary/70" aria-hidden /><div className="min-w-0 flex-1"><h3 className="line-clamp-2 text-sm font-medium leading-5">{item.title}</h3><p className="mt-0.5 line-clamp-2 text-xs leading-5 text-muted-foreground">{item.message}</p><time dateTime={item.createdAt} title={format(date, 'd MMM yyyy · HH:mm', { locale: ptBR })} className="mt-1 block text-xs leading-5 text-muted-foreground">{formatDistanceToNowStrict(date, { addSuffix: true, locale: ptBR })}</time></div>{to && <ChevronRight size={14} aria-hidden className="mt-1 shrink-0 text-muted-foreground" />}</>
               return <li key={item.id}>{to ? <Link to={to} className={cn('flex items-start gap-3 rounded-xl p-2 hover:bg-muted/60', interaction)}>{body}</Link> : <div className="flex items-start gap-3 p-2">{body}</div>}</li>
             })}</ul>
-            : <div className="flex items-center gap-3 py-4 text-[13px] text-muted-foreground"><Users size={18} aria-hidden />Sem atividade recente.</div>}
+            : <div className="flex items-center gap-3 py-4 text-sm text-muted-foreground"><Users size={18} aria-hidden />Sem atividade recente.</div>}
         </Panel>
       </div>
   )
@@ -264,11 +264,11 @@ export function DashboardPage() {
 
       {/* KPI row */}
       {core.isError && insights.isError ? (
-        <Panel role="alert"><h2 className="text-sm font-semibold">Não foi possível carregar o estado da agência</h2><p className="mt-1 text-[13px] text-muted-foreground">Tente novamente para consultar os indicadores e as prioridades atuais.</p><Button variant="outline" onClick={refresh} loading={core.isFetching} className="mt-4"><RefreshCw size={14} aria-hidden />Tentar novamente</Button></Panel>
+        <Panel role="alert"><h2 className="text-sm font-semibold">Não foi possível carregar o estado da agência</h2><p className="mt-1 text-sm text-muted-foreground">Tente novamente para consultar os indicadores e as prioridades atuais.</p><Button variant="outline" onClick={refresh} loading={core.isFetching} className="mt-4"><RefreshCw size={14} aria-hidden />Tentar novamente</Button></Panel>
       ) : (
         <section aria-label="Indicadores principais" aria-busy={insights.isLoading || core.isLoading} className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4 lg:gap-5">
           {insights.isLoading && core.isLoading
-            ? Array.from({ length: 4 }, (_, i) => <div key={i} aria-hidden className="flex gap-4 rounded-[20px] border border-border/70 bg-card p-5"><Skeleton className="size-12 rounded-2xl" /><div className="flex-1 space-y-2"><Skeleton className="h-3.5 w-3/4" /><Skeleton className="h-7 w-16" /><Skeleton className="h-3 w-1/2" /></div></div>)
+            ? Array.from({ length: 4 }, (_, i) => <div key={i} aria-hidden className="flex gap-4 rounded-[20px] border border-border/70 bg-card p-5"><Skeleton className="size-12 rounded-xl" /><div className="flex-1 space-y-2"><Skeleton className="h-3.5 w-3/4" /><Skeleton className="h-7 w-16" /><Skeleton className="h-3 w-1/2" /></div></div>)
             : <>
               <KpiCard label="Conteúdos criados" icon={FilePlus2} tone="brand" to="/app/content"
                 value={data?.kpis.created.value ?? overview?.totalContentsThisMonth ?? 0}
@@ -300,7 +300,7 @@ export function DashboardPage() {
           />
           {data && data.series.some(point => point.created || point.published) && (
             <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <span className="text-[32px] font-bold leading-none tracking-[-0.03em] tabular-nums">{data.kpis.created.value}</span>
+              <span className="text-[32px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{data.kpis.created.value}</span>
               <span className="text-sm text-muted-foreground">conteúdos criados</span>
               <span className="ml-auto hidden items-center gap-4 text-xs text-muted-foreground sm:flex">
                 <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{ background: SERIES_COLORS.created }} />Criados</span>
@@ -309,7 +309,7 @@ export function DashboardPage() {
             </div>
           )}
           {insights.isLoading ? <Skeleton className="h-[280px] rounded-xl" />
-            : insights.isError ? <div role="status" className="flex h-[280px] flex-col items-center justify-center rounded-xl border border-dashed border-border text-center text-[13px] text-muted-foreground"><p>Não foi possível carregar o histórico.</p><Button variant="outline" size="sm" className="mt-3" onClick={() => void insights.refetch()}>Tentar novamente</Button></div>
+            : insights.isError ? <div role="status" className="flex h-[280px] flex-col items-center justify-center rounded-xl border border-dashed border-border text-center text-sm text-muted-foreground"><p>Não foi possível carregar o histórico.</p><Button variant="outline" size="sm" className="mt-3" onClick={() => void insights.refetch()}>Tentar novamente</Button></div>
             : data && data.series.every(point => !point.created && !point.published) ? <PanelEmpty icon={FilePlus2} title="Sem produção neste período" text={`Nenhum conteúdo foi criado ou publicado ${range === '30d' ? 'nos últimos 30 dias' : range === '90d' ? 'nos últimos 90 dias' : 'nos últimos 12 meses'}.`}
               action={range !== '12m' ? <Button variant="outline" onClick={() => setRange(range === '30d' ? '90d' : '12m')}>Ver {range === '30d' ? '90 dias' : '12 meses'}</Button> : <Button asChild variant="outline"><Link to="/app/content?novo=1">Criar conteúdo<ArrowRight size={14} aria-hidden /></Link></Button>} />
             : data && <div className={cn('transition-opacity', insights.isFetching && 'opacity-60')}>
@@ -328,9 +328,9 @@ export function DashboardPage() {
         <Panel aria-label="Próximas publicações">
           <PanelHeader title="Próximas publicações" description="O que vai sair a seguir." action={<Link to="/app/content/calendar" className={linkAction}>Ver todas</Link>} />
           {contents.isLoading ? <div aria-busy="true" aria-label="Carregando publicações" className="space-y-3"><Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" /></div>
-            : contents.isError ? <div role="status" className="py-6 text-[13px] text-muted-foreground"><p>Não foi possível consultar o calendário.</p><Button variant="outline" size="sm" className="mt-3" onClick={() => void contents.refetch()}>Tentar novamente</Button></div>
+            : contents.isError ? <div role="status" className="py-6 text-sm text-muted-foreground"><p>Não foi possível consultar o calendário.</p><Button variant="outline" size="sm" className="mt-3" onClick={() => void contents.refetch()}>Tentar novamente</Button></div>
             : upcoming.length ? <ul className="-mx-3 divide-y divide-border/70">{upcoming.map(content => <UpcomingPublication key={content.id} content={content} />)}</ul>
-            : <div className="flex flex-1 flex-col items-center justify-center py-6 text-center"><span className="mb-4 flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary-dark dark:text-primary-light"><CalendarDays size={21} aria-hidden /></span><h3 className="text-[15px] font-semibold">Prepare a próxima publicação</h3><p className="mt-1 max-w-xs text-sm leading-6 text-muted-foreground">Ainda não há conteúdos futuros agendados.</p><Button asChild variant="outline" className="mt-5"><Link to="/app/content/calendar">Abrir Planner<ArrowRight size={14} aria-hidden /></Link></Button></div>}
+            : <div className="flex flex-1 flex-col items-center justify-center py-6 text-center"><span className="mb-4 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary-dark dark:text-primary-light"><CalendarDays size={21} aria-hidden /></span><h3 className="text-base font-semibold">Prepare a próxima publicação</h3><p className="mt-1 max-w-xs text-sm leading-6 text-muted-foreground">Ainda não há conteúdos futuros agendados.</p><Button asChild variant="outline" className="mt-5"><Link to="/app/content/calendar">Abrir Planner<ArrowRight size={14} aria-hidden /></Link></Button></div>}
         </Panel>
       </div>
 
@@ -343,7 +343,7 @@ export function DashboardPage() {
               <DonutChart slices={statusSlices} caption="Conteúdos" size={180} />
               <DonutLegend slices={statusSlices} className="w-full min-w-0" />
             </div>
-            : <p className="py-8 text-center text-[13px] text-muted-foreground">Ainda não há conteúdos.</p>}
+            : <p className="py-8 text-center text-sm text-muted-foreground">Ainda não há conteúdos.</p>}
         </Panel>
 
         <Panel aria-label="Publicações por rede">
@@ -377,10 +377,10 @@ export function DashboardPage() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold text-foreground">{client.name || 'Cliente'}</span>
-                    <span className="block truncate text-[13px] text-muted-foreground">{client.industry || 'Setor não informado'}</span>
+                    <span className="block truncate text-sm text-muted-foreground">{client.industry || 'Setor não informado'}</span>
                   </span>
                   <span className="shrink-0 text-right">
-                    <span className="block text-[15px] font-bold tabular-nums text-primary-dark dark:text-primary-light">{client.count}</span>
+                    <span className="block text-base font-semibold tabular-nums text-primary-dark dark:text-primary-light">{client.count}</span>
                     <span className="block text-[11px] text-muted-foreground">{client.count > 1 ? 'conteúdos' : 'conteúdo'}</span>
                   </span>
                 </Link>
