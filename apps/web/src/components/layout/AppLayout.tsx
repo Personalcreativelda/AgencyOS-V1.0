@@ -15,7 +15,7 @@ import { HeaderSearch } from '@/components/layout/HeaderSearch'
 import { LogoMark } from '@/components/brand/Logo'
 import { ThemeMenu } from '@/components/ui/ThemeMenu'
 import { useAuthStore } from '@/stores/authStore'
-import { cn, getInitials, ROLE_LABELS, timeAgo } from '@/lib/utils'
+import { cn, formatPersonName, getInitials, ROLE_LABELS, timeAgo } from '@/lib/utils'
 import { uploadFile } from '@/lib/upload'
 import { toast } from '@/lib/toast'
 import { getErrorMessage } from '@/lib/errors'
@@ -276,7 +276,7 @@ export function AppLayout() {
                     </AvatarFallback>
                   </Avatar>
                   <span className="hidden min-w-0 text-left leading-tight lg:block">
-                    <span className="block max-w-[160px] truncate text-sm font-semibold text-foreground">{user?.name}</span>
+                    <span className="block max-w-[160px] truncate text-sm font-semibold text-foreground">{formatPersonName(user?.name)}</span>
                     <span className="block max-w-[160px] truncate text-xs text-muted-foreground">{ROLE_LABELS[user?.role || ''] || user?.role}</span>
                   </span>
                   <ChevronDown size={15} aria-hidden className="hidden text-muted-foreground lg:block" />
@@ -284,7 +284,7 @@ export function AppLayout() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel className="px-3 py-2 normal-case tracking-normal">
-                  <p className="text-sm font-bold text-foreground truncate">{user?.name}</p>
+                  <p className="text-sm font-semibold text-foreground truncate">{formatPersonName(user?.name)}</p>
                   <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                   <Badge variant="primary" className="mt-1">{user?.role}</Badge>
                 </DropdownMenuLabel>

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import api from '@/lib/api'
 import { useAuthStore } from '@/stores/authStore'
-import { cn, getInitials, PLATFORM_LABELS } from '@/lib/utils'
+import { cn, formatPersonName, getInitials, PLATFORM_LABELS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Skeleton } from '@/components/ui/Skeleton'
@@ -180,7 +180,7 @@ export function DashboardPage() {
   })
   const now = new Date()
   const dateLabel = format(now, "EEEE, d 'de' MMMM", { locale: ptBR })
-  const firstName = user?.name?.trim().split(/\s+/)[0]
+  const firstName = formatPersonName(user?.name).split(/\s+/)[0]
   const greeting = now.getHours() < 12 ? 'Bom dia' : now.getHours() < 18 ? 'Boa tarde' : 'Boa noite'
   const overview = core.data?.overview
   const attention = useMemo(() => core.data ? buildDashboardAttention(core.data.overview, core.data.attention, contents.data || []) : { alerts: [], planning: [] }, [core.data, contents.data])

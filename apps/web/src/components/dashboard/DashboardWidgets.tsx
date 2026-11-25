@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react'
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Minus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /** Surface used by every dashboard block: generous radius, hairline border, soft shadow. */
@@ -160,7 +160,7 @@ export function KpiCard({ label, value, icon: Icon, tone = 'brand', footer, to, 
         </div>
       ) : cta ? (
         <div className="mt-auto flex min-h-6 items-end justify-end pt-2">
-          <span className={cn('inline-flex items-center gap-1 text-sm font-semibold', TONE_TEXT[tone])}>{cta}<span aria-hidden>→</span></span>
+          <span className={cn('inline-flex items-center gap-1 text-sm font-semibold', TONE_TEXT[tone])}>{cta}<ArrowRight size={14} strokeWidth={1.75} aria-hidden /></span>
         </div>
       ) : null}
     </div>

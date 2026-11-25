@@ -63,7 +63,7 @@ function localTime(tz?: string) {
 const AI_PROVIDERS = [
   { value: 'openai', label: 'OpenAI' },
   { value: 'gemini', label: 'Google Gemini' },
-  { value: 'anthropic', label: 'Anthropic (Claude)' },
+  { value: 'anthropic', label: 'Claude (Anthropic)' },
 ]
 
 const TEXT_MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]> = {
@@ -77,9 +77,9 @@ const TEXT_MODELS_BY_PROVIDER: Record<string, { value: string; label: string }[]
     { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro (mais qualidade)' },
   ],
   anthropic: [
-    { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (rápido e barato)' },
-    { value: 'claude-sonnet-5', label: 'Claude Sonnet 5 (equilibrado)' },
-    { value: 'claude-opus-5', label: 'Claude Opus 5 (mais qualidade)' },
+    { value: 'claude-opus-5-5', label: 'Claude Opus 5.5 (mais qualidade, recomendado)' },
+    { value: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5 (equilibrado)' },
+    { value: 'claude-haiku-5-5', label: 'Claude Haiku 5.5 (rápido e barato)' },
   ],
 }
 

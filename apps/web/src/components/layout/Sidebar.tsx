@@ -298,7 +298,7 @@ export function Sidebar({ mobileOpen, onClose }: SidebarProps) {
                   onClick={() => toggleGroup(section.id)}
                   aria-expanded={open}
                   aria-controls={`sidebar-section-${section.id}`}
-                  className="group/section mb-1 flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-muted-foreground/80 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="group/section mb-1 flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <span className="truncate">{section.label}</span>
                   {!open && holdsActive && <span className="size-1.5 shrink-0 rounded-full bg-primary" />}

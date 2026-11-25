@@ -77,6 +77,14 @@ export const ROLE_LABELS: Record<string, string> = {
   CLIENT: 'Cliente',
 }
 
+/** Display a person's name in normal case when it was typed ALL CAPS or all lowercase ("EKSON CUAMBA" → "Ekson Cuamba"). Mixed case is kept as typed. */
+export function formatPersonName(name?: string | null) {
+  const value = (name || '').trim()
+  if (!value || (value !== value.toUpperCase() && value !== value.toLowerCase())) return value
+  const small = new Set(['da', 'das', 'de', 'do', 'dos', 'e'])
+  return value.toLowerCase().split(/\s+/).map((word, i) => i > 0 && small.has(word) ? word : word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+}
+
 export function getInitials(name: string) {
   return name
     .split(' ')

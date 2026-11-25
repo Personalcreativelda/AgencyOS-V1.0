@@ -181,7 +181,7 @@ export function HeaderSearch() {
             {results.map((r, i) => (
               <li key={r.id} role="presentation">
                 {(i === 0 || results[i - 1].group !== r.group) && (
-                  <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground first:pt-1">{r.group}</p>
+                  <p className="px-3 pb-1 pt-3 text-xs font-medium text-muted-foreground first:pt-1">{r.group}</p>
                 )}
                 <button
                   type="button"

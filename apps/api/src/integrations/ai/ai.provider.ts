@@ -1,3 +1,4 @@
+import Anthropic from '@anthropic-ai/sdk';
 // AI Provider abstraction — supports OpenAI, with mock fallback for dev
 
 import { prisma } from '../../database/prisma';
@@ -409,42 +410,57 @@ class GeminiProvider implements AIProvider {
   }
 }
 
-// Anthropic (Claude) provider — text/JSON only. Claude models don't generate images; agencies
-// on this provider need to keep OpenAI or Gemini configured elsewhere for image generation
-// (there's no per-capability provider mixing yet — one provider serves the whole agency).
+// Anthropic (Claude) provider, through the official SDK. Text, JSON and vision; Claude models
+// don't generate images, so agencies keep OpenAI or Gemini routed for the image task.
+// Current Claude models reject `temperature` and fixed thinking budgets, so neither is sent:
+// depth is left to the model's default effort.
+const CLAUDE_FALLBACK_MODELS = ['claude-opus-5-5', 'claude-sonnet-5-5'];
+
 class AnthropicProvider implements AIProvider {
+  private client: Anthropic;
+
   constructor(
-    private apiKey: string,
-    private textModel = 'claude-sonnet-5'
-  ) {}
+    apiKey: string,
+    private textModel = 'claude-opus-5-5'
+  ) {
+    this.client = new Anthropic({ apiKey });
+  }
+
+  private async send(system: string | undefined, content: Anthropic.Beta.Messages.BetaContentBlockParam[] | string, maxTokens: number) {
+    try {
+      // Opus 5.5 / Sonnet 5.5 can decline a request in a safety category; "default" fallbacks let
+      // the API re-run it on a suitable model inside the same call instead of failing the post.
+      const withFallback = CLAUDE_FALLBACK_MODELS.includes(this.textModel);
+      const response = await this.client.beta.messages.create({
+        model: this.textModel,
+        max_tokens: maxTokens,
+        ...(system ? { system } : {}),
+        messages: [{ role: 'user', content }],
+        ...(withFallback ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
+      });
+      if (response.stop_reason === 'refusal') {
+        throw new AIProviderError('O Claude recusou este pedido. Reformule o briefing ou tente com outro modelo.');
+      }
+      const text = response.content.map((block) => (block.type === 'text' ? block.text : '')).join('');
+      return { text, usage: response.usage };
+    } catch (err) {
+      if (err instanceof AIProviderError) throw err;
+      if (err instanceof Anthropic.AuthenticationError) throw new AIProviderError('Anthropic: a chave de API do Claude é inválida. Verifique-a em Configurações → IA.');
+      if (err instanceof Anthropic.PermissionDeniedError) throw new AIProviderError('Anthropic: esta chave não tem acesso ao modelo escolhido.');
+      if (err instanceof Anthropic.NotFoundError) throw new AIProviderError(`Anthropic: o modelo "${this.textModel}" não existe ou não está disponível para esta conta.`);
+      if (err instanceof Anthropic.RateLimitError) throw new AIProviderError('Anthropic: limite de pedidos atingido. Aguarde um momento e tente novamente.');
+      if (err instanceof Anthropic.BadRequestError) throw new AIProviderError(`Anthropic: ${err.message}`);
+      if (err instanceof Anthropic.APIError) throw new AIProviderError(`Anthropic: o serviço respondeu com erro ${err.status ?? ''}. Tente novamente.`);
+      throw err;
+    }
+  }
 
   async generateText(input: AIRequest): Promise<AIResponse> {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: this.textModel,
-        system: input.systemPrompt,
-        messages: [{ role: 'user', content: input.userPrompt }],
-        max_tokens: input.maxTokens ?? 2000,
-        temperature: input.temperature ?? 0.7,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw providerError('Anthropic', err);
-    }
-
-    const data = await response.json() as any;
+    const { text, usage } = await this.send(input.systemPrompt, input.userPrompt, input.maxTokens ?? 4000);
     return {
-      text: data.content?.map((c: any) => c.text).filter(Boolean).join('') || '',
-      inputTokens: data.usage?.input_tokens,
-      outputTokens: data.usage?.output_tokens,
+      text,
+      inputTokens: usage?.input_tokens,
+      outputTokens: usage?.output_tokens,
       model: this.textModel,
       provider: 'anthropic',
     };
@@ -464,38 +480,17 @@ class AnthropicProvider implements AIProvider {
   }
 
   async generateImage(): Promise<AIImageResult> {
-    throw new AIProviderError('A Anthropic (Claude) não gera imagens. Configure OpenAI ou Gemini para gerar criativos com IA.');
+    throw new AIProviderError('O Claude não gera imagens. Configure OpenAI ou Gemini para gerar criativos com IA.');
   }
 
   async analyzeImages(images: AIImageInput[], instructions: string): Promise<string> {
-    const content: any[] = images.slice(0, 8).map((img) => ({
-      type: 'image',
-      source: { type: 'base64', media_type: img.mimeType, data: img.buffer.toString('base64') },
+    const content: Anthropic.Beta.Messages.BetaContentBlockParam[] = images.slice(0, 8).map((img) => ({
+      type: 'image' as const,
+      source: { type: 'base64' as const, media_type: img.mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: img.buffer.toString('base64') },
     }));
     content.push({ type: 'text', text: instructions });
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: this.textModel,
-        messages: [{ role: 'user', content }],
-        max_tokens: 1200,
-        temperature: 0.3,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw providerError('Anthropic', err);
-    }
-
-    const data = await response.json() as any;
-    return data.content?.map((c: any) => c.text).filter(Boolean).join('') || '';
+    const { text } = await this.send(undefined, content, 4000);
+    return text;
   }
 
   describe() {
